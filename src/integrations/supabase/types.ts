@@ -1,0 +1,655 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  public: {
+    Tables: {
+      alunos: {
+        Row: {
+          atestado_data: string | null
+          atestado_entregue: boolean
+          ativo: boolean
+          codigo: string
+          cpf: string | null
+          created_at: string
+          data_nascimento: string | null
+          doc_atestado_path: string | null
+          doc_identidade_path: string | null
+          doc_matricula_path: string | null
+          doc_residencia_path: string | null
+          email: string | null
+          escola: string | null
+          faixa_etaria: string | null
+          foto_path: string | null
+          id: string
+          idade: number | null
+          inativado_em: string | null
+          inativado_por: string | null
+          motivo_inativacao: string | null
+          nome: string
+          observacoes: string | null
+          pcd: boolean
+          pcd_condicoes: string[]
+          pcd_descricao: string | null
+          rede_ensino: string | null
+          responsavel: string | null
+          rg: string | null
+          sexo: string | null
+          telefone: string | null
+          telefone2: string | null
+        }
+        Insert: {
+          atestado_data?: string | null
+          atestado_entregue?: boolean
+          ativo?: boolean
+          codigo?: string
+          cpf?: string | null
+          created_at?: string
+          data_nascimento?: string | null
+          doc_atestado_path?: string | null
+          doc_identidade_path?: string | null
+          doc_matricula_path?: string | null
+          doc_residencia_path?: string | null
+          email?: string | null
+          escola?: string | null
+          faixa_etaria?: string | null
+          foto_path?: string | null
+          id?: string
+          idade?: number | null
+          inativado_em?: string | null
+          inativado_por?: string | null
+          motivo_inativacao?: string | null
+          nome: string
+          observacoes?: string | null
+          pcd?: boolean
+          pcd_condicoes?: string[]
+          pcd_descricao?: string | null
+          rede_ensino?: string | null
+          responsavel?: string | null
+          rg?: string | null
+          sexo?: string | null
+          telefone?: string | null
+          telefone2?: string | null
+        }
+        Update: {
+          atestado_data?: string | null
+          atestado_entregue?: boolean
+          ativo?: boolean
+          codigo?: string
+          cpf?: string | null
+          created_at?: string
+          data_nascimento?: string | null
+          doc_atestado_path?: string | null
+          doc_identidade_path?: string | null
+          doc_matricula_path?: string | null
+          doc_residencia_path?: string | null
+          email?: string | null
+          escola?: string | null
+          faixa_etaria?: string | null
+          foto_path?: string | null
+          id?: string
+          idade?: number | null
+          inativado_em?: string | null
+          inativado_por?: string | null
+          motivo_inativacao?: string | null
+          nome?: string
+          observacoes?: string | null
+          pcd?: boolean
+          pcd_condicoes?: string[]
+          pcd_descricao?: string | null
+          rede_ensino?: string | null
+          responsavel?: string | null
+          rg?: string | null
+          sexo?: string | null
+          telefone?: string | null
+          telefone2?: string | null
+        }
+        Relationships: []
+      }
+      anotacoes_alunos: {
+        Row: {
+          aluno_id: string
+          autor_id: string | null
+          autor_nome: string | null
+          created_at: string
+          id: string
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          aluno_id: string
+          autor_id?: string | null
+          autor_nome?: string | null
+          created_at?: string
+          id?: string
+          texto: string
+          updated_at?: string
+        }
+        Update: {
+          aluno_id?: string
+          autor_id?: string | null
+          autor_nome?: string | null
+          created_at?: string
+          id?: string
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anotacoes_alunos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      backup_cron: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          dia_semana: number
+          hora: number
+          id: boolean
+          minuto: number
+          token: string
+          ultimo_backup: string | null
+          ultimo_resultado: string | null
+          ultimo_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          dia_semana?: number
+          hora?: number
+          id?: boolean
+          minuto?: number
+          token?: string
+          ultimo_backup?: string | null
+          ultimo_resultado?: string | null
+          ultimo_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          dia_semana?: number
+          hora?: number
+          id?: boolean
+          minuto?: number
+          token?: string
+          ultimo_backup?: string | null
+          ultimo_resultado?: string | null
+          ultimo_status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      configuracoes: {
+        Row: {
+          chave: string
+          created_at: string
+          updated_at: string
+          valor: string
+        }
+        Insert: {
+          chave: string
+          created_at?: string
+          updated_at?: string
+          valor: string
+        }
+        Update: {
+          chave?: string
+          created_at?: string
+          updated_at?: string
+          valor?: string
+        }
+        Relationships: []
+      }
+      fila_espera: {
+        Row: {
+          created_at: string
+          id: string
+          idade: number | null
+          modalidade: string
+          nome: string
+          observacoes: string | null
+          pcd: boolean
+          pcd_condicoes: string[]
+          pcd_descricao: string | null
+          preferencia_horario: string | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idade?: number | null
+          modalidade?: string
+          nome: string
+          observacoes?: string | null
+          pcd?: boolean
+          pcd_condicoes?: string[]
+          pcd_descricao?: string | null
+          preferencia_horario?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idade?: number | null
+          modalidade?: string
+          nome?: string
+          observacoes?: string | null
+          pcd?: boolean
+          pcd_condicoes?: string[]
+          pcd_descricao?: string | null
+          preferencia_horario?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      grupos_dias: {
+        Row: {
+          created_at: string
+          dias: string[]
+          id: string
+          label: string
+          ordem: number
+        }
+        Insert: {
+          created_at?: string
+          dias?: string[]
+          id?: string
+          label: string
+          ordem?: number
+        }
+        Update: {
+          created_at?: string
+          dias?: string[]
+          id?: string
+          label?: string
+          ordem?: number
+        }
+        Relationships: []
+      }
+      horarios: {
+        Row: {
+          created_at: string
+          horario: string
+          id: string
+          ordem: number
+        }
+        Insert: {
+          created_at?: string
+          horario: string
+          id?: string
+          ordem?: number
+        }
+        Update: {
+          created_at?: string
+          horario?: string
+          id?: string
+          ordem?: number
+        }
+        Relationships: []
+      }
+      matriculas: {
+        Row: {
+          aluno_id: string
+          created_at: string
+          data_inicio: string
+          id: string
+          modalidade: string
+          plano: string
+          registrado_por: string | null
+          status: string
+          turma_id: string
+          valor_mensal: number
+        }
+        Insert: {
+          aluno_id: string
+          created_at?: string
+          data_inicio?: string
+          id?: string
+          modalidade?: string
+          plano?: string
+          registrado_por?: string | null
+          status?: string
+          turma_id: string
+          valor_mensal?: number
+        }
+        Update: {
+          aluno_id?: string
+          created_at?: string
+          data_inicio?: string
+          id?: string
+          modalidade?: string
+          plano?: string
+          registrado_por?: string | null
+          status?: string
+          turma_id?: string
+          valor_mensal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matriculas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      presencas: {
+        Row: {
+          aluno_id: string
+          created_at: string
+          data: string
+          horario: string
+          id: string
+          metodo: string
+          observacoes: string | null
+          registrado_por: string | null
+          status: string
+          turma_id: string | null
+        }
+        Insert: {
+          aluno_id: string
+          created_at?: string
+          data?: string
+          horario?: string
+          id?: string
+          metodo?: string
+          observacoes?: string | null
+          registrado_por?: string | null
+          status?: string
+          turma_id?: string | null
+        }
+        Update: {
+          aluno_id?: string
+          created_at?: string
+          data?: string
+          horario?: string
+          id?: string
+          metodo?: string
+          observacoes?: string | null
+          registrado_por?: string | null
+          status?: string
+          turma_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presencas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presencas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          nome: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          nome?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string | null
+        }
+        Relationships: []
+      }
+      turmas: {
+        Row: {
+          ativa: boolean
+          capacidade: number
+          created_at: string
+          dias_semana: string[]
+          horario: string | null
+          id: string
+          modalidade: string
+          nome: string
+          professor: string | null
+          turno: string | null
+        }
+        Insert: {
+          ativa?: boolean
+          capacidade?: number
+          created_at?: string
+          dias_semana?: string[]
+          horario?: string | null
+          id?: string
+          modalidade?: string
+          nome: string
+          professor?: string | null
+          turno?: string | null
+        }
+        Update: {
+          ativa?: boolean
+          capacidade?: number
+          created_at?: string
+          dias_semana?: string[]
+          horario?: string | null
+          id?: string
+          modalidade?: string
+          nome?: string
+          professor?: string | null
+          turno?: string | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      agendar_backup: {
+        Args: { _ativo: boolean; _dia: number; _hora: number; _minuto: number }
+        Returns: undefined
+      }
+      calc_faixa_etaria: {
+        Args: { _idade: number; _nascimento: string }
+        Returns: string
+      }
+      calc_turno: { Args: { _horario: string }; Returns: string }
+      disparar_backup_semanal: { Args: never; Returns: undefined }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
+    }
+    Enums: {
+      app_role: "admin" | "professor"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      app_role: ["admin", "professor"],
+    },
+  },
+} as const

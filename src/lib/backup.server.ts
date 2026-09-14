@@ -1,0 +1,478 @@
+import {
+  CHAVE_PASTA_DOCUMENTOS,
+  CHAVE_PASTA_IMAGENS,
+  CHAVE_PASTA_PLANILHAS,
+  TIPOS_DOCUMENTO,
+  chaveSubpastaDocumento,
+  extrairIdPastaDrive,
+  limparNomeSubpasta,
+} from "@/lib/configuracoes-chaves";
+import { montarPlanilhaAlunos, type AlunoPlanilha } from "@/lib/planilha-alunos";
+
+const GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
+const MIME_PASTA = "application/vnd.google-apps.folder";
+
+/** Pasta padrão do Drive para as planilhas de exportação. */
+export const PASTA_PLANILHAS = "1xCkat_TA0nT_zOW2yzw0myflN8jBO65n";
+/** Pasta padrão do Drive para as fotos dos alunos. */
+export const PASTA_IMAGENS = "1j7Llm91Q2Zp0JfFg1afhPRADDO_KmoOz";
+/** Pasta padrão do Drive para as imagens dos documentos dos alunos. */
+export const PASTA_DOCUMENTOS = "1o-dAKikn44JlISnEK7IwUNrv-apownZ3";
+
+export type PastasDrive = {
+  planilhas: string;
+  fotos: string;
+  documentos: string;
+  /** Nome da subpasta (dentro da pasta de documentos) por tipo de documento. */
+  subpastas: Record<string, string>;
+};
+
+async function lerConfiguracoes(chaves: string[]) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin.from("configuracoes").select("chave,valor").in("chave", chaves);
+  return new Map((data ?? []).map((c: { chave: string; valor: string }) => [c.chave, c.valor]));
+}
+
+/** Lê as pastas de destino configuradas pelo administrador (com fallback para os padrões). */
+export async function pastasDrive(): Promise<PastasDrive> {
+  const padrao: PastasDrive = {
+    planilhas: PASTA_PLANILHAS,
+    fotos: PASTA_IMAGENS,
+    documentos: PASTA_DOCUMENTOS,
+    subpastas: {},
+  };
+  try {
+    const chavesSub = TIPOS_DOCUMENTO.map((t) => chaveSubpastaDocumento(t.campo));
+    const mapa = await lerConfiguracoes([
+      CHAVE_PASTA_PLANILHAS,
+      CHAVE_PASTA_IMAGENS,
+      CHAVE_PASTA_DOCUMENTOS,
+      ...chavesSub,
+    ]);
+    const subpastas: Record<string, string> = {};
+    for (const tipo of TIPOS_DOCUMENTO) {
+      subpastas[tipo.campo] = limparNomeSubpasta(mapa.get(chaveSubpastaDocumento(tipo.campo)));
+    }
+    return {
+      planilhas: extrairIdPastaDrive(mapa.get(CHAVE_PASTA_PLANILHAS)) || PASTA_PLANILHAS,
+      fotos: extrairIdPastaDrive(mapa.get(CHAVE_PASTA_IMAGENS)) || PASTA_IMAGENS,
+      documentos: extrairIdPastaDrive(mapa.get(CHAVE_PASTA_DOCUMENTOS)) || PASTA_DOCUMENTOS,
+      subpastas,
+    };
+  } catch (err) {
+    console.error("[backup] não foi possível ler as pastas configuradas", err);
+    return padrao;
+  }
+}
+
+function cabecalhosDrive() {
+  const lovable = process.env["LOVABLE_API_KEY"];
+  const conexao = process.env["GOOGLE_DRIVE_API_KEY"];
+  if (!lovable || !conexao) {
+    throw new Error("Conexão com o Google Drive não configurada. Reconecte o Google Drive nos conectores.");
+  }
+  return {
+    Authorization: `Bearer ${lovable}`,
+    "X-Connection-Api-Key": conexao,
+  };
+}
+
+async function erroDrive(resp: Response) {
+  const corpo = await resp.text();
+  console.error(`[backup] Google Drive [${resp.status}]: ${corpo}`);
+  return new Error(`Google Drive respondeu ${resp.status}: ${corpo}`);
+}
+
+function nomeArquivoSeguro(texto: string) {
+  return texto.replace(/[\\/:*?"<>|]/g, "-").replace(/\s+/g, " ").trim();
+}
+
+// ------------------------------------------------------------- conta Google
+
+/** Lê a conta Google (email) que está guardando os backups. */
+export async function contaDrive(): Promise<{ email: string | null; nome: string | null; erro?: string }> {
+  try {
+    const resp = await fetch(`${GATEWAY}/drive/v3/about?fields=user(displayName,emailAddress)`, {
+      headers: cabecalhosDrive(),
+    });
+    if (!resp.ok) {
+      const corpo = await resp.text();
+      return { email: null, nome: null, erro: `Drive respondeu ${resp.status}: ${corpo.slice(0, 160)}` };
+    }
+    const json = (await resp.json()) as { user?: { displayName?: string; emailAddress?: string } };
+    return { email: json.user?.emailAddress ?? null, nome: json.user?.displayName ?? null };
+  } catch (err) {
+    return { email: null, nome: null, erro: err instanceof Error ? err.message : "Falha ao consultar o Google Drive." };
+  }
+}
+
+// ---------------------------------------------------------------- validação
+
+
+export type ChecagemPasta = {
+  chave: string;
+  rotulo: string;
+  id: string;
+  padrao: boolean;
+  ok: boolean;
+  nome?: string | undefined;
+  podeEscrever?: boolean | undefined;
+  erro?: string | undefined;
+};
+
+/** Verifica se uma pasta do Drive existe, não está na lixeira e aceita novos arquivos. */
+export async function verificarPastaDrive(id: string): Promise<Omit<ChecagemPasta, "chave" | "rotulo" | "padrao">> {
+  if (!id) return { id, ok: false, erro: "Pasta não informada." };
+  try {
+    const url = `${GATEWAY}/drive/v3/files/${id}?fields=id,name,mimeType,trashed,capabilities(canAddChildren)&supportsAllDrives=true`;
+    const resp = await fetch(url, { headers: cabecalhosDrive() });
+    if (resp.status === 404) return { id, ok: false, erro: "Pasta não encontrada ou sem acesso." };
+    if (!resp.ok) {
+      const corpo = await resp.text();
+      return { id, ok: false, erro: `Drive respondeu ${resp.status}: ${corpo.slice(0, 160)}` };
+    }
+    const json = (await resp.json()) as {
+      name?: string;
+      mimeType?: string;
+      trashed?: boolean;
+      capabilities?: { canAddChildren?: boolean };
+    };
+    if (json.mimeType !== MIME_PASTA) return { id, ok: false, nome: json.name, erro: "O ID informado não é uma pasta." };
+    if (json.trashed) return { id, ok: false, nome: json.name, erro: "A pasta está na lixeira do Drive." };
+    const podeEscrever = json.capabilities?.canAddChildren !== false;
+    if (!podeEscrever) {
+      return { id, ok: false, nome: json.name, podeEscrever, erro: "Sem permissão para adicionar arquivos na pasta." };
+    }
+    return { id, ok: true, nome: json.name, podeEscrever };
+  } catch (err) {
+    return { id, ok: false, erro: err instanceof Error ? err.message : "Falha ao consultar o Google Drive." };
+  }
+}
+
+/** Valida as três pastas configuradas (ou os padrões) antes de rodar o backup. */
+export async function validarPastasDrive(): Promise<ChecagemPasta[]> {
+  const pastas = await pastasDrive();
+  const alvos = [
+    { chave: CHAVE_PASTA_PLANILHAS, rotulo: "Pasta da planilha", id: pastas.planilhas, padrao: pastas.planilhas === PASTA_PLANILHAS },
+    { chave: CHAVE_PASTA_IMAGENS, rotulo: "Pasta das fotos", id: pastas.fotos, padrao: pastas.fotos === PASTA_IMAGENS },
+    { chave: CHAVE_PASTA_DOCUMENTOS, rotulo: "Pasta dos documentos", id: pastas.documentos, padrao: pastas.documentos === PASTA_DOCUMENTOS },
+  ];
+  return await Promise.all(
+    alvos.map(async (alvo) => ({ ...alvo, ...(await verificarPastaDrive(alvo.id)) })),
+  );
+}
+
+// ------------------------------------------------------------------ arquivos
+
+type ArquivoDrive = { id: string; name: string };
+
+/** Lista todos os arquivos de uma pasta de uma vez (evita uma busca por arquivo). */
+async function listarPasta(pasta: string): Promise<ArquivoDrive[]> {
+  const arquivos: ArquivoDrive[] = [];
+  let pageToken: string | undefined;
+  do {
+    const q = `'${pasta}' in parents and trashed = false`;
+    const url =
+      `${GATEWAY}/drive/v3/files?q=${encodeURIComponent(q)}&fields=nextPageToken,files(id,name)&pageSize=1000` +
+      (pageToken ? `&pageToken=${pageToken}` : "");
+    const resp = await fetch(url, { headers: cabecalhosDrive() });
+    if (!resp.ok) throw await erroDrive(resp);
+    const json = (await resp.json()) as { files?: ArquivoDrive[]; nextPageToken?: string };
+    arquivos.push(...(json.files ?? []));
+    pageToken = json.nextPageToken;
+  } while (pageToken);
+  return arquivos;
+}
+
+/** Localiza (ou cria) uma subpasta pelo nome dentro de uma pasta do Drive. */
+async function garantirSubpasta(nome: string, pai: string) {
+  const q = `name = '${nome.replace(/'/g, "\\'")}' and mimeType = '${MIME_PASTA}' and '${pai}' in parents and trashed = false`;
+  const resp = await fetch(`${GATEWAY}/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&pageSize=1`, {
+    headers: cabecalhosDrive(),
+  });
+  if (!resp.ok) throw await erroDrive(resp);
+  const existente = ((await resp.json()) as { files?: { id: string }[] }).files?.[0]?.id;
+  if (existente) return existente;
+  const criar = await fetch(`${GATEWAY}/drive/v3/files?fields=id`, {
+    method: "POST",
+    headers: { ...cabecalhosDrive(), "Content-Type": "application/json" },
+    body: JSON.stringify({ name: nome, parents: [pai], mimeType: MIME_PASTA }),
+  });
+  if (!criar.ok) throw await erroDrive(criar);
+  return ((await criar.json()) as { id: string }).id;
+}
+
+/**
+ * Envia um arquivo para o Drive mantendo apenas a versão mais recente:
+ * se já existir arquivo com o mesmo nome ou com o mesmo marcador do aluno
+ * (mesmo que o nome tenha mudado), ele é renomeado e sobrescrito.
+ */
+export async function enviarParaDrive(opcoes: {
+  nome: string;
+  pasta: string;
+  conteudo: ArrayBuffer | Uint8Array;
+  tipo: string;
+  /** Marcador único do aluno + tipo de arquivo, usado para achar versões antigas. */
+  marcador?: string | undefined;
+  /** Arquivos já existentes na pasta (evita uma busca por arquivo). */
+  existentes?: ArquivoDrive[] | undefined;
+}) {
+  const nome = nomeArquivoSeguro(opcoes.nome);
+  const lista = opcoes.existentes ?? (await listarPasta(opcoes.pasta));
+  const porNome = lista.find((f) => f.name === nome);
+  const porMarcador = opcoes.marcador ? lista.find((f) => f.name.includes(opcoes.marcador!)) : undefined;
+  const existente = porNome ?? porMarcador;
+
+  let fileId = existente?.id ?? null;
+  if (!fileId) {
+    const resp = await fetch(`${GATEWAY}/drive/v3/files?fields=id`, {
+      method: "POST",
+      headers: { ...cabecalhosDrive(), "Content-Type": "application/json" },
+      body: JSON.stringify({ name: nome, parents: [opcoes.pasta], mimeType: opcoes.tipo }),
+    });
+    if (!resp.ok) throw await erroDrive(resp);
+    fileId = ((await resp.json()) as { id: string }).id;
+    lista.push({ id: fileId, name: nome });
+  } else if (existente && existente.name !== nome) {
+    // O nome do aluno mudou: renomeia o arquivo antigo em vez de duplicar.
+    const rename = await fetch(`${GATEWAY}/drive/v3/files/${fileId}?fields=id`, {
+      method: "PATCH",
+      headers: { ...cabecalhosDrive(), "Content-Type": "application/json" },
+      body: JSON.stringify({ name: nome }),
+    });
+    if (!rename.ok) throw await erroDrive(rename);
+    existente.name = nome;
+  }
+
+  const upload = await fetch(`${GATEWAY}/upload/drive/v3/files/${fileId}?uploadType=media&fields=id`, {
+    method: "PATCH",
+    headers: { ...cabecalhosDrive(), "Content-Type": opcoes.tipo },
+    body: opcoes.conteudo as BodyInit,
+  });
+  if (!upload.ok) throw await erroDrive(upload);
+  return { id: fileId, nome, substituido: Boolean(existente) };
+}
+
+type Resultado = {
+  planilha: string;
+  imagens: number;
+  falhas: string[];
+};
+
+export type ArquivoBackup = {
+  caminho: string;
+  nome: string;
+  /** ID da pasta de destino (já resolvida, incluindo subpastas de documentos). */
+  pasta: string;
+  /** Marcador único (aluno + tipo) para substituir a versão anterior. */
+  marcador: string;
+};
+/** Índice de arquivos já existentes, por ID de pasta. */
+export type ExistentesBackup = Record<string, ArquivoDrive[]>;
+
+function tipoPorExtensao(caminho: string) {
+  const ext = (caminho.split(".").pop() ?? "").toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "webp") return "image/webp";
+  return "image/jpeg";
+}
+
+async function baixarArquivoStorage(caminho: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin.storage.from("fotos-alunos").download(caminho);
+  return data ? await data.arrayBuffer() : null;
+}
+
+/**
+ * Monta o mapa de links dos arquivos que já estão no Drive.
+ * Chave: 8 primeiros caracteres do id do aluno + tipo (ex.: "a1b2c3d4|foto").
+ */
+export async function linksArquivosDrive(): Promise<Record<string, string>> {
+  const pastas = await pastasDrive();
+  const alvos = new Set<string>([pastas.fotos, pastas.documentos]);
+  for (const tipo of TIPOS_DOCUMENTO) {
+    const sub = pastas.subpastas[tipo.campo];
+    if (sub) {
+      try {
+        alvos.add(await garantirSubpasta(sub, pastas.documentos));
+      } catch {
+        /* subpasta indisponível: ignora */
+      }
+    }
+  }
+  const mapa: Record<string, string> = {};
+  const listagens = await Promise.all(
+    Array.from(alvos).map(async (p) => {
+      try {
+        return await listarPasta(p);
+      } catch {
+        return [] as ArquivoDrive[];
+      }
+    }),
+  );
+  for (const arquivos of listagens) {
+    for (const arquivo of arquivos) {
+      const m = arquivo.name.match(/\[([0-9a-zA-Z-]{8})-([a-z]+)\]/);
+      if (!m?.[1] || !m[2]) continue;
+      mapa[`${m[1]}|${m[2]}`] = `https://drive.google.com/file/d/${arquivo.id}/view`;
+    }
+  }
+  return mapa;
+}
+
+/** Gera a planilha (com os links do Drive) e envia para a pasta de planilhas. */
+export async function gerarPlanilhaBackup(): Promise<string> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const [{ data: alunos, error: erroAlunos }, { data: turmas }, { data: matriculas }] = await Promise.all([
+    supabaseAdmin.from("alunos").select("*"),
+    supabaseAdmin.from("turmas").select("*"),
+    supabaseAdmin.from("matriculas").select("*"),
+  ]);
+  if (erroAlunos) throw erroAlunos;
+
+  const lista = (alunos ?? []) as AlunoPlanilha[];
+  const matriculaDoAluno = (id: string) => (matriculas ?? []).find((m) => m.aluno_id === id);
+  const turmaDoAluno = (id: string) => {
+    const m = matriculaDoAluno(id);
+    return m ? (turmas ?? []).find((t) => t.id === m.turma_id) : undefined;
+  };
+
+  // A planilha não embute imagens: cada foto/documento vira um link direto
+  // do próprio sistema, que abre sem precisar solicitar acesso.
+  const buffer = await montarPlanilhaAlunos({
+    alunos: lista,
+    turmaDoAluno,
+    modalidadeDoAluno: (id) => matriculaDoAluno(id)?.modalidade ?? turmaDoAluno(id)?.modalidade ?? "",
+    linksDrive: (await import("@/lib/links-arquivos.server")).linksArquivosStorage,
+  });
+
+  const pastas = await pastasDrive();
+  const data = new Date().toISOString().slice(0, 10);
+  const planilha = await enviarParaDrive({
+    nome: `alunos-${data}.xlsx`,
+    pasta: pastas.planilhas,
+    conteudo: buffer,
+    tipo: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  return planilha.nome;
+}
+
+/** Prepara a fila de fotos/documentos a enviar para o Drive. */
+export async function prepararBackup(): Promise<{
+  planilha: string;
+  arquivos: ArquivoBackup[];
+  existentes: ExistentesBackup;
+}> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const checagens = await validarPastasDrive();
+  const invalidas = checagens.filter((c) => !c.ok);
+  if (invalidas.length > 0) {
+    throw new Error(
+      `Não foi possível iniciar o backup. ${invalidas.map((c) => `${c.rotulo}: ${c.erro}`).join(" | ")}`,
+    );
+  }
+
+  const { data: alunos, error: erroAlunos } = await supabaseAdmin.from("alunos").select("*");
+  if (erroAlunos) throw erroAlunos;
+  const lista = (alunos ?? []) as AlunoPlanilha[];
+
+  const pastas = await pastasDrive();
+
+  // Resolve (criando se necessário) as subpastas de cada tipo de documento.
+  const pastaPorTipo: Record<string, string> = {};
+  for (const tipo of TIPOS_DOCUMENTO) {
+    const sub = pastas.subpastas[tipo.campo];
+    pastaPorTipo[tipo.campo] = sub ? await garantirSubpasta(sub, pastas.documentos) : pastas.documentos;
+  }
+
+  const arquivos: ArquivoBackup[] = [];
+  for (const aluno of lista) {
+    const registro = aluno as AlunoPlanilha & { foto_path?: string | null };
+    const curto = aluno.id.slice(0, 8);
+    if (registro.foto_path) {
+      const ext = registro.foto_path.split(".").pop() ?? "jpg";
+      const marcador = `[${curto}-foto]`;
+      arquivos.push({
+        caminho: registro.foto_path,
+        nome: `${aluno.nome} - Foto ${marcador}.${ext}`,
+        pasta: pastas.fotos,
+        marcador,
+      });
+    }
+    for (const tipo of TIPOS_DOCUMENTO) {
+      const caminho = (aluno as Record<string, unknown>)[tipo.campo] as string | null | undefined;
+      if (!caminho) continue;
+      const ext = caminho.split(".").pop() ?? "jpg";
+      const marcador = `[${curto}-${tipo.campo.replace(/^doc_|_path$/g, "")}]`;
+      arquivos.push({
+        caminho,
+        nome: `${aluno.nome} - ${tipo.rotulo} ${marcador}.${ext}`,
+        pasta: pastaPorTipo[tipo.campo] ?? pastas.documentos,
+        marcador,
+      });
+    }
+  }
+
+  const pastasUsadas = Array.from(new Set(arquivos.map((a) => a.pasta)));
+  const listagens = await Promise.all(pastasUsadas.map((p) => listarPasta(p)));
+  const existentes: ExistentesBackup = {};
+  pastasUsadas.forEach((p, i) => {
+    existentes[p] = listagens[i] ?? [];
+  });
+  return { planilha: "", arquivos, existentes };
+}
+
+
+/** Envia um lote de fotos/documentos para a pasta correspondente no Drive. */
+export async function enviarLoteBackup(
+  arquivos: ArquivoBackup[],
+  existentes?: ExistentesBackup,
+): Promise<{ enviados: number; falhas: string[] }> {
+  const indices: ExistentesBackup = {};
+  for (const [pasta, itens] of Object.entries(existentes ?? {})) indices[pasta] = [...itens];
+  const falhas: string[] = [];
+  let enviados = 0;
+  const CONCORRENCIA = 8;
+  let proximo = 0;
+
+  async function trabalhador() {
+    while (proximo < arquivos.length) {
+      const arquivo = arquivos[proximo++];
+      if (!arquivo) return;
+      try {
+        const conteudo = await baixarArquivoStorage(arquivo.caminho);
+        if (!conteudo) {
+          falhas.push(arquivo.nome);
+          continue;
+        }
+        await enviarParaDrive({
+          nome: arquivo.nome,
+          pasta: arquivo.pasta,
+          conteudo,
+          tipo: tipoPorExtensao(arquivo.caminho),
+          marcador: arquivo.marcador,
+          existentes: indices[arquivo.pasta],
+        });
+        enviados++;
+      } catch (err) {
+        console.error("[backup] falha ao enviar arquivo", arquivo.nome, err);
+        falhas.push(arquivo.nome);
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(CONCORRENCIA, arquivos.length) }, trabalhador));
+  return { enviados, falhas };
+}
+
+/** Exporta a planilha do dia e todas as fotos/documentos para as pastas do Google Drive. */
+export async function executarBackupCompleto(): Promise<Resultado> {
+  const { arquivos, existentes } = await prepararBackup();
+  const { enviados, falhas } = await enviarLoteBackup(arquivos, existentes);
+  // A planilha é gerada depois do envio para que os links apontem para os arquivos já no Drive.
+  const planilha = await gerarPlanilhaBackup();
+  return { planilha, imagens: enviados, falhas };
+}
+
