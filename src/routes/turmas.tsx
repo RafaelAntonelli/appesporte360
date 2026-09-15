@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useHorarios } from "@/lib/horarios";
 import { TURNOS, turnoDoHorario } from "@/lib/turnos";
+import { MODALIDADES, MODALIDADE_PADRAO } from "@/lib/modalidades";
 
 import { useGruposDias, diasDoLabel } from "@/lib/dias";
 import { AppShell } from "@/components/AppShell";
@@ -32,10 +33,12 @@ export const Route = createFileRoute("/turmas")({
   component: TurmasPage,
   head: () => ({
     meta: [
-      { title: "Turmas | Arena Aquática" },
-      { name: "description", content: "Organize turmas de natação e hidroginástica com horários e professores." },
-      { property: "og:title", content: "Turmas | Arena Aquática" },
-      { property: "og:description", content: "Gestão de turmas e horários da Arena Aquática." },
+      { title: "Turmas | Esporte 360" },
+      { name: "description", content: "Organize as turmas esportivas com horários e professores." },
+      { property: "og:title", content: "Turmas | Esporte 360" },
+      { property: "og:description", content: "Gestão de turmas e horários do Esporte 360." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });
@@ -102,8 +105,7 @@ function TurmasPage() {
   const [contagem, setContagem] = useState<Record<string, number>>({});
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Turma | null>(null);
-  const [nome, setNome] = useState("");
-  const [modalidade, setModalidade] = useState("Natação");
+  const [modalidade, setModalidade] = useState<string>(MODALIDADE_PADRAO);
   const [professor, setProfessor] = useState("");
   const [grupo, setGrupo] = useState("");
   const [horario, setHorario] = useState("");
@@ -139,8 +141,7 @@ function TurmasPage() {
 
   function abrirNova() {
     setEditando(null);
-    setNome("");
-    setModalidade("Natação");
+    setModalidade(MODALIDADE_PADRAO);
     setProfessor("");
     setGrupo("");
     setHorario("");
@@ -150,7 +151,6 @@ function TurmasPage() {
 
   function abrirEdicao(t: Turma) {
     setEditando(t);
-    setNome(t.nome);
     setModalidade(t.modalidade);
     setProfessor(t.professor ?? "");
     setGrupo(grupoDosDias(t.dias_semana));
@@ -165,7 +165,7 @@ function TurmasPage() {
     if (!dias.length) return toast.error("Selecione os dias da semana");
     if (!horario) return toast.error("Selecione o horário");
     const payload = {
-      nome,
+      nome: `${grupo} — ${horario}`,
       modalidade,
       professor: professor || null,
       dias_semana: [...dias],
@@ -350,8 +350,9 @@ function TurmasPage() {
             <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as modalidades</SelectItem>
-              <SelectItem value="Natação">Natação</SelectItem>
-              <SelectItem value="Hidroginástica">Hidroginástica</SelectItem>
+              {MODALIDADES.map((modalidade) => (
+                <SelectItem key={modalidade} value={modalidade}>{modalidade}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Select value={filtroDias} onValueChange={setFiltroDias}>
@@ -397,7 +398,8 @@ function TurmasPage() {
           <form onSubmit={salvar} className="space-y-4">
             <div className="space-y-2">
               <Label>Nome da turma</Label>
-              <Input required value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Natação Infantil A" />
+              <Input readOnly value={grupo && horario ? `${grupo} — ${horario}` : "Definido após selecionar dias e horário"} />
+              <p className="text-xs text-muted-foreground">Gerado automaticamente a partir dos dias e do horário.</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -405,8 +407,9 @@ function TurmasPage() {
                 <Select value={modalidade} onValueChange={setModalidade}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Natação">Natação</SelectItem>
-                    <SelectItem value="Hidroginástica">Hidroginástica</SelectItem>
+                    {MODALIDADES.map((modalidade) => (
+                      <SelectItem key={modalidade} value={modalidade}>{modalidade}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

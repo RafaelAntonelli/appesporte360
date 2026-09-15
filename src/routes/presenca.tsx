@@ -31,6 +31,7 @@ import { TURNOS, turnoDoHorario } from "@/lib/turnos";
 import { enfileirar, estaOnline, lerCache, salvarCache } from "@/lib/offline";
 import { correspondeBusca, relevanciaBusca } from "@/lib/formatacao";
 import { useGruposDias } from "@/lib/dias";
+import { MODALIDADES } from "@/lib/modalidades";
 
 
 
@@ -42,6 +43,8 @@ export const Route = createFileRoute("/presenca")({
       { name: "description", content: "Registre a presença dos alunos por leitura de QR Code ou pela lista da turma." },
       { property: "og:title", content: "Registro de presença | Arena Aquática" },
       { property: "og:description", content: "Presença por QR Code na Arena Aquática." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });
@@ -361,8 +364,9 @@ function PresencaPage() {
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as modalidades</SelectItem>
-              <SelectItem value="Natação">Natação</SelectItem>
-              <SelectItem value="Hidroginástica">Hidroginástica</SelectItem>
+              {MODALIDADES.map((modalidade) => (
+                <SelectItem key={modalidade} value={modalidade}>{modalidade}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

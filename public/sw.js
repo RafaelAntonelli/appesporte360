@@ -1,4 +1,4 @@
-const CACHE = "arena-aquatica-v5";
+const CACHE = "esporte-360-v6";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
