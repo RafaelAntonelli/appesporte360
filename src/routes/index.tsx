@@ -56,7 +56,17 @@ function Painel() {
   const [alunosPorModalidade, setAlunosPorModalidade] = useState<Record<string, number>>({});
   const [ultimas, setUltimas] = useState<{ nome: string; hora: string }[]>([]);
   const [fila, setFila] = useState<Fila[]>([]);
-  const filaVazia = {
+  const filaVazia: {
+    nome: string;
+    telefone: string;
+    modalidade: string;
+    preferencia_horario: string;
+    idade: string;
+    pcd: boolean;
+    pcd_condicoes: string[];
+    pcd_descricao: string;
+    observacoes: string;
+  } = {
     nome: "",
     telefone: "",
     modalidade: MODALIDADE_PADRAO,

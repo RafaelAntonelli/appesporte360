@@ -12,7 +12,6 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
 import { TransicaoVideo } from "@/components/TransicaoVideo";
-import aberturaVideo from "@/assets/abertura-video.asset.json";
 
 import { reportLovableError } from "../lib/lovable-error-reporting";
 

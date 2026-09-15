@@ -116,7 +116,29 @@ type Matricula = { id: string; aluno_id: string; turma_id: string; status: strin
 type Presenca = { id: string; data: string; status: string; turma_id: string | null; observacoes: string | null };
 
 
-const vazio = {
+type FormAluno = {
+  nome: string;
+  data_nascimento: string;
+  telefone: string;
+  responsavel: string;
+  email: string;
+  observacoes: string;
+  modalidade: string;
+  pcd: boolean;
+  pcd_descricao: string;
+  pcd_condicoes: string[];
+  rg: string;
+  cpf: string;
+  atestado_entregue: boolean;
+  atestado_data: string;
+  telefone2: string;
+  rede_ensino: string;
+  escola: string;
+  idade: string;
+  sexo: string;
+};
+
+const vazio: FormAluno = {
   nome: "",
   data_nascimento: "",
   telefone: "",
