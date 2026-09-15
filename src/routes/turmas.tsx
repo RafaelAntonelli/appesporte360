@@ -165,7 +165,7 @@ function TurmasPage() {
     if (!dias.length) return toast.error("Selecione os dias da semana");
     if (!horario) return toast.error("Selecione o horário");
     const payload = {
-      nome: `${grupo} — ${horario}`,
+      nome: `${modalidade} — ${grupo} — ${horario}`,
       modalidade,
       professor: professor || null,
       dias_semana: [...dias],
@@ -398,8 +398,8 @@ function TurmasPage() {
           <form onSubmit={salvar} className="space-y-4">
             <div className="space-y-2">
               <Label>Nome da turma</Label>
-              <Input readOnly value={grupo && horario ? `${grupo} — ${horario}` : "Definido após selecionar dias e horário"} />
-              <p className="text-xs text-muted-foreground">Gerado automaticamente a partir dos dias e do horário.</p>
+              <Input readOnly value={grupo && horario ? `${modalidade} — ${grupo} — ${horario}` : "Definido após selecionar modalidade, dias e horário"} />
+              <p className="text-xs text-muted-foreground">Gerado automaticamente a partir da modalidade, dos dias e do horário.</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
