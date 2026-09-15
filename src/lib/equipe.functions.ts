@@ -46,10 +46,10 @@ export const listarEquipeFn = createServerFn({ method: "GET" })
     return usuarios.map((usuario): MembroEquipe => {
       const metadados = usuario.user_metadata;
       const nomeInformado =
-        typeof metadados?.nome === "string"
-          ? metadados.nome
-          : typeof metadados?.full_name === "string"
-            ? metadados.full_name
+        typeof metadados?.["nome"] === "string"
+          ? metadados["nome"]
+          : typeof metadados?.["full_name"] === "string"
+            ? metadados["full_name"]
             : null;
 
       return {
