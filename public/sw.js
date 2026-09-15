@@ -2,7 +2,7 @@ const CACHE = "esporte-360-v6";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest", "/favicon.ico", "/icons/icon-192x192.png", "/icons/icon-512x512.png", "/icons/apple-touch-icon.png", "/__l5e/assets-v1/b7812670-724f-4961-abc6-5886da4afd01/abertura.mp4"]).catch(() => undefined)));
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest", "/favicon.ico", "/favicon.png", "/icons/icon-192x192.png", "/icons/icon-512x512.png", "/icons/apple-touch-icon.png"]).catch(() => undefined)));
 });
 
 self.addEventListener("activate", (event) => {
