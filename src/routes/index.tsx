@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Users, CalendarDays, QrCode, TrendingUp, Plus, Trash2 } from "lucide-react";
+import { Users, CalendarDays, ListOrdered, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CONDICOES_PCD } from "@/lib/pcd";
 import { useHorarios } from "@/lib/horarios";
 import { capitalizarNome, formatarCelular } from "@/lib/formatacao";
+import { MODALIDADES, MODALIDADE_PADRAO } from "@/lib/modalidades";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,26 +37,39 @@ export const Route = createFileRoute("/")({
   component: Painel,
   head: () => ({
     meta: [
-      { title: "Arena Aquática | Matrículas e presença" },
+      { title: "Esporte 360 | Matrículas e presença" },
       {
         name: "description",
-        content: "Sistema da Arena Aquática para matricular alunos, organizar turmas e registrar presença por QR Code.",
+        content: "Sistema do Esporte 360 para matricular alunos, organizar turmas e registrar presença por QR Code.",
       },
-      { property: "og:title", content: "Arena Aquática | Matrículas e presença" },
+      { property: "og:title", content: "Esporte 360 | Matrículas e presença" },
       { property: "og:description", content: "Matrículas, turmas e presença por QR Code em um só painel." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });
 
 function Painel() {
   const { lista: listaHorarios } = useHorarios();
-  const [stats, setStats] = useState({ alunos: 0, turmas: 0, hoje: 0, mes: 0 });
+  const [stats, setStats] = useState({ alunos: 0, turmas: 0 });
+  const [alunosPorModalidade, setAlunosPorModalidade] = useState<Record<string, number>>({});
   const [ultimas, setUltimas] = useState<{ nome: string; hora: string }[]>([]);
   const [fila, setFila] = useState<Fila[]>([]);
-  const filaVazia = {
+  const filaVazia: {
+    nome: string;
+    telefone: string;
+    modalidade: string;
+    preferencia_horario: string;
+    idade: string;
+    pcd: boolean;
+    pcd_condicoes: string[];
+    pcd_descricao: string;
+    observacoes: string;
+  } = {
     nome: "",
     telefone: "",
-    modalidade: "Natação",
+    modalidade: MODALIDADE_PADRAO,
     preferencia_horario: "",
     idade: "",
     pcd: false,
@@ -113,22 +127,22 @@ function Painel() {
 
   useEffect(() => {
     void (async () => {
-      const hoje = new Date().toISOString().slice(0, 10);
-      const inicioMes = new Date();
-      inicioMes.setDate(1);
-      const [alunos, turmas, presHoje, presMes, recentes] = await Promise.all([
+      const [alunos, turmas, matriculasAtivas, recentes] = await Promise.all([
         supabase.from("alunos").select("id", { count: "exact", head: true }).eq("ativo", true),
         supabase.from("turmas").select("id", { count: "exact", head: true }).eq("ativa", true),
-        supabase.from("presencas").select("id", { count: "exact", head: true }).eq("data", hoje),
-        supabase.from("presencas").select("id", { count: "exact", head: true }).gte("data", inicioMes.toISOString().slice(0, 10)),
+        supabase.from("matriculas").select("aluno_id,modalidade,alunos!inner(ativo)").eq("status", "ativa").eq("alunos.ativo", true),
         supabase.from("presencas").select("horario,alunos(nome)").order("horario", { ascending: false }).limit(6),
       ]);
       setStats({
         alunos: alunos.count ?? 0,
         turmas: turmas.count ?? 0,
-        hoje: presHoje.count ?? 0,
-        mes: presMes.count ?? 0,
       });
+      const contagens: Record<string, Set<string>> = {};
+      for (const matricula of matriculasAtivas.data ?? []) {
+        const modalidade = matricula.modalidade as string;
+        (contagens[modalidade] ??= new Set()).add(matricula.aluno_id as string);
+      }
+      setAlunosPorModalidade(Object.fromEntries(Object.entries(contagens).map(([nome, ids]) => [nome, ids.size])));
       setUltimas(
         (recentes.data ?? []).map((r) => ({
           nome: (r.alunos as { nome: string } | null)?.nome ?? "Aluno",
@@ -146,13 +160,12 @@ function Painel() {
   const cards = [
     { label: "Alunos ativos", value: stats.alunos, icon: Users },
     { label: "Turmas abertas", value: stats.turmas, icon: CalendarDays },
-    { label: "Presenças hoje", value: stats.hoje, icon: QrCode },
-    { label: "Presenças no mês", value: stats.mes, icon: TrendingUp },
+    { label: "Na fila de espera", value: fila.length, icon: ListOrdered },
   ];
 
   return (
-    <AppShell title="Painel" subtitle="Visão geral da Arena Aquática">
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <AppShell title="Painel" subtitle="Visão geral do Esporte 360">
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
         {cards.map((c) => (
           <Card key={c.label} className="border-border/70">
             <CardContent className="flex items-center gap-4 py-6">
@@ -167,6 +180,18 @@ function Painel() {
           </Card>
         ))}
       </div>
+
+      <Card className="mb-6 border-border/70">
+        <CardHeader><CardTitle className="font-display text-lg">Alunos por modalidade</CardTitle></CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {MODALIDADES.map((modalidade) => (
+            <div key={modalidade} className="flex items-center justify-between rounded-lg bg-secondary/60 px-3 py-3">
+              <span className="text-sm font-medium">{modalidade}</span>
+              <Badge variant="secondary" className="bg-card">{alunosPorModalidade[modalidade] ?? 0}</Badge>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         <Card className="overflow-hidden border-none bg-pool text-primary-foreground shadow-pool">
@@ -228,8 +253,9 @@ function Painel() {
               <Select value={novo.modalidade} onValueChange={(v) => setNovo({ ...novo, modalidade: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Natação">Natação</SelectItem>
-                  <SelectItem value="Hidroginástica">Hidroginástica</SelectItem>
+                  {MODALIDADES.map((modalidade) => (
+                    <SelectItem key={modalidade} value={modalidade}>{modalidade}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select value={novo.preferencia_horario} onValueChange={(v) => setNovo({ ...novo, preferencia_horario: v })}>

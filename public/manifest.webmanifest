@@ -1,7 +1,7 @@
 {
-  "name": "Arena Aquática",
-  "short_name": "Arena Aquática",
-  "description": "Matrículas e controle de presença da Arena Aquática",
+  "name": "Esporte 360",
+  "short_name": "Esporte 360",
+  "description": "Matrículas e controle de presença do Programa Esporte 360",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0d2270",

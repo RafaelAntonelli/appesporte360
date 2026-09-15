@@ -12,6 +12,7 @@ import { capitalizarNome, formatarCelular, formatarCPF, cpfValido, correspondeBu
 import { cn } from "@/lib/utils";
 import { encontrarAlunoDuplicado } from "@/lib/duplicidade";
 import { TURNOS, turnoDoHorario, idadePorNascimento, faixaEtariaECA } from "@/lib/turnos";
+import { MODALIDADES, MODALIDADE_PADRAO } from "@/lib/modalidades";
 import { gerarCrachaPreviewImagem, gerarCrachasPdfFielAoPreview, type DadosCracha } from "@/lib/cracha";
 import { atestadoVencido, atestadoVencendo, diasParaVencer } from "@/lib/atestado";
 import { usePrazoAvisoAtestado } from "@/lib/configuracoes";
@@ -55,6 +56,8 @@ export const Route = createFileRoute("/alunos")({
       { name: "description", content: "Cadastre alunos, faça matrículas em turmas e gere o QR Code de presença." },
       { property: "og:title", content: "Alunos e matrículas | Arena Aquática" },
       { property: "og:description", content: "Cadastro de alunos e matrículas da Arena Aquática." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });
@@ -113,14 +116,36 @@ type Matricula = { id: string; aluno_id: string; turma_id: string; status: strin
 type Presenca = { id: string; data: string; status: string; turma_id: string | null; observacoes: string | null };
 
 
-const vazio = {
+type FormAluno = {
+  nome: string;
+  data_nascimento: string;
+  telefone: string;
+  responsavel: string;
+  email: string;
+  observacoes: string;
+  modalidade: string;
+  pcd: boolean;
+  pcd_descricao: string;
+  pcd_condicoes: string[];
+  rg: string;
+  cpf: string;
+  atestado_entregue: boolean;
+  atestado_data: string;
+  telefone2: string;
+  rede_ensino: string;
+  escola: string;
+  idade: string;
+  sexo: string;
+};
+
+const vazio: FormAluno = {
   nome: "",
   data_nascimento: "",
   telefone: "",
   responsavel: "",
   email: "",
   observacoes: "",
-  modalidade: "Natação",
+  modalidade: MODALIDADE_PADRAO,
   pcd: false,
   pcd_descricao: "",
   pcd_condicoes: [] as string[],
@@ -322,7 +347,7 @@ function AlunosPage() {
       responsavel: aluno.responsavel ?? "",
       email: aluno.email ?? "",
       observacoes: aluno.observacoes ?? "",
-      modalidade: "Natação",
+      modalidade: MODALIDADE_PADRAO,
       pcd: aluno.pcd ?? false,
       pcd_descricao: aluno.pcd_descricao ?? "",
       pcd_condicoes: aluno.pcd_condicoes ?? [],
@@ -342,8 +367,8 @@ function AlunosPage() {
     const m = matriculas.find((x) => x.aluno_id === aluno.id && x.status === "ativa") ?? matriculas.find((x) => x.aluno_id === aluno.id);
     setTurmaId(m?.turma_id ?? "");
     setTurnoForm(turnoDoHorario(turmas.find((t) => t.id === m?.turma_id)?.horario) || "todos");
-    // A modalidade da turma é a fonte de verdade (há turmas de Natação e Hidroginástica no mesmo horário)
-    setForm((f) => ({ ...f, modalidade: turmas.find((t) => t.id === m?.turma_id)?.modalidade ?? m?.modalidade ?? "Natação" }));
+    // A modalidade da turma é a fonte de verdade.
+    setForm((f) => ({ ...f, modalidade: turmas.find((t) => t.id === m?.turma_id)?.modalidade ?? m?.modalidade ?? MODALIDADE_PADRAO }));
 
 
     setAberto(true);
@@ -551,7 +576,7 @@ function AlunosPage() {
   const gruposDeTurmas = (() => {
     const porModalidade = turmas.filter(
       (t) =>
-        (t.modalidade ?? "Natação") === form.modalidade &&
+        (t.modalidade ?? MODALIDADE_PADRAO) === form.modalidade &&
         (turnoForm === "todos" || turnoDoHorario(t.horario) === turnoForm),
     );
     const usadas = new Set<string>();
@@ -1081,8 +1106,9 @@ function AlunosPage() {
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="todas">Todas as modalidades</SelectItem>
-            <SelectItem value="Natação">Natação</SelectItem>
-            <SelectItem value="Hidroginástica">Hidroginástica</SelectItem>
+            {MODALIDADES.map((modalidade) => (
+              <SelectItem key={modalidade} value={modalidade}>{modalidade}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Select value={filtroHorario} onValueChange={setFiltroHorario}>
@@ -1291,13 +1317,14 @@ function AlunosPage() {
                 <Label>Modalidade</Label>
                 <Select value={form.modalidade} onValueChange={(v) => {
                   const selecionada = turmas.find((t) => t.id === turmaId);
-                  if (selecionada && (selecionada.modalidade ?? "Natação") !== v) setTurmaId("");
+                  if (selecionada && (selecionada.modalidade ?? MODALIDADE_PADRAO) !== v) setTurmaId("");
                   setForm({ ...form, modalidade: v });
                 }}>
                   <SelectTrigger><SelectValue placeholder="Selecione a modalidade" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Natação">Natação</SelectItem>
-                    <SelectItem value="Hidroginástica">Hidroginástica</SelectItem>
+                    {MODALIDADES.map((modalidade) => (
+                      <SelectItem key={modalidade} value={modalidade}>{modalidade}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

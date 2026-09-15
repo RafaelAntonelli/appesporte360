@@ -1,11 +1,11 @@
 {
-  "asset_id": "02db4342-e2ff-4267-8e6a-16072f0353d1",
-  "content_type": "image/png",
-  "created_at": "2026-09-06T23:57:13Z",
-  "original_filename": "abertura-seculje.png",
+  "version": 1,
+  "asset_id": "1019a932-1403-4e08-b487-636186779c7e",
   "project_id": "cfa8ac42-69e6-4ee3-a7cd-b72cac6f9034",
-  "r2_key": "a/v1/cfa8ac42-69e6-4ee3-a7cd-b72cac6f9034/02db4342-e2ff-4267-8e6a-16072f0353d1/abertura-seculje.png",
-  "size": 1000786,
-  "url": "/__l5e/assets-v1/02db4342-e2ff-4267-8e6a-16072f0353d1/abertura-seculje.png",
-  "version": 1
+  "url": "/__l5e/assets-v1/1019a932-1403-4e08-b487-636186779c7e/abertura-seculje.png",
+  "r2_key": "a/v1/cfa8ac42-69e6-4ee3-a7cd-b72cac6f9034/1019a932-1403-4e08-b487-636186779c7e/abertura-seculje.png",
+  "original_filename": "abertura-seculje.png",
+  "size": 702265,
+  "content_type": "image/png",
+  "created_at": "2026-09-15T01:50:14Z"
 }
