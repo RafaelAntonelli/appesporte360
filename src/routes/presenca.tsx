@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Camera, CameraOff, Check, Search, X, FileCheck, CalendarIcon } from "lucide-react";
+import { Camera, CameraOff, Check, Search, X, FileCheck, CalendarIcon, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +28,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { TURNOS, turnoDoHorario } from "@/lib/turnos";
+import { FAIXAS_ETARIAS, faixaEtariaECA, TURNOS, turnoDoHorario, type FaixaEtaria } from "@/lib/turnos";
 import { enfileirar, estaOnline, lerCache, salvarCache } from "@/lib/offline";
 import { correspondeBusca, relevanciaBusca } from "@/lib/formatacao";
 import { useGruposDias } from "@/lib/dias";
@@ -50,7 +51,7 @@ export const Route = createFileRoute("/presenca")({
 });
 
 type Turma = { id: string; nome: string; horario: string | null; modalidade: string; dias_semana: string[] | null };
-type Aluno = { id: string; nome: string; codigo: string; foto_path: string | null };
+type Aluno = { id: string; nome: string; codigo: string; foto_path: string | null; data_nascimento: string | null; idade: number | null };
 
 /** Iniciais do aluno (primeira e última letra do nome) para quando não há foto. */
 function iniciais(nome: string) {
@@ -83,6 +84,7 @@ function PresencaPage() {
   const [filtroModalidade, setFiltroModalidade] = useState("todas");
   const [filtroTurno, setFiltroTurno] = useState("todos");
   const [filtroDias, setFiltroDias] = useState("todos");
+  const [faixasEtarias, setFaixasEtarias] = useState<FaixaEtaria[]>([]);
   const [scanning, setScanning] = useState(false);
   const [busca, setBusca] = useState("");
   const [statusPorAluno, setStatusPorAluno] = useState<Record<string, StatusPresenca>>({});
@@ -112,7 +114,7 @@ function PresencaPage() {
       }
       const [t, a, m] = await Promise.all([
         supabase.from("turmas").select("id,nome,horario,modalidade,dias_semana").order("nome"),
-        supabase.from("alunos").select("id,nome,codigo,foto_path").eq("ativo", true).order("nome"),
+        supabase.from("alunos").select("id,nome,codigo,foto_path,data_nascimento,idade").eq("ativo", true).order("nome"),
         supabase.from("matriculas").select("aluno_id,turma_id").eq("status", "ativa"),
       ]);
       if (t.data) setTurmas(t.data as Turma[]);
@@ -281,6 +283,8 @@ function PresencaPage() {
   const filtrados = alunos
     .filter((a) => {
       if (!correspondeBusca(a, busca)) return false;
+      const faixa = faixaEtariaECA(a.data_nascimento, a.idade);
+      if (faixasEtarias.length && (!faixa || !faixasEtarias.includes(faixa))) return false;
       const t = turmaDoAluno(a.id);
       if (turmaId && t?.id !== turmaId) return false;
       if (filtroModalidade !== "todas" && (t?.modalidade ?? "") !== filtroModalidade) return false;
@@ -310,7 +314,7 @@ function PresencaPage() {
 
   return (
     <AppShell title="Presença" subtitle={`Registros de ${data.toLocaleDateString("pt-BR")}`}>
-      <div className="mb-6 grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <div className="space-y-2">
 
           <Label>Data do registro</Label>
@@ -389,6 +393,39 @@ function PresencaPage() {
           </Select>
         </div>
         <div className="space-y-2">
+          <Label>Faixa etária</Label>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full justify-between font-normal">
+                <span className="truncate">
+                  {faixasEtarias.length === 0
+                    ? "Todas as faixas"
+                    : faixasEtarias.length === 1
+                      ? faixasEtarias[0]
+                      : `${faixasEtarias.length} faixas selecionadas`}
+                </span>
+                <SlidersHorizontal className="size-4 shrink-0 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="start">
+              {FAIXAS_ETARIAS.map((faixa) => (
+                <DropdownMenuCheckboxItem
+                  key={faixa}
+                  checked={faixasEtarias.includes(faixa)}
+                  onSelect={(evento) => evento.preventDefault()}
+                  onCheckedChange={(marcada) =>
+                    setFaixasEtarias((atuais) =>
+                      marcada ? [...atuais, faixa] : atuais.filter((item) => item !== faixa),
+                    )
+                  }
+                >
+                  {faixa}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div className="space-y-2">
           <Label>Turma da aula</Label>
           <Select value={turmaId} onValueChange={setTurmaId}>
             <SelectTrigger><SelectValue placeholder="Selecione a turma (opcional)" /></SelectTrigger>
@@ -416,7 +453,7 @@ function PresencaPage() {
       </div>
 
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.75fr)]">
         <Tabs defaultValue="qr">
           <TabsList>
             <TabsTrigger value="qr">QR Code</TabsTrigger>
@@ -462,26 +499,26 @@ function PresencaPage() {
                   />
                   <p className="text-xs text-muted-foreground">O texto é salvo no histórico do aluno junto com o registro.</p>
                 </div>
-                <div className="max-h-96 space-y-2 overflow-y-auto">
+                <div className="max-h-[38rem] space-y-2 overflow-y-auto pr-1">
                   {filtrados.map((a) => {
                     const atual = statusPorAluno[a.id];
                     return (
-                      <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/70 px-3 py-2">
-                        <div className="flex min-w-32 flex-1 items-center gap-2.5">
+                      <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 px-4 py-3">
+                        <div className="flex min-w-40 flex-1 items-center gap-3">
                           {fotos[a.id] ? (
                             <img
                               src={fotos[a.id]}
                               alt={`Foto de ${a.nome}`}
                               loading="lazy"
-                              className="size-10 shrink-0 rounded-full border border-border object-cover"
+                              className="size-14 shrink-0 rounded-full border border-border object-cover"
                             />
                           ) : (
-                            <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-xs font-semibold text-muted-foreground">
+                            <span className="flex size-14 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-sm font-semibold text-muted-foreground">
                               {iniciais(a.nome)}
                             </span>
                           )}
                           <div className="min-w-0">
-                            <span className="text-sm">{a.nome}</span>
+                            <span className="font-medium">{a.nome}</span>
                             {atual ? <p className="text-xs text-muted-foreground">{rotuloStatus[atual]}</p> : null}
                           </div>
                         </div>
@@ -508,7 +545,8 @@ function PresencaPage() {
 
         <Card className="border-border/70">
           <CardHeader><CardTitle className="font-display text-lg">Registros do dia ({registros.length})</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent>
+            <div className="max-h-[42rem] space-y-2 overflow-y-auto pr-1">
             {registros.map((r, i) => (
               <div key={i} className="rounded-lg bg-secondary/60 px-3 py-2 text-sm">
                 <div className="flex items-center justify-between">
@@ -519,6 +557,7 @@ function PresencaPage() {
               </div>
             ))}
             {!registros.length && <p className="py-8 text-center text-sm text-muted-foreground">Nenhum registro nesta data.</p>}
+            </div>
           </CardContent>
         </Card>
       </div>
