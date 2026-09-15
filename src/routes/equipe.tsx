@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { ShieldCheck, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import type { AppRole } from "@/lib/auth";
+import { listarEquipeFn, type MembroEquipe } from "@/lib/equipe.functions";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,30 +26,24 @@ export const Route = createFileRoute("/equipe")({
   }),
 });
 
-type Membro = { id: string; nome: string | null; email: string | null; roles: AppRole[] };
-
 function EquipePage() {
   const { isAdmin, loading, user } = useAuth();
-  const [membros, setMembros] = useState<Membro[]>([]);
+  const listarEquipe = useServerFn(listarEquipeFn);
+  const [membros, setMembros] = useState<MembroEquipe[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
 
   async function carregar() {
     setCarregando(true);
-    const [{ data: perfis }, { data: papeis }] = await Promise.all([
-      supabase.from("profiles").select("id, nome, email"),
-      supabase.from("user_roles").select("user_id, role"),
-    ]);
-    const mapa = new Map<string, AppRole[]>();
-    for (const p of (papeis ?? []) as { user_id: string; role: AppRole }[]) {
-      mapa.set(p.user_id, [...(mapa.get(p.user_id) ?? []), p.role]);
+    setErro(null);
+    try {
+      setMembros(await listarEquipe());
+    } catch {
+      setMembros([]);
+      setErro("Não foi possível carregar os usuários e pedidos de liberação.");
+    } finally {
+      setCarregando(false);
     }
-    setMembros(
-      ((perfis ?? []) as { id: string; nome: string | null; email: string | null }[]).map((p) => ({
-        ...p,
-        roles: mapa.get(p.id) ?? [],
-      })),
-    );
-    setCarregando(false);
   }
 
   useEffect(() => {
@@ -84,6 +80,15 @@ function EquipePage() {
         </Card>
       ) : carregando ? (
         <p className="text-sm text-muted-foreground">Carregando...</p>
+      ) : erro ? (
+        <Card>
+          <CardContent className="flex flex-col items-start gap-3 p-6 text-sm text-muted-foreground">
+            <p>{erro}</p>
+            <Button size="sm" variant="outline" onClick={() => void carregar()}>
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-3">
           {membros.map((m) => (
