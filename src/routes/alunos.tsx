@@ -56,6 +56,8 @@ export const Route = createFileRoute("/alunos")({
       { name: "description", content: "Cadastre alunos, faça matrículas em turmas e gere o QR Code de presença." },
       { property: "og:title", content: "Alunos e matrículas | Arena Aquática" },
       { property: "og:description", content: "Cadastro de alunos e matrículas da Arena Aquática." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });

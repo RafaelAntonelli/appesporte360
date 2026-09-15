@@ -81,12 +81,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Arena Aquática | Matrículas e presença" },
+      { title: "Esporte 360 | Matrículas e presença" },
       {
         name: "description",
-        content: "Sistema de matrículas e controle de presença por QR Code para a Arena Aquática.",
+        content: "Sistema de matrículas e controle de presença por QR Code do Programa Esporte 360.",
       },
-      { property: "og:title", content: "Arena Aquática" },
+      { property: "og:title", content: "Esporte 360" },
       { property: "og:description", content: "Matrículas, turmas e presença por QR Code." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -98,7 +98,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
-      { rel: "preload", as: "video", href: aberturaVideo.url, type: "video/mp4" },
       { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png", sizes: "180x180" },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

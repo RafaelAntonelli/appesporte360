@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { baixarImagem } from "@/lib/fotos.functions";
 import { extrairImagensPlanilha } from "@/lib/planilha-imagens";
 import { capitalizarNome, formatarCelular, formatarCPF, apenasDigitos, cpfValido } from "@/lib/formatacao";
+import { MODALIDADES, MODALIDADE_PADRAO, normalizarModalidade } from "@/lib/modalidades";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,16 +76,6 @@ const ALIASES: Record<string, string[]> = {
   Observações: ["observacoes", "observacao", "obs", "anotacoes"],
   Foto: ["foto", "foto url", "url da foto", "link da foto", "imagem", "url foto", "foto do aluno"],
 };
-
-function normalizarModalidade(v: string) {
-  const t = v
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-  if (/hidro/.test(t)) return "Hidroginástica";
-  if (/nata|nataca|swim/.test(t)) return "Natação";
-  return "";
-}
 
 function extrairHora(v: string) {
   const m = v.match(/(\d{1,2})\s*(?::|h|hs|hrs|\.)?\s*(\d{2})?/i);
@@ -197,7 +188,7 @@ export function ImportarAlunos({
       [
         "Maria da Silva", "Feminino", 12, "2014-03-25", "000.000.000-00", "12.345.678-9",
         "(11) 99999-9999", "", "maria@email.com", "João da Silva", "Pública", "Escola Municipal",
-        "Não", "Sim", "2026-02-10", "Natação", turmas[0]?.nome ?? "", "https://exemplo.com/foto-maria.jpg", "",
+        "Não", "Sim", "2026-02-10", MODALIDADE_PADRAO, turmas[0]?.nome ?? "", "https://exemplo.com/foto-maria.jpg", "",
       ],
     ]);
     ws["!cols"] = COLUNAS.map((c) => ({ wch: Math.max(c.length + 4, 14) }));
@@ -282,7 +273,7 @@ export function ImportarAlunos({
 
       const nomeTurma = valor("Turma");
       const modalidadeTexto = valor("Modalidade");
-      // A modalidade pode vir na própria coluna Turma ("Natação - Terça e Quinta 08h")
+      // A modalidade pode vir na própria coluna Turma ("Vôlei - Terça e Quinta 08h")
       const modalidade = normalizarModalidade(modalidadeTexto) || normalizarModalidade(nomeTurma);
       let turma: Turma | undefined;
       if (nomeTurma) {
@@ -304,7 +295,7 @@ export function ImportarAlunos({
           );
           if (exata) turma = exata;
           else if (!modalidade && candidatas.some((t) => t.modalidade !== candidatas[0]?.modalidade))
-            erros.push(`Informe a modalidade (Natação ou Hidroginástica) para a turma "${nomeTurma}"`);
+            erros.push(`Informe uma modalidade válida para a turma "${nomeTurma}"`);
           else erros.push(`Turma "${nomeTurma}" ambígua: informe os dias e o horário (ex.: Terça e Quinta 08:00)`);
         } else {
           erros.push(
@@ -549,7 +540,7 @@ export function ImportarAlunos({
       }
 
       if (!a.turmaId || !alunoId) continue;
-      const modalidade = turmas.find((t) => t.id === a.turmaId)?.modalidade || d.modalidade || "Natação";
+      const modalidade = turmas.find((t) => t.id === a.turmaId)?.modalidade || d.modalidade || MODALIDADE_PADRAO;
       const jaMatriculado = matriculas.some(
         (m) => m.aluno_id === alunoId && m.turma_id === a.turmaId && m.status === "ativa",
       );
@@ -603,8 +594,8 @@ export function ImportarAlunos({
           <p className="text-sm text-muted-foreground">
             Use um arquivo Excel (.xlsx) ou CSV com a primeira linha de cabeçalho. As colunas são detectadas
             automaticamente; apenas <strong>Nome</strong> é obrigatória. As colunas <strong>Turma</strong> e
-            <strong> Modalidade</strong> definem a matrícula (Natação e Hidroginástica têm turmas distintas no mesmo
-            horário). A coluna <strong>Foto</strong> aceita o link da imagem (inclusive Google Drive) e também imagens coladas direto na célula.
+            <strong> Modalidade</strong> definem a matrícula. Modalidades aceitas: {MODALIDADES.join(", ")}.
+            A coluna <strong>Foto</strong> aceita o link da imagem (inclusive Google Drive) e também imagens coladas direto na célula.
           </p>
 
           <div className="space-y-2">

@@ -21,7 +21,14 @@ export function normalizarModalidade(valor: string): string {
   const texto = valor.trim();
   if (!texto) return "";
   const chave = texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  return MODALIDADES.find(
-    (modalidade) => modalidade.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === chave,
-  ) ?? "";
+  const normalizada = MODALIDADES.find((modalidade) => {
+    const nome = modalidade.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    return chave === nome || chave.includes(nome);
+  });
+  if (normalizada) return normalizada;
+  if (/futevolei/.test(chave)) return "Futevôlei";
+  if (/futebol.*campo|campo.*futebol/.test(chave)) return "Futebol de Campo";
+  if (/ginastica.*ritmica/.test(chave)) return "Ginástica Rítmica";
+  if (/funcional|pilates/.test(chave)) return "Funcional/Pilates";
+  return "";
 }
