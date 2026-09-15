@@ -955,11 +955,11 @@ function AlunosPage() {
               <p className="flex items-center gap-2 font-medium text-muted-foreground">
                 <UserX className="size-4" /> Notificações · {inativos.length} aluno(s) inativo(s)
               </p>
-              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas.inativos ? "Esconder alunos inativos" : "Mostrar alunos inativos"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("inativos"); }}>
-                {notificacoesAbertas.inativos ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["inativos"] ? "Esconder alunos inativos" : "Mostrar alunos inativos"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("inativos"); }}>
+                {notificacoesAbertas["inativos"] ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               </Button>
             </div>
-            {notificacoesAbertas.inativos ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+            {notificacoesAbertas["inativos"] ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
               {inativos.map((a) => (
                 <button
                   key={a.id}
@@ -994,11 +994,11 @@ function AlunosPage() {
               <p className="flex items-center gap-2 font-medium text-amber-600">
                 <FileWarning className="size-4" /> Notificações · {semAtestado.length} aluno(s) sem atestado médico
               </p>
-              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas.sem_atestado ? "Esconder alunos sem atestado" : "Mostrar alunos sem atestado"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("sem_atestado"); }}>
-                {notificacoesAbertas.sem_atestado ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["sem_atestado"] ? "Esconder alunos sem atestado" : "Mostrar alunos sem atestado"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("sem_atestado"); }}>
+                {notificacoesAbertas["sem_atestado"] ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               </Button>
             </div>
-            {notificacoesAbertas.sem_atestado ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+            {notificacoesAbertas["sem_atestado"] ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
               {semAtestado.map((a) => (
                 <button
                   key={a.id}
@@ -1030,12 +1030,12 @@ function AlunosPage() {
               <p className="flex items-center gap-2 font-medium text-destructive">
                 <Bell className="size-4" /> Notificações · {vencidos.length} atestado(s) vencido(s)
               </p>
-              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas.atestado_vencido ? "Esconder atestados vencidos" : "Mostrar atestados vencidos"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("atestado_vencido"); }}>
-                {notificacoesAbertas.atestado_vencido ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["atestado_vencido"] ? "Esconder atestados vencidos" : "Mostrar atestados vencidos"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("atestado_vencido"); }}>
+                {notificacoesAbertas["atestado_vencido"] ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               </Button>
             </div>
 
-            {notificacoesAbertas.atestado_vencido ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+            {notificacoesAbertas["atestado_vencido"] ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
               {vencidos.map((a) => (
                 <button
                   key={a.id}
@@ -1069,11 +1069,11 @@ function AlunosPage() {
               <p className="flex items-center gap-2 font-medium text-orange-600">
                 <Bell className="size-4" /> Notificações · {proximosVencimento.length} atestado(s) vencendo em até {prazoAviso} dias
               </p>
-              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas.atestado_vencer ? "Esconder atestados a vencer" : "Mostrar atestados a vencer"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("atestado_vencer"); }}>
-                {notificacoesAbertas.atestado_vencer ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["atestado_vencer"] ? "Esconder atestados a vencer" : "Mostrar atestados a vencer"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("atestado_vencer"); }}>
+                {notificacoesAbertas["atestado_vencer"] ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               </Button>
             </div>
-            {notificacoesAbertas.atestado_vencer ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+            {notificacoesAbertas["atestado_vencer"] ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
               {proximosVencimento.map((a) => (
                 <button
                   key={a.id}
@@ -1107,11 +1107,11 @@ function AlunosPage() {
               <p className="flex items-center gap-2 font-medium text-amber-600">
                 <AlertTriangle className="size-4" /> Notificações · {excessoFaltas.length} aluno(s) com 5 faltas ou mais
               </p>
-              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas.excesso_faltas ? "Esconder alunos com excesso de faltas" : "Mostrar alunos com excesso de faltas"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("excesso_faltas"); }}>
-                {notificacoesAbertas.excesso_faltas ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["excesso_faltas"] ? "Esconder alunos com excesso de faltas" : "Mostrar alunos com excesso de faltas"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("excesso_faltas"); }}>
+                {notificacoesAbertas["excesso_faltas"] ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               </Button>
             </div>
-            {notificacoesAbertas.excesso_faltas ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+            {notificacoesAbertas["excesso_faltas"] ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
               {excessoFaltas.map((a) => (
                 <button
                   key={a.id}
