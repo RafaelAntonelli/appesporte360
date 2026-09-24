@@ -114,6 +114,7 @@ const ROTULO_STATUS = {
 type Turma = { id: string; nome: string; horario: string | null; dias_semana: string[] | null; modalidade: string | null; capacidade: number | null };
 type Matricula = { id: string; aluno_id: string; turma_id: string; status: string; modalidade: string; data_inicio: string | null; created_at: string | null; registrado_por: string | null };
 type Presenca = { id: string; data: string; status: string; turma_id: string | null; observacoes: string | null };
+type EscolhaMatricula = { modalidade: string; turmaId: string; turno: string };
 
 
 type FormAluno = {
@@ -176,7 +177,6 @@ function AlunosPage() {
   const [filtroHorario, setFiltroHorario] = useState("todos");
   const [filtroDias, setFiltroDias] = useState("todos");
   const [filtroTurno, setFiltroTurno] = useState("todos");
-  const [turnoForm, setTurnoForm] = useState("todos");
   const [filtroNotificacao, setFiltroNotificacao] = useState<
     "todos" | "ativos" | "inativos" | "sem_atestado" | "atestado_vencido" | "atestado_vencer" | "excesso_faltas"
   >("todos");
@@ -204,7 +204,9 @@ function AlunosPage() {
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Aluno | null>(null);
   const [form, setForm] = useState(vazio);
-  const [turmaId, setTurmaId] = useState<string>("");
+  const [escolhasMatricula, setEscolhasMatricula] = useState<EscolhaMatricula[]>([
+    { modalidade: MODALIDADE_PADRAO, turmaId: "", turno: "todos" },
+  ]);
   const [qrAluno, setQrAluno] = useState<Aluno | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [foto, setFoto] = useState<File | null>(null);
@@ -336,8 +338,7 @@ function AlunosPage() {
   function abrirNovo() {
     setEditando(null);
     setForm(vazio);
-    setTurmaId("");
-    setTurnoForm("todos");
+    setEscolhasMatricula([{ modalidade: MODALIDADE_PADRAO, turmaId: "", turno: "todos" }]);
 
     setFoto(null);
     setFotoPreview(null);
@@ -371,11 +372,19 @@ function AlunosPage() {
     setFoto(null);
     limparDocs();
     setFotoPreview(fotos[aluno.id] ?? null);
-    const m = matriculas.find((x) => x.aluno_id === aluno.id && x.status === "ativa") ?? matriculas.find((x) => x.aluno_id === aluno.id);
-    setTurmaId(m?.turma_id ?? "");
-    setTurnoForm(turnoDoHorario(turmas.find((t) => t.id === m?.turma_id)?.horario) || "todos");
-    // A modalidade da turma é a fonte de verdade.
-    setForm((f) => ({ ...f, modalidade: turmas.find((t) => t.id === m?.turma_id)?.modalidade ?? m?.modalidade ?? MODALIDADE_PADRAO }));
+    const ativas = matriculas.filter((x) => x.aluno_id === aluno.id && x.status === "ativa").slice(0, 3);
+    setEscolhasMatricula(
+      ativas.length
+        ? ativas.map((m) => {
+            const turma = turmas.find((t) => t.id === m.turma_id);
+            return {
+              modalidade: turma?.modalidade ?? m.modalidade ?? MODALIDADE_PADRAO,
+              turmaId: m.turma_id,
+              turno: turnoDoHorario(turma?.horario) || "todos",
+            };
+          })
+        : [{ modalidade: MODALIDADE_PADRAO, turmaId: "", turno: "todos" }],
+    );
 
 
     setAberto(true);
@@ -420,17 +429,28 @@ function AlunosPage() {
       sexo: form.sexo || null,
     };
 
-    if (turmaId) {
-      const jaMatriculado = matriculas.some((m) => m.aluno_id === editando?.id && m.turma_id === turmaId);
-      const ocupadas = matriculas.filter((m) => m.turma_id === turmaId && m.status === "ativa").length;
-      const capacidade = turmas.find((t) => t.id === turmaId)?.capacidade ?? CAPACIDADE_TURMA;
-      if (!jaMatriculado && ocupadas >= capacidade) {
-        toast.error(`Turma lotada (${capacidade} vagas por horário).`);
+    const escolhasValidas = escolhasMatricula.filter((escolha) => escolha.turmaId);
+    if (!escolhasValidas.length) {
+      toast.error("Selecione pelo menos uma modalidade e turma.");
+      return;
+    }
+    if (escolhasValidas.length > 3 || new Set(escolhasValidas.map((e) => e.modalidade)).size !== escolhasValidas.length) {
+      toast.error("Escolha até 3 modalidades diferentes.");
+      return;
+    }
+    for (const escolha of escolhasValidas) {
+      const turma = turmas.find((t) => t.id === escolha.turmaId);
+      if (!turma || (turma.modalidade ?? MODALIDADE_PADRAO) !== escolha.modalidade) {
+        toast.error("Selecione uma turma válida para cada modalidade.");
         return;
       }
-      // CPF não bloqueia: famílias usam o CPF do responsável para vários alunos.
-
-
+      const jaMatriculado = matriculas.some((m) => m.aluno_id === editando?.id && m.turma_id === escolha.turmaId && m.status === "ativa");
+      const ocupadas = matriculas.filter((m) => m.turma_id === escolha.turmaId && m.status === "ativa").length;
+      const capacidade = turma.capacidade ?? CAPACIDADE_TURMA;
+      if (!jaMatriculado && ocupadas >= capacidade) {
+        toast.error(`Turma lotada: ${turma.nome} (${capacidade} vagas).`);
+        return;
+      }
     }
     setSalvando(true);
 
@@ -443,13 +463,19 @@ function AlunosPage() {
         await enfileirar({ tipo: "aluno_novo", aluno: { id: idLocal, ...payload }, foto: foto ?? null, fotoNome: foto?.name ?? null });
         setAlunos((lista) => [...lista, { id: idLocal, ativo: true, ...payload } as unknown as Aluno]);
       }
-      if (turmaId) {
-        await enfileirar({ tipo: "matricula", aluno_id: idLocal, turma_id: turmaId, modalidade: form.modalidade, registrado_por: user?.id ?? null });
-        setMatriculas((lista) => [
-          ...lista.filter((m) => m.aluno_id !== idLocal),
-          { aluno_id: idLocal, turma_id: turmaId, status: "ativa", modalidade: form.modalidade } as unknown as Matricula,
-        ]);
-      }
+      await enfileirar({
+        tipo: "matriculas_sync",
+        aluno_id: idLocal,
+        escolhas: escolhasValidas.map((e) => ({ turma_id: e.turmaId, modalidade: e.modalidade })),
+        registrado_por: user?.id ?? null,
+      });
+      setMatriculas((lista) => [
+        ...lista.filter((m) => m.aluno_id !== idLocal || m.status !== "ativa"),
+        ...escolhasValidas.map((e) => ({
+          id: crypto.randomUUID(), aluno_id: idLocal, turma_id: e.turmaId, status: "ativa", modalidade: e.modalidade,
+          data_inicio: new Date().toISOString().slice(0, 10), created_at: new Date().toISOString(), registrado_por: user?.id ?? null,
+        })),
+      ]);
       setSalvando(false);
       setAberto(false);
       toast.success("Salvo offline. Será enviado quando a internet voltar.");
@@ -497,24 +523,24 @@ function AlunosPage() {
       return;
     }
 
-    if (turmaId && alunoId) {
-      // Um aluno só pode estar em uma turma
-      const { error: eDel } = await supabase
-        .from("matriculas")
-        .delete()
-        .eq("aluno_id", alunoId)
-        .neq("turma_id", turmaId);
+    if (alunoId) {
+      const turmasSelecionadas = escolhasValidas.map((e) => e.turmaId);
+      let exclusao = supabase.from("matriculas").delete().eq("aluno_id", alunoId).eq("status", "ativa");
+      if (turmasSelecionadas.length) exclusao = exclusao.not("turma_id", "in", `(${turmasSelecionadas.join(",")})`);
+      const { error: eDel } = await exclusao;
       if (eDel) {
         setSalvando(false);
         return toast.error(eDel.message);
       }
-      const { error } = await supabase.from("matriculas").upsert(
-        { aluno_id: alunoId, turma_id: turmaId, status: "ativa", modalidade: form.modalidade, registrado_por: user?.id ?? null },
-        { onConflict: "aluno_id,turma_id" },
-      );
-      if (error) {
-        setSalvando(false);
-        return toast.error(error.message);
+      for (const escolha of escolhasValidas) {
+        const { error } = await supabase.from("matriculas").upsert(
+          { aluno_id: alunoId, turma_id: escolha.turmaId, status: "ativa", modalidade: escolha.modalidade, registrado_por: user?.id ?? null },
+          { onConflict: "aluno_id,turma_id" },
+        );
+        if (error) {
+          setSalvando(false);
+          return toast.error(error.message);
+        }
       }
     }
 
@@ -580,11 +606,11 @@ function AlunosPage() {
     return turmas.find((t) => t.id === id)?.capacidade ?? CAPACIDADE_TURMA;
   }
 
-  const gruposDeTurmas = (() => {
+  function gruposDeTurmas(escolha: EscolhaMatricula) {
     const porModalidade = turmas.filter(
       (t) =>
-        (t.modalidade ?? MODALIDADE_PADRAO) === form.modalidade &&
-        (turnoForm === "todos" || turnoDoHorario(t.horario) === turnoForm),
+        (t.modalidade ?? MODALIDADE_PADRAO) === escolha.modalidade &&
+        (escolha.turno === "todos" || turnoDoHorario(t.horario) === escolha.turno),
     );
     const usadas = new Set<string>();
     const grupos = listaGrupos.map((g) => {
@@ -601,7 +627,7 @@ function AlunosPage() {
     const restantes = porModalidade.filter((t) => !usadas.has(t.id));
     if (restantes.length) grupos.push({ label: "Outros dias", turmas: restantes });
     return grupos.filter((g) => g.turmas.length);
-  })();
+  }
 
 
   async function excluirAlunos(lista: Aluno[]) {
