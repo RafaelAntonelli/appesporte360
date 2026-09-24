@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790261572834,
+      "tag": "0000_limitar_tres_modalidades_ativas_por_aluno",
+      "breakpoints": true
+    }
+  ]
+}

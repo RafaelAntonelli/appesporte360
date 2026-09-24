@@ -114,6 +114,7 @@ const ROTULO_STATUS = {
 type Turma = { id: string; nome: string; horario: string | null; dias_semana: string[] | null; modalidade: string | null; capacidade: number | null };
 type Matricula = { id: string; aluno_id: string; turma_id: string; status: string; modalidade: string; data_inicio: string | null; created_at: string | null; registrado_por: string | null };
 type Presenca = { id: string; data: string; status: string; turma_id: string | null; observacoes: string | null };
+type EscolhaMatricula = { modalidade: string; turmaId: string; turno: string };
 
 
 type FormAluno = {
@@ -176,7 +177,6 @@ function AlunosPage() {
   const [filtroHorario, setFiltroHorario] = useState("todos");
   const [filtroDias, setFiltroDias] = useState("todos");
   const [filtroTurno, setFiltroTurno] = useState("todos");
-  const [turnoForm, setTurnoForm] = useState("todos");
   const [filtroNotificacao, setFiltroNotificacao] = useState<
     "todos" | "ativos" | "inativos" | "sem_atestado" | "atestado_vencido" | "atestado_vencer" | "excesso_faltas"
   >("todos");
@@ -204,7 +204,9 @@ function AlunosPage() {
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Aluno | null>(null);
   const [form, setForm] = useState(vazio);
-  const [turmaId, setTurmaId] = useState<string>("");
+  const [escolhasMatricula, setEscolhasMatricula] = useState<EscolhaMatricula[]>([
+    { modalidade: MODALIDADE_PADRAO, turmaId: "", turno: "todos" },
+  ]);
   const [qrAluno, setQrAluno] = useState<Aluno | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [foto, setFoto] = useState<File | null>(null);
@@ -336,8 +338,7 @@ function AlunosPage() {
   function abrirNovo() {
     setEditando(null);
     setForm(vazio);
-    setTurmaId("");
-    setTurnoForm("todos");
+    setEscolhasMatricula([{ modalidade: MODALIDADE_PADRAO, turmaId: "", turno: "todos" }]);
 
     setFoto(null);
     setFotoPreview(null);
@@ -371,11 +372,19 @@ function AlunosPage() {
     setFoto(null);
     limparDocs();
     setFotoPreview(fotos[aluno.id] ?? null);
-    const m = matriculas.find((x) => x.aluno_id === aluno.id && x.status === "ativa") ?? matriculas.find((x) => x.aluno_id === aluno.id);
-    setTurmaId(m?.turma_id ?? "");
-    setTurnoForm(turnoDoHorario(turmas.find((t) => t.id === m?.turma_id)?.horario) || "todos");
-    // A modalidade da turma é a fonte de verdade.
-    setForm((f) => ({ ...f, modalidade: turmas.find((t) => t.id === m?.turma_id)?.modalidade ?? m?.modalidade ?? MODALIDADE_PADRAO }));
+    const ativas = matriculas.filter((x) => x.aluno_id === aluno.id && x.status === "ativa").slice(0, 3);
+    setEscolhasMatricula(
+      ativas.length
+        ? ativas.map((m) => {
+            const turma = turmas.find((t) => t.id === m.turma_id);
+            return {
+              modalidade: turma?.modalidade ?? m.modalidade ?? MODALIDADE_PADRAO,
+              turmaId: m.turma_id,
+              turno: turnoDoHorario(turma?.horario) || "todos",
+            };
+          })
+        : [{ modalidade: MODALIDADE_PADRAO, turmaId: "", turno: "todos" }],
+    );
 
 
     setAberto(true);
@@ -420,17 +429,28 @@ function AlunosPage() {
       sexo: form.sexo || null,
     };
 
-    if (turmaId) {
-      const jaMatriculado = matriculas.some((m) => m.aluno_id === editando?.id && m.turma_id === turmaId);
-      const ocupadas = matriculas.filter((m) => m.turma_id === turmaId && m.status === "ativa").length;
-      const capacidade = turmas.find((t) => t.id === turmaId)?.capacidade ?? CAPACIDADE_TURMA;
-      if (!jaMatriculado && ocupadas >= capacidade) {
-        toast.error(`Turma lotada (${capacidade} vagas por horário).`);
+    const escolhasValidas = escolhasMatricula.filter((escolha) => escolha.turmaId);
+    if (!escolhasValidas.length) {
+      toast.error("Selecione pelo menos uma modalidade e turma.");
+      return;
+    }
+    if (escolhasValidas.length > 3 || new Set(escolhasValidas.map((e) => e.modalidade)).size !== escolhasValidas.length) {
+      toast.error("Escolha até 3 modalidades diferentes.");
+      return;
+    }
+    for (const escolha of escolhasValidas) {
+      const turma = turmas.find((t) => t.id === escolha.turmaId);
+      if (!turma || (turma.modalidade ?? MODALIDADE_PADRAO) !== escolha.modalidade) {
+        toast.error("Selecione uma turma válida para cada modalidade.");
         return;
       }
-      // CPF não bloqueia: famílias usam o CPF do responsável para vários alunos.
-
-
+      const jaMatriculado = matriculas.some((m) => m.aluno_id === editando?.id && m.turma_id === escolha.turmaId && m.status === "ativa");
+      const ocupadas = matriculas.filter((m) => m.turma_id === escolha.turmaId && m.status === "ativa").length;
+      const capacidade = turma.capacidade ?? CAPACIDADE_TURMA;
+      if (!jaMatriculado && ocupadas >= capacidade) {
+        toast.error(`Turma lotada: ${turma.nome} (${capacidade} vagas).`);
+        return;
+      }
     }
     setSalvando(true);
 
@@ -443,13 +463,19 @@ function AlunosPage() {
         await enfileirar({ tipo: "aluno_novo", aluno: { id: idLocal, ...payload }, foto: foto ?? null, fotoNome: foto?.name ?? null });
         setAlunos((lista) => [...lista, { id: idLocal, ativo: true, ...payload } as unknown as Aluno]);
       }
-      if (turmaId) {
-        await enfileirar({ tipo: "matricula", aluno_id: idLocal, turma_id: turmaId, modalidade: form.modalidade, registrado_por: user?.id ?? null });
-        setMatriculas((lista) => [
-          ...lista.filter((m) => m.aluno_id !== idLocal),
-          { aluno_id: idLocal, turma_id: turmaId, status: "ativa", modalidade: form.modalidade } as unknown as Matricula,
-        ]);
-      }
+      await enfileirar({
+        tipo: "matriculas_sync",
+        aluno_id: idLocal,
+        escolhas: escolhasValidas.map((e) => ({ turma_id: e.turmaId, modalidade: e.modalidade })),
+        registrado_por: user?.id ?? null,
+      });
+      setMatriculas((lista) => [
+        ...lista.filter((m) => m.aluno_id !== idLocal || m.status !== "ativa"),
+        ...escolhasValidas.map((e) => ({
+          id: crypto.randomUUID(), aluno_id: idLocal, turma_id: e.turmaId, status: "ativa", modalidade: e.modalidade,
+          data_inicio: new Date().toISOString().slice(0, 10), created_at: new Date().toISOString(), registrado_por: user?.id ?? null,
+        })),
+      ]);
       setSalvando(false);
       setAberto(false);
       toast.success("Salvo offline. Será enviado quando a internet voltar.");
@@ -497,24 +523,24 @@ function AlunosPage() {
       return;
     }
 
-    if (turmaId && alunoId) {
-      // Um aluno só pode estar em uma turma
-      const { error: eDel } = await supabase
-        .from("matriculas")
-        .delete()
-        .eq("aluno_id", alunoId)
-        .neq("turma_id", turmaId);
+    if (alunoId) {
+      const turmasSelecionadas = escolhasValidas.map((e) => e.turmaId);
+      let exclusao = supabase.from("matriculas").delete().eq("aluno_id", alunoId).eq("status", "ativa");
+      if (turmasSelecionadas.length) exclusao = exclusao.not("turma_id", "in", `(${turmasSelecionadas.join(",")})`);
+      const { error: eDel } = await exclusao;
       if (eDel) {
         setSalvando(false);
         return toast.error(eDel.message);
       }
-      const { error } = await supabase.from("matriculas").upsert(
-        { aluno_id: alunoId, turma_id: turmaId, status: "ativa", modalidade: form.modalidade, registrado_por: user?.id ?? null },
-        { onConflict: "aluno_id,turma_id" },
-      );
-      if (error) {
-        setSalvando(false);
-        return toast.error(error.message);
+      for (const escolha of escolhasValidas) {
+        const { error } = await supabase.from("matriculas").upsert(
+          { aluno_id: alunoId, turma_id: escolha.turmaId, status: "ativa", modalidade: escolha.modalidade, registrado_por: user?.id ?? null },
+          { onConflict: "aluno_id,turma_id" },
+        );
+        if (error) {
+          setSalvando(false);
+          return toast.error(error.message);
+        }
       }
     }
 
@@ -580,11 +606,11 @@ function AlunosPage() {
     return turmas.find((t) => t.id === id)?.capacidade ?? CAPACIDADE_TURMA;
   }
 
-  const gruposDeTurmas = (() => {
+  function gruposDeTurmas(escolha: EscolhaMatricula) {
     const porModalidade = turmas.filter(
       (t) =>
-        (t.modalidade ?? MODALIDADE_PADRAO) === form.modalidade &&
-        (turnoForm === "todos" || turnoDoHorario(t.horario) === turnoForm),
+        (t.modalidade ?? MODALIDADE_PADRAO) === escolha.modalidade &&
+        (escolha.turno === "todos" || turnoDoHorario(t.horario) === escolha.turno),
     );
     const usadas = new Set<string>();
     const grupos = listaGrupos.map((g) => {
@@ -601,7 +627,7 @@ function AlunosPage() {
     const restantes = porModalidade.filter((t) => !usadas.has(t.id));
     if (restantes.length) grupos.push({ label: "Outros dias", turmas: restantes });
     return grupos.filter((g) => g.turmas.length);
-  })();
+  }
 
 
   async function excluirAlunos(lista: Aluno[]) {
@@ -1384,89 +1410,122 @@ function AlunosPage() {
                   <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Modalidade</Label>
-                <Select value={form.modalidade} onValueChange={(v) => {
-                  const selecionada = turmas.find((t) => t.id === turmaId);
-                  if (selecionada && (selecionada.modalidade ?? MODALIDADE_PADRAO) !== v) setTurmaId("");
-                  setForm({ ...form, modalidade: v });
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Selecione a modalidade" /></SelectTrigger>
-                  <SelectContent>
-                    {MODALIDADES.map((modalidade) => (
-                      <SelectItem key={modalidade} value={modalidade}>{modalidade}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-
-                <Label>Turma</Label>
-                <Select
-                  value={turmaId}
-                  onValueChange={(v) => {
-                    setTurmaId(v);
-                    const selecionada = turmas.find((t) => t.id === v);
-                    const turno = turnoDoHorario(selecionada?.horario);
-                    if (turno) setTurnoForm(turno);
-                  }}
-                  required={!editando}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={
-                      carregando
-                        ? "Carregando turmas..."
-                        : gruposDeTurmas.length
-                          ? "Selecione a turma"
-                          : turmas.length
-                            ? `Nenhuma turma de ${form.modalidade} disponível`
-                            : "Nenhuma turma disponível"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-80">
-                    {erro ? (
-                      <div className="px-3 py-2 text-sm text-destructive">Erro ao carregar turmas</div>
-                    ) : turmas.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma turma cadastrada</div>
-                    ) : gruposDeTurmas.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma turma de {form.modalidade} cadastrada</div>
-                    ) : (
-                      <>
-                        <SelectItem value="none" disabled>Selecione uma turma</SelectItem>
-                        {gruposDeTurmas.map((g) => (
-                          <SelectGroup key={g.label}>
-                            <SelectLabel>{g.label}</SelectLabel>
-                            {g.turmas.map((t) => (
-                              <SelectItem key={t.id} value={t.id} disabled={vagasUsadas(t.id) >= capacidadeTurma(t.id)}>
-                                {t.nome.replace(`${g.label} - `, "")} · {vagasUsadas(t.id)}/{capacidadeTurma(t.id)}
-                              </SelectItem>
+              <div className="space-y-3 rounded-lg border border-border/70 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Modalidades e turmas</Label>
+                    <p className="text-xs text-muted-foreground">Escolha até 3 modalidades diferentes.</p>
+                  </div>
+                  <Badge variant="secondary">{escolhasMatricula.length}/3</Badge>
+                </div>
+                {escolhasMatricula.map((escolha, indice) => {
+                  const grupos = gruposDeTurmas(escolha);
+                  return (
+                    <div key={indice} className="space-y-3 rounded-md border border-border/60 p-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">Modalidade {indice + 1}</p>
+                        {escolhasMatricula.length > 1 ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-destructive"
+                            title="Remover modalidade"
+                            onClick={() => setEscolhasMatricula((lista) => lista.filter((_, i) => i !== indice))}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        ) : null}
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Modalidade</Label>
+                          <Select
+                            value={escolha.modalidade}
+                            onValueChange={(valor) => setEscolhasMatricula((lista) => lista.map((item, i) =>
+                              i === indice ? { modalidade: valor, turmaId: "", turno: "todos" } : item,
                             ))}
-                          </SelectGroup>
-                        ))}
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Turno</Label>
-                <Select
-                  value={turnoForm}
-                  onValueChange={(v) => {
-                    const selecionada = turmas.find((t) => t.id === turmaId);
-                    if (selecionada && v !== "todos" && turnoDoHorario(selecionada.horario) !== v) setTurmaId("");
-                    setTurnoForm(v);
-                  }}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os turnos</SelectItem>
-                    {TURNOS.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Selecionado automaticamente pelo horário da turma.</p>
+                          >
+                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                            <SelectContent>
+                              {MODALIDADES.map((modalidade) => (
+                                <SelectItem
+                                  key={modalidade}
+                                  value={modalidade}
+                                  disabled={escolhasMatricula.some((item, i) => i !== indice && item.modalidade === modalidade)}
+                                >
+                                  {modalidade}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Turno</Label>
+                          <Select
+                            value={escolha.turno}
+                            onValueChange={(valor) => setEscolhasMatricula((lista) => lista.map((item, i) => {
+                              if (i !== indice) return item;
+                              const turma = turmas.find((t) => t.id === item.turmaId);
+                              return { ...item, turno: valor, turmaId: turma && valor !== "todos" && turnoDoHorario(turma.horario) !== valor ? "" : item.turmaId };
+                            }))}
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="todos">Todos os turnos</SelectItem>
+                              {TURNOS.map((turno) => <SelectItem key={turno} value={turno}>{turno}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Turma</Label>
+                        <Select
+                          value={escolha.turmaId}
+                          onValueChange={(valor) => setEscolhasMatricula((lista) => lista.map((item, i) => {
+                            if (i !== indice) return item;
+                            const turno = turnoDoHorario(turmas.find((t) => t.id === valor)?.horario);
+                            return { ...item, turmaId: valor, turno: turno || item.turno };
+                          }))}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={carregando ? "Carregando turmas..." : grupos.length ? "Selecione a turma" : `Nenhuma turma de ${escolha.modalidade} disponível`} />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-80">
+                            {erro ? (
+                              <div className="px-3 py-2 text-sm text-destructive">Erro ao carregar turmas</div>
+                            ) : grupos.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma turma de {escolha.modalidade} cadastrada</div>
+                            ) : grupos.map((grupo) => (
+                              <SelectGroup key={grupo.label}>
+                                <SelectLabel>{grupo.label}</SelectLabel>
+                                {grupo.turmas.map((turma) => (
+                                  <SelectItem key={turma.id} value={turma.id} disabled={vagasUsadas(turma.id) >= capacidadeTurma(turma.id) && turma.id !== escolha.turmaId}>
+                                    {turma.nome.replace(`${grupo.label} - `, "")} · {vagasUsadas(turma.id)}/{capacidadeTurma(turma.id)}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  );
+                })}
+                {escolhasMatricula.length < 3 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      const modalidade = MODALIDADES.find((item) => !escolhasMatricula.some((escolha) => escolha.modalidade === item));
+                      if (modalidade) setEscolhasMatricula((lista) => [...lista, { modalidade, turmaId: "", turno: "todos" }]);
+                    }}
+                  >
+                    <Plus className="size-4" /> Adicionar modalidade
+                  </Button>
+                ) : null}
               </div>
               <div className="space-y-3 rounded-lg border border-border/70 p-3">
                 <div className="flex items-center justify-between">
@@ -1604,7 +1663,7 @@ function AlunosPage() {
                 <Label>Observações</Label>
                 <Textarea rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
               </div>
-              <Button type="submit" className="w-full" disabled={salvando || carregando || (!editando && !turmaId)}>
+              <Button type="submit" className="w-full" disabled={salvando || carregando || escolhasMatricula.some((escolha) => !escolha.turmaId)}>
                 {salvando ? "Salvando..." : "Salvar"}
               </Button>
 
