@@ -1410,89 +1410,122 @@ function AlunosPage() {
                   <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Modalidade</Label>
-                <Select value={form.modalidade} onValueChange={(v) => {
-                  const selecionada = turmas.find((t) => t.id === turmaId);
-                  if (selecionada && (selecionada.modalidade ?? MODALIDADE_PADRAO) !== v) setTurmaId("");
-                  setForm({ ...form, modalidade: v });
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Selecione a modalidade" /></SelectTrigger>
-                  <SelectContent>
-                    {MODALIDADES.map((modalidade) => (
-                      <SelectItem key={modalidade} value={modalidade}>{modalidade}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-
-                <Label>Turma</Label>
-                <Select
-                  value={turmaId}
-                  onValueChange={(v) => {
-                    setTurmaId(v);
-                    const selecionada = turmas.find((t) => t.id === v);
-                    const turno = turnoDoHorario(selecionada?.horario);
-                    if (turno) setTurnoForm(turno);
-                  }}
-                  required={!editando}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={
-                      carregando
-                        ? "Carregando turmas..."
-                        : gruposDeTurmas.length
-                          ? "Selecione a turma"
-                          : turmas.length
-                            ? `Nenhuma turma de ${form.modalidade} disponível`
-                            : "Nenhuma turma disponível"
-                    } />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-80">
-                    {erro ? (
-                      <div className="px-3 py-2 text-sm text-destructive">Erro ao carregar turmas</div>
-                    ) : turmas.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma turma cadastrada</div>
-                    ) : gruposDeTurmas.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma turma de {form.modalidade} cadastrada</div>
-                    ) : (
-                      <>
-                        <SelectItem value="none" disabled>Selecione uma turma</SelectItem>
-                        {gruposDeTurmas.map((g) => (
-                          <SelectGroup key={g.label}>
-                            <SelectLabel>{g.label}</SelectLabel>
-                            {g.turmas.map((t) => (
-                              <SelectItem key={t.id} value={t.id} disabled={vagasUsadas(t.id) >= capacidadeTurma(t.id)}>
-                                {t.nome.replace(`${g.label} - `, "")} · {vagasUsadas(t.id)}/{capacidadeTurma(t.id)}
-                              </SelectItem>
+              <div className="space-y-3 rounded-lg border border-border/70 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>Modalidades e turmas</Label>
+                    <p className="text-xs text-muted-foreground">Escolha até 3 modalidades diferentes.</p>
+                  </div>
+                  <Badge variant="secondary">{escolhasMatricula.length}/3</Badge>
+                </div>
+                {escolhasMatricula.map((escolha, indice) => {
+                  const grupos = gruposDeTurmas(escolha);
+                  return (
+                    <div key={indice} className="space-y-3 rounded-md border border-border/60 p-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">Modalidade {indice + 1}</p>
+                        {escolhasMatricula.length > 1 ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 text-destructive"
+                            title="Remover modalidade"
+                            onClick={() => setEscolhasMatricula((lista) => lista.filter((_, i) => i !== indice))}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        ) : null}
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Modalidade</Label>
+                          <Select
+                            value={escolha.modalidade}
+                            onValueChange={(valor) => setEscolhasMatricula((lista) => lista.map((item, i) =>
+                              i === indice ? { modalidade: valor, turmaId: "", turno: "todos" } : item,
                             ))}
-                          </SelectGroup>
-                        ))}
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Turno</Label>
-                <Select
-                  value={turnoForm}
-                  onValueChange={(v) => {
-                    const selecionada = turmas.find((t) => t.id === turmaId);
-                    if (selecionada && v !== "todos" && turnoDoHorario(selecionada.horario) !== v) setTurmaId("");
-                    setTurnoForm(v);
-                  }}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos os turnos</SelectItem>
-                    {TURNOS.map((t) => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Selecionado automaticamente pelo horário da turma.</p>
+                          >
+                            <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                            <SelectContent>
+                              {MODALIDADES.map((modalidade) => (
+                                <SelectItem
+                                  key={modalidade}
+                                  value={modalidade}
+                                  disabled={escolhasMatricula.some((item, i) => i !== indice && item.modalidade === modalidade)}
+                                >
+                                  {modalidade}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Turno</Label>
+                          <Select
+                            value={escolha.turno}
+                            onValueChange={(valor) => setEscolhasMatricula((lista) => lista.map((item, i) => {
+                              if (i !== indice) return item;
+                              const turma = turmas.find((t) => t.id === item.turmaId);
+                              return { ...item, turno: valor, turmaId: turma && valor !== "todos" && turnoDoHorario(turma.horario) !== valor ? "" : item.turmaId };
+                            }))}
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="todos">Todos os turnos</SelectItem>
+                              {TURNOS.map((turno) => <SelectItem key={turno} value={turno}>{turno}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Turma</Label>
+                        <Select
+                          value={escolha.turmaId}
+                          onValueChange={(valor) => setEscolhasMatricula((lista) => lista.map((item, i) => {
+                            if (i !== indice) return item;
+                            const turno = turnoDoHorario(turmas.find((t) => t.id === valor)?.horario);
+                            return { ...item, turmaId: valor, turno: turno || item.turno };
+                          }))}
+                          required
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={carregando ? "Carregando turmas..." : grupos.length ? "Selecione a turma" : `Nenhuma turma de ${escolha.modalidade} disponível`} />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-80">
+                            {erro ? (
+                              <div className="px-3 py-2 text-sm text-destructive">Erro ao carregar turmas</div>
+                            ) : grupos.length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-muted-foreground">Nenhuma turma de {escolha.modalidade} cadastrada</div>
+                            ) : grupos.map((grupo) => (
+                              <SelectGroup key={grupo.label}>
+                                <SelectLabel>{grupo.label}</SelectLabel>
+                                {grupo.turmas.map((turma) => (
+                                  <SelectItem key={turma.id} value={turma.id} disabled={vagasUsadas(turma.id) >= capacidadeTurma(turma.id) && turma.id !== escolha.turmaId}>
+                                    {turma.nome.replace(`${grupo.label} - `, "")} · {vagasUsadas(turma.id)}/{capacidadeTurma(turma.id)}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  );
+                })}
+                {escolhasMatricula.length < 3 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      const modalidade = MODALIDADES.find((item) => !escolhasMatricula.some((escolha) => escolha.modalidade === item));
+                      if (modalidade) setEscolhasMatricula((lista) => [...lista, { modalidade, turmaId: "", turno: "todos" }]);
+                    }}
+                  >
+                    <Plus className="size-4" /> Adicionar modalidade
+                  </Button>
+                ) : null}
               </div>
               <div className="space-y-3 rounded-lg border border-border/70 p-3">
                 <div className="flex items-center justify-between">
@@ -1630,7 +1663,7 @@ function AlunosPage() {
                 <Label>Observações</Label>
                 <Textarea rows={2} value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
               </div>
-              <Button type="submit" className="w-full" disabled={salvando || carregando || (!editando && !turmaId)}>
+              <Button type="submit" className="w-full" disabled={salvando || carregando || escolhasMatricula.some((escolha) => !escolha.turmaId)}>
                 {salvando ? "Salvando..." : "Salvar"}
               </Button>
 
