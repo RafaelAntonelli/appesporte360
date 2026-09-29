@@ -23,7 +23,7 @@ type Turma = {
   capacidade: number | null;
   dias_semana?: string[] | null;
 };
-type Matricula = { aluno_id: string; turma_id: string; status: string };
+type Matricula = { aluno_id: string; turma_id: string; status: string; modalidade?: string | null };
 type AlunoExistente = { id: string; nome: string; cpf: string | null; telefone: string | null };
 
 const COLUNAS = [

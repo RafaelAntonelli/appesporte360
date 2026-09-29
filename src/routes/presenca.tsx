@@ -291,12 +291,11 @@ function PresencaPage() {
       const turmasAluno = turmasDoAluno(a.id);
       if (turmaId && !turmasAluno.some((turma) => turma.id === turmaId)) return false;
       if (filtroModalidade !== "todas" && !turmasAluno.some((turma) => (turma.modalidade ?? "") === filtroModalidade)) return false;
-      if (filtroTurno !== "todos" && turnoDoHorario(t?.horario) !== filtroTurno) return false;
+      if (filtroTurno !== "todos" && !turmasAluno.some((turma) => turnoDoHorario(turma.horario) === filtroTurno)) return false;
       if (filtroDias !== "todos") {
         const grupo = listaGrupos.find((g) => g.label === filtroDias);
         const diasEsperados = grupo?.dias?.length ? grupo.dias : [];
-        const diasTurma = t?.dias_semana ?? [];
-        if (!diasEsperados.length || !diasEsperados.every((d) => diasTurma.includes(d))) return false;
+        if (!diasEsperados.length || !turmasAluno.some((turma) => diasEsperados.every((dia) => (turma.dias_semana ?? []).includes(dia)))) return false;
       }
       return true;
     })
