@@ -89,7 +89,7 @@ function PresencaPage() {
   const [busca, setBusca] = useState("");
   const [statusPorAluno, setStatusPorAluno] = useState<Record<string, StatusPresenca>>({});
   const [observacao, setObservacao] = useState("");
-  const [registros, setRegistros] = useState<{ nome: string; hora: string; status: StatusPresenca; obs: string | null }[]>([]);
+  const [registros, setRegistros] = useState<{ nome: string; codigo: string; hora: string; status: StatusPresenca; obs: string | null }[]>([]);
   const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null);
   const lastRef = useRef<{ code: string; at: number }>({ code: "", at: 0 });
   const [confirmacao, setConfirmacao] = useState<{ aluno: Aluno; jaRegistrado: StatusPresenca | null } | null>(null);
@@ -142,7 +142,7 @@ function PresencaPage() {
     if (!estaOnline()) return;
     let consulta = supabase
       .from("presencas")
-      .select("aluno_id,turma_id,horario,status,observacoes,alunos(nome)")
+      .select("aluno_id,turma_id,horario,status,observacoes,alunos(nome,codigo)")
       .eq("data", hoje)
       .order("horario", { ascending: false });
     if (turmaId) consulta = consulta.eq("turma_id", turmaId);
@@ -155,7 +155,8 @@ function PresencaPage() {
     setStatusPorAluno(mapa);
     setRegistros(
       data.map((r) => ({
-        nome: (r.alunos as { nome: string } | null)?.nome ?? "Aluno",
+        nome: (r.alunos as { nome: string; codigo: string } | null)?.nome ?? "Aluno",
+        codigo: (r.alunos as { nome: string; codigo: string } | null)?.codigo ?? "",
         hora: new Date(r.horario as string).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
         status: (r.status as StatusPresenca) ?? "presente",
         obs: (r.observacoes as string | null) ?? null,
@@ -185,7 +186,7 @@ function PresencaPage() {
       });
       setStatusPorAluno((s) => ({ ...s, [`${aluno.id}:${turmaId}`]: status }));
       setRegistros((r) => [
-        { nome: aluno.nome, hora: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }), status, obs },
+        { nome: aluno.nome, codigo: aluno.codigo, hora: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }), status, obs },
         ...r.filter((x) => x.nome !== aluno.nome),
       ]);
       setObservacao("");
@@ -489,7 +490,7 @@ function PresencaPage() {
               <CardContent className="space-y-3 pt-6">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input className="pl-9" placeholder="Buscar por nome, CPF ou telefone..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+                  <Input className="pl-9" placeholder="Buscar por matrícula ou nome..." value={busca} onChange={(e) => setBusca(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Observações (justificativa)</Label>
@@ -521,6 +522,7 @@ function PresencaPage() {
                           )}
                           <div className="min-w-0">
                             <span className="font-medium">{a.nome}</span>
+                             <p className="font-mono text-xs text-muted-foreground">Matrícula {a.codigo}</p>
                             {atual ? <p className="text-xs text-muted-foreground">{rotuloStatus[atual]}</p> : null}
                           </div>
                         </div>
@@ -552,7 +554,7 @@ function PresencaPage() {
             {registros.map((r, i) => (
               <div key={i} className="rounded-lg bg-secondary/60 px-3 py-2 text-sm">
                 <div className="flex items-center justify-between">
-                  <span>{r.nome}</span>
+                  <span><span className="font-mono text-xs text-muted-foreground">{r.codigo}</span> · {r.nome}</span>
                   <span className="text-muted-foreground">{rotuloStatus[r.status]} · {r.hora}</span>
                 </div>
                 {r.obs ? <p className="mt-0.5 text-xs text-muted-foreground">Obs.: {r.obs}</p> : null}

@@ -54,7 +54,7 @@ type Turma = {
   ativa: boolean;
 };
 
-type AlunoTurma = { id: string; nome: string; modalidade: string; status: string; pcd: boolean; foto_path: string | null };
+type AlunoTurma = { id: string; nome: string; codigo: string; modalidade: string; status: string; pcd: boolean; foto_path: string | null };
 type StatusPresenca = "presente" | "falta" | "falta_justificada";
 
 const ROTULO_PRESENCA: Record<StatusPresenca, string> = {
@@ -220,7 +220,7 @@ function TurmasPage() {
     setStatusPresenca({});
     const { data, error } = await supabase
       .from("matriculas")
-      .select("id,status,modalidade,alunos(id,nome,pcd,foto_path)")
+      .select("id,status,modalidade,alunos(id,nome,codigo,pcd,foto_path)")
       .eq("turma_id", t.id);
     if (error) {
       toast.error(error.message);
@@ -229,11 +229,12 @@ function TurmasPage() {
     }
     const lista = (data ?? [])
       .map((m) => {
-        const a = m.alunos as { id: string; nome: string; pcd: boolean; foto_path: string | null } | null;
+        const a = m.alunos as { id: string; nome: string; codigo: string; pcd: boolean; foto_path: string | null } | null;
         return a
           ? {
               id: a.id,
               nome: a.nome,
+               codigo: a.codigo,
               pcd: a.pcd,
               foto_path: a.foto_path,
               modalidade: m.modalidade as string,
@@ -549,6 +550,7 @@ function TurmasPage() {
                         >
                           {a.nome}
                         </button>
+                         <p className="font-mono text-xs text-muted-foreground">Matrícula {a.codigo}</p>
                         <p className="text-xs text-muted-foreground">
                           {a.modalidade}
                           {statusPresenca[a.id] ? ` · ${ROTULO_PRESENCA[statusPresenca[a.id] as StatusPresenca]} hoje` : ""}
