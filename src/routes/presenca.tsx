@@ -140,15 +140,17 @@ function PresencaPage() {
 
   async function carregarPresencasDoDia() {
     if (!estaOnline()) return;
-    const { data } = await supabase
+    let consulta = supabase
       .from("presencas")
-      .select("aluno_id,horario,status,observacoes,alunos(nome)")
+      .select("aluno_id,turma_id,horario,status,observacoes,alunos(nome)")
       .eq("data", hoje)
       .order("horario", { ascending: false });
+    if (turmaId) consulta = consulta.eq("turma_id", turmaId);
+    const { data } = await consulta;
     if (!data) return;
     const mapa: Record<string, StatusPresenca> = {};
     data.forEach((r) => {
-      mapa[r.aluno_id as string] = (r.status as StatusPresenca) ?? "presente";
+      mapa[`${String(r.aluno_id)}:${String(r.turma_id ?? "")}`] = (r.status as StatusPresenca) ?? "presente";
     });
     setStatusPorAluno(mapa);
     setRegistros(
@@ -164,7 +166,7 @@ function PresencaPage() {
   useEffect(() => {
     void carregarPresencasDoDia();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hoje]);
+  }, [hoje, turmaId]);
 
   async function registrar(aluno: Aluno, metodo: "qrcode" | "manual", status: StatusPresenca = "presente") {
     const obs = observacao.trim() ? observacao.trim() : null;
@@ -181,7 +183,7 @@ function PresencaPage() {
         observacoes: obs,
         horario: agoraIso,
       });
-      setStatusPorAluno((s) => ({ ...s, [aluno.id]: status }));
+      setStatusPorAluno((s) => ({ ...s, [`${aluno.id}:${turmaId}`]: status }));
       setRegistros((r) => [
         { nome: aluno.nome, hora: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }), status, obs },
         ...r.filter((x) => x.nome !== aluno.nome),
@@ -196,6 +198,7 @@ function PresencaPage() {
       .select("id")
       .eq("aluno_id", aluno.id)
       .eq("data", hoje)
+      .eq("turma_id", turmaId)
       .maybeSingle();
 
     if (existente.data) {
@@ -275,19 +278,19 @@ function PresencaPage() {
     };
   }, []);
 
-  const turmaDoAluno = (id: string) => {
-    const m = matriculas.find((x) => x.aluno_id === id);
-    return m ? turmas.find((t) => t.id === m.turma_id) ?? null : null;
-  };
+  const turmasDoAluno = (id: string) => matriculas
+    .filter((matricula) => matricula.aluno_id === id)
+    .map((matricula) => turmas.find((turma) => turma.id === matricula.turma_id))
+    .filter((turma): turma is Turma => Boolean(turma));
 
   const filtrados = alunos
     .filter((a) => {
       if (!correspondeBusca(a, busca)) return false;
       const faixa = faixaEtariaECA(a.data_nascimento, a.idade);
       if (faixasEtarias.length && (!faixa || !faixasEtarias.includes(faixa))) return false;
-      const t = turmaDoAluno(a.id);
-      if (turmaId && t?.id !== turmaId) return false;
-      if (filtroModalidade !== "todas" && (t?.modalidade ?? "") !== filtroModalidade) return false;
+      const turmasAluno = turmasDoAluno(a.id);
+      if (turmaId && !turmasAluno.some((turma) => turma.id === turmaId)) return false;
+      if (filtroModalidade !== "todas" && !turmasAluno.some((turma) => (turma.modalidade ?? "") === filtroModalidade)) return false;
       if (filtroTurno !== "todos" && turnoDoHorario(t?.horario) !== filtroTurno) return false;
       if (filtroDias !== "todos") {
         const grupo = listaGrupos.find((g) => g.label === filtroDias);
@@ -501,7 +504,7 @@ function PresencaPage() {
                 </div>
                 <div className="max-h-[38rem] space-y-2 overflow-y-auto pr-1">
                   {filtrados.map((a) => {
-                    const atual = statusPorAluno[a.id];
+                    const atual = statusPorAluno[`${a.id}:${turmaId}`];
                     return (
                       <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 px-4 py-3">
                         <div className="flex min-w-40 flex-1 items-center gap-3">

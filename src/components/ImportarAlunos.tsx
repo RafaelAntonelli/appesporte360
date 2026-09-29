@@ -541,14 +541,18 @@ export function ImportarAlunos({
 
       if (!a.turmaId || !alunoId) continue;
       const modalidade = turmas.find((t) => t.id === a.turmaId)?.modalidade || d.modalidade || MODALIDADE_PADRAO;
+      const matriculasAtivas = matriculas.filter((m) => m.aluno_id === alunoId && m.status === "ativa");
       const jaMatriculado = matriculas.some(
         (m) => m.aluno_id === alunoId && m.turma_id === a.turmaId && m.status === "ativa",
       );
       if (jaMatriculado) continue;
-
-      if (a.acao === "atualizar") {
-        // Um aluno pertence a apenas uma turma: encerra matrículas anteriores
-        await supabase.from("matriculas").delete().eq("aluno_id", alunoId);
+      if (matriculasAtivas.some((m) => m.modalidade === modalidade)) {
+        falhas.push(`${d.nome}: já possui matrícula ativa em ${modalidade}`);
+        continue;
+      }
+      if (matriculasAtivas.length >= 3) {
+        falhas.push(`${d.nome}: já possui 3 modalidades ativas`);
+        continue;
       }
       const { data: sessaoAtual } = await supabase.auth.getSession();
       const { error: erroMat } = await supabase.from("matriculas").insert({
