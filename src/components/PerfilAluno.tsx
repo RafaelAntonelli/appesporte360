@@ -19,6 +19,7 @@ type Anotacao = {
 type AlunoPerfil = {
   id: string;
   nome: string;
+  codigo: string;
   data_nascimento: string | null;
   telefone: string | null;
   responsavel: string | null;
@@ -230,6 +231,9 @@ export function PerfilAluno({ alunoId, onFechar }: { alunoId: string | null; onF
                 </div>
               )}
               <div className="text-sm text-muted-foreground">
+                <p className="mb-1 font-medium text-foreground">
+                  Matrícula: <span className="break-all font-mono">{aluno.codigo}</span>
+                </p>
                 <p>{aluno.telefone ?? "Sem telefone"}</p>
                 <p>{aluno.email ?? "Sem e-mail"}</p>
                 <p>{aluno.responsavel ? `Responsável: ${aluno.responsavel}` : "Sem responsável"}</p>

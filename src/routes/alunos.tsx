@@ -1883,6 +1883,9 @@ function AlunosPage() {
                   </div>
                 )}
                 <div className="text-sm text-muted-foreground">
+                  <p className="mb-1 font-medium text-foreground">
+                    Matrícula: <span className="break-all font-mono">{detalhe.codigo}</span>
+                  </p>
                   <p>{detalhe.telefone ?? "Sem telefone"}</p>
                   <p>{detalhe.email ?? "Sem e-mail"}</p>
                   <p>{detalhe.responsavel ? `Responsável: ${detalhe.responsavel}` : "Sem responsável"}</p>
