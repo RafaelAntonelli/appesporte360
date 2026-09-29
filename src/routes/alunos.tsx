@@ -215,6 +215,8 @@ function AlunosPage() {
   const [salvando, setSalvando] = useState(false);
   const [detalhe, setDetalhe] = useState<Aluno | null>(null);
   const [docsUrls, setDocsUrls] = useState<Record<string, string>>({});
+  const atestadoAnexadoSemConfirmacao = !!docs.doc_atestado_path && !form.atestado_entregue;
+  const atestadoAnexadoSemData = !!docs.doc_atestado_path && !form.atestado_data;
 
   const [historico, setHistorico] = useState<Presenca[] | null>(null);
   const [faltasPorAluno, setFaltasPorAluno] = useState<Record<string, number>>({});
@@ -392,6 +394,16 @@ function AlunosPage() {
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
+    if (atestadoAnexadoSemConfirmacao || atestadoAnexadoSemData) {
+      if (atestadoAnexadoSemConfirmacao && atestadoAnexadoSemData) {
+        toast.error("Marque que o atestado foi entregue e preencha a data do atestado.");
+      } else if (atestadoAnexadoSemConfirmacao) {
+        toast.error("Marque que o atestado foi entregue antes de salvar.");
+      } else {
+        toast.error("Preencha a data do atestado antes de salvar.");
+      }
+      return;
+    }
     if (form.cpf && !cpfValido(form.cpf)) {
       toast.error("CPF inválido. Verifique os números digitados.");
       return;
@@ -1385,19 +1397,36 @@ function AlunosPage() {
                   <Switch
                     id="atestado"
                     checked={form.atestado_entregue}
+                    aria-invalid={atestadoAnexadoSemConfirmacao}
                     onCheckedChange={(v) => setForm({ ...form, atestado_entregue: v })}
                   />
                 </div>
                 {form.atestado_entregue ? (
                   <div className="space-y-2">
                     <Label>Data do atestado</Label>
-                    <Input type="date" value={form.atestado_data} onChange={(e) => setForm({ ...form, atestado_data: e.target.value })} />
+                    <Input
+                      type="date"
+                      required={!!docs.doc_atestado_path}
+                      aria-invalid={atestadoAnexadoSemData}
+                      value={form.atestado_data}
+                      onChange={(e) => setForm({ ...form, atestado_data: e.target.value })}
+                    />
                     {atestadoVencido(form.atestado_data) ? (
                       <p className="flex items-center gap-1 text-sm font-medium text-destructive">
                         <AlertTriangle className="size-4" /> Atestado vencido!
                       </p>
                     ) : null}
                   </div>
+                ) : null}
+                {atestadoAnexadoSemConfirmacao || atestadoAnexadoSemData ? (
+                  <p className="flex items-start gap-1.5 text-sm font-medium text-destructive" role="alert">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                    {atestadoAnexadoSemConfirmacao && atestadoAnexadoSemData
+                      ? "Para anexar o atestado, marque a entrega e preencha a data."
+                      : atestadoAnexadoSemConfirmacao
+                        ? "Marque que o atestado foi entregue."
+                        : "Preencha a data do atestado."}
+                  </p>
                 ) : null}
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -1642,6 +1671,7 @@ function AlunosPage() {
                         id={`doc-${d.campo}`}
                         type="file"
                         accept="image/*,application/pdf"
+                        aria-invalid={d.campo === "doc_atestado_path" && (atestadoAnexadoSemConfirmacao || atestadoAnexadoSemData)}
                         onChange={(e) => setDocs((s) => ({ ...s, [d.campo]: e.target.files?.[0] ?? null }))}
                       />
                       <Button
