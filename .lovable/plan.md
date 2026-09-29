@@ -1,13 +1,14 @@
-# Código de matrícula com 7 dígitos
+# Código de matrícula com 7 caracteres
 
 ## Padronização
-- Converter os códigos atuais para uma sequência numérica única com exatamente 7 dígitos.
+- Converter os códigos atuais para identificadores únicos com exatamente 7 caracteres.
+- Permitir letras maiúsculas e números.
 - Manter a restrição que impede códigos repetidos.
-- Gerar automaticamente o próximo código de 7 dígitos para cada novo aluno.
+- Gerar automaticamente um código alfanumérico de 7 caracteres para cada novo aluno.
 
 ## Aplicativo
-- Exibir sempre os sete dígitos no perfil do aluno.
-- Preservar o uso do código no crachá e nas demais áreas existentes.
+- Exibir o código completo no perfil do aluno.
+- Preservar o uso do código no crachá, QR Code, presença e demais áreas existentes.
 
 ## Validação
 - Confirmar que todos os alunos possuem códigos únicos no novo formato.
