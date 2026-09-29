@@ -784,7 +784,7 @@ function AlunosPage() {
 
   }
 
-  const CABECALHO_LISTA = ["Nome", "Idade", "Sexo", "Telefone", "Responsável", "CPF", "RG", "Modalidade", "Turma", "Horário", "PCD", "Situação", "Faltas", "Atestado"];
+  const CABECALHO_LISTA = ["Matrícula", "Nome", "Idade", "Sexo", "Telefone", "Responsável", "CPF", "RG", "Modalidade", "Turma", "Horário", "PCD", "Situação", "Faltas", "Atestado"];
 
   function linhasLista(lista: Aluno[]) {
     return lista.map((a) => {
@@ -792,6 +792,7 @@ function AlunosPage() {
       const modalidade = matriculaDoAluno(a.id)?.modalidade ?? turma?.modalidade ?? "";
       const atestado = !a.atestado_entregue ? "Não entregue" : atestadoVencido(a.atestado_data) ? "Vencido" : "Em dia";
       return [
+        a.codigo,
         a.nome,
         a.idade != null ? String(a.idade) : "",
         a.sexo ?? "",
@@ -828,7 +829,7 @@ function AlunosPage() {
     if (!filtrados.length) return toast.error("Nenhum aluno na lista filtrada");
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-    const larguras = [44, 10, 16, 24, 34, 24, 20, 22, 30, 16, 10, 14, 10, 18];
+    const larguras = [18, 38, 10, 16, 24, 30, 22, 18, 22, 28, 16, 10, 14, 10, 18];
     let y = 18;
 
     doc.setFont("helvetica", "bold");
@@ -1008,7 +1009,7 @@ function AlunosPage() {
                   }}
                   className="flex w-full items-center justify-between gap-2 rounded-lg bg-card px-3 py-1.5 text-left text-sm hover:bg-secondary"
                 >
-                  <span>{a.nome}</span>
+                  <span><span className="font-mono text-xs text-muted-foreground">{a.codigo}</span> · {a.nome}</span>
                   <span className="text-right text-xs text-muted-foreground">
                     {a.motivo_inativacao ?? "Sem turma"}
                     {a.inativado_em ? ` · ${new Date(a.inativado_em).toLocaleDateString("pt-BR")}` : ""}
@@ -1047,7 +1048,7 @@ function AlunosPage() {
                   }}
                   className="flex w-full items-center justify-between rounded-lg bg-card px-3 py-1.5 text-left text-sm hover:bg-secondary"
                 >
-                  <span>{a.nome}</span>
+                  <span><span className="font-mono text-xs text-muted-foreground">{a.codigo}</span> · {a.nome}</span>
                   <span className="text-xs text-muted-foreground">Não entregue</span>
                 </button>
               ))}
@@ -1084,7 +1085,7 @@ function AlunosPage() {
                   }}
                   className="flex w-full items-center justify-between rounded-lg bg-card px-3 py-1.5 text-left text-sm hover:bg-secondary"
                 >
-                  <span>{a.nome}</span>
+                  <span><span className="font-mono text-xs text-muted-foreground">{a.codigo}</span> · {a.nome}</span>
                   <span className="text-xs text-muted-foreground">
                     Atestado de {a.atestado_data ? new Date(`${a.atestado_data}T00:00:00`).toLocaleDateString("pt-BR") : "-"}
                   </span>
@@ -1122,7 +1123,7 @@ function AlunosPage() {
                   }}
                   className="flex w-full items-center justify-between rounded-lg bg-card px-3 py-1.5 text-left text-sm hover:bg-secondary"
                 >
-                  <span>{a.nome}</span>
+                  <span><span className="font-mono text-xs text-muted-foreground">{a.codigo}</span> · {a.nome}</span>
                   <span className="text-xs text-muted-foreground">
                     Vence em {diasParaVencer(a.atestado_data)} dia(s)
                   </span>
@@ -1160,7 +1161,7 @@ function AlunosPage() {
                   }}
                   className="flex w-full items-center justify-between rounded-lg bg-card px-3 py-1.5 text-left text-sm hover:bg-secondary"
                 >
-                  <span>{a.nome}</span>
+                  <span><span className="font-mono text-xs text-muted-foreground">{a.codigo}</span> · {a.nome}</span>
                   <span className="text-xs text-muted-foreground">{faltasPorAluno[a.id]} faltas</span>
                 </button>
               ))}
@@ -1264,7 +1265,7 @@ function AlunosPage() {
         </div>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Buscar por nome, responsável, CPF, RG ou telefone..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+          <Input className="pl-9" placeholder="Buscar por matrícula, nome, responsável, CPF, RG ou telefone..." value={busca} onChange={(e) => setBusca(e.target.value)} />
         </div>
 
 
@@ -1840,6 +1841,7 @@ function AlunosPage() {
                   <button type="button" onClick={() => void abrirDetalhe(aluno)} className="text-left font-medium text-foreground hover:text-primary hover:underline">
                     {aluno.nome}
                   </button>
+                   <p className="font-mono text-xs text-muted-foreground">Matrícula {aluno.codigo}</p>
                   <p className="text-sm text-muted-foreground">
                     {turmasDoAluno.length ? turmasDoAluno.join(", ") : "Sem turma"}
                     {aluno.telefone ? ` · ${aluno.telefone}` : ""}

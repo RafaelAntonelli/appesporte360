@@ -21,6 +21,7 @@ export function chaveLinkDrive(alunoId: string, campo: string) {
 
 export type AlunoPlanilha = {
   id: string;
+  codigo?: string | null;
   nome: string;
   sexo?: string | null;
   idade?: number | null;
@@ -101,7 +102,7 @@ export async function montarPlanilhaAlunos(opcoes: OpcoesPlanilha): Promise<Arra
   const ws = wb.addWorksheet("Alunos");
 
   const colunasBase = [
-    "Nome", "Sexo", "Idade", "Faixa etária", "Nascimento", "CPF", "RG", "Celular", "Celular 2", "E-mail",
+    "Matrícula", "Nome", "Sexo", "Idade", "Faixa etária", "Nascimento", "CPF", "RG", "Celular", "Celular 2", "E-mail",
     "Responsável", "Rede de ensino", "Escola", "PCD", "Condições PCD", "Atestado entregue",
     "Data do atestado", "Modalidade", "Turma", "Horário", "Turno", "Situação", "Observações",
   ];
@@ -141,6 +142,7 @@ export async function montarPlanilhaAlunos(opcoes: OpcoesPlanilha): Promise<Arra
     return {
       aluno: a,
       valores: [
+        a.codigo ?? "",
         a.nome,
         a.sexo ?? "",
         Number.isFinite(idade) ? idade : (a.idade ?? ""),

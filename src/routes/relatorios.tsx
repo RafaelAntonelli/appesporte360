@@ -201,6 +201,7 @@ function RelatoriosPage() {
       const t = turmaDoAluno(aluno.id);
       const venc = vencimentoAtestado(aluno.atestado_data);
       return [
+        aluno.codigo,
         aluno.nome,
         aluno.telefone ?? "",
         aluno.responsavel ?? "",
@@ -216,6 +217,7 @@ function RelatoriosPage() {
   }
 
   const CABECALHO_RELATORIO = [
+    "Matrícula",
     "Aluno",
     "Celular",
     "Responsável",
@@ -246,7 +248,7 @@ function RelatoriosPage() {
     if (!relatorio.length) return toast.error("Nenhum atestado vencido ou a vencer");
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-    const larguras = [50, 28, 42, 24, 32, 24, 26, 24, 20, 18];
+    const larguras = [18, 44, 26, 36, 22, 28, 22, 24, 22, 18, 16];
     let y = 18;
 
     doc.setFont("helvetica", "bold");
@@ -620,7 +622,7 @@ function RelatoriosPage() {
               .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
               .map((a) => (
                 <div key={a.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
-                  <span>{a.nome}</span>
+                   <span><span className="font-mono text-xs text-muted-foreground">{a.codigo}</span> · {a.nome}</span>
                   <span className="text-xs text-muted-foreground">
                     {turmaDoAluno(a.id)?.nome ?? "Sem turma"}
                   </span>
@@ -635,7 +637,7 @@ function RelatoriosPage() {
               if (!detalhe) return;
               const csv =
                 "\uFEFF" +
-                [["Nome", "Turma"], ...detalhe.alunos.map((a) => [a.nome, turmaDoAluno(a.id)?.nome ?? ""])]
+                 [["Matrícula", "Nome", "Turma"], ...detalhe.alunos.map((a) => [a.codigo, a.nome, turmaDoAluno(a.id)?.nome ?? ""])]
                   .map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"))
                   .join("\n");
               baixarArquivo(csv, `alunos-${detalhe.titulo.replace(/[^\w]+/g, "-").toLowerCase()}.csv`, "text/csv;charset=utf-8");
@@ -685,6 +687,7 @@ function RelatoriosPage() {
                     const venc = vencimentoAtestado(aluno.atestado_data);
                     return (
                       <tr key={aluno.id} className="border-b last:border-0">
+                        <td className="py-2 pr-4 font-mono text-xs">{aluno.codigo}</td>
                         <td className="py-2 pr-4 font-medium">{aluno.nome}</td>
                         <td className="py-2 pr-4">{aluno.telefone ?? "—"}</td>
                         <td className="py-2 pr-4">{aluno.responsavel ?? "—"}</td>
