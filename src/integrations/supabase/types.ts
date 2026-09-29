@@ -511,6 +511,7 @@ export type Database = {
       }
       calc_turno: { Args: { _horario: string }; Returns: string }
       disparar_backup_semanal: { Args: never; Returns: undefined }
+      gerar_codigo_matricula: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
