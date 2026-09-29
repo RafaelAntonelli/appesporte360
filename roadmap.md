@@ -1,1 +1,1 @@
-- [ ] Padronizar todos os códigos de matrícula como alfanuméricos únicos de exatamente 7 caracteres.
+- [x] Padronizar todos os códigos de matrícula como alfanuméricos únicos de exatamente 7 caracteres.
