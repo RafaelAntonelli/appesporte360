@@ -172,8 +172,10 @@ async function executar(op: OperacaoFila) {
     }
     return;
   }
-  // presença: substitui o registro do dia, se existir
-  const existente = await supabase.from("presencas").select("id").eq("aluno_id", op.aluno_id).eq("data", op.data).maybeSingle();
+  // presença: substitui apenas o registro da mesma turma e dia
+  let consultaExistente = supabase.from("presencas").select("id").eq("aluno_id", op.aluno_id).eq("data", op.data);
+  consultaExistente = op.turma_id ? consultaExistente.eq("turma_id", op.turma_id) : consultaExistente.is("turma_id", null);
+  const existente = await consultaExistente.maybeSingle();
   if (existente.data) {
     const { error } = await supabase
       .from("presencas")
