@@ -15,6 +15,20 @@
       "when": 1790721082383,
       "tag": "0001_padronizar_codigo_matricula_7_caracteres",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790721211361,
+      "tag": "0002_garantir_codigo_aleatorio_com_letras_e_numeros",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790721234121,
+      "tag": "0003_validar_codigo_com_letra_e_numero",
+      "breakpoints": true
     }
   ]
 }
