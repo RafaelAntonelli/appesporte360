@@ -97,8 +97,12 @@ function larguraTexto(texto: string) {
 
 /** Monta a planilha de alunos em ordem crescente de idade, com links dos arquivos no Drive. */
 export async function montarPlanilhaAlunos(opcoes: OpcoesPlanilha): Promise<ArrayBuffer> {
-  const ExcelJS = (await import("exceljs")).default;
-  const wb = new ExcelJS.Workbook();
+  type ConstrutorWorkbook = new () => import("exceljs").Workbook;
+  type ModuloExcel = { Workbook?: ConstrutorWorkbook; default?: ModuloExcel };
+  const modulo = (await import("exceljs")) as unknown as ModuloExcel;
+  const Workbook = modulo.Workbook ?? modulo.default?.Workbook ?? modulo.default?.default?.Workbook;
+  if (!Workbook) throw new Error("Não foi possível iniciar o gerador da planilha.");
+  const wb = new Workbook();
   const ws = wb.addWorksheet("Alunos");
 
   const colunasBase = [

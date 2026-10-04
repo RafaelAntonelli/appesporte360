@@ -1,4 +1,4 @@
 - [x] Padronizar todos os códigos de matrícula como alfanuméricos únicos de exatamente 7 caracteres.
 - [x] Garantir letras e números aleatórios em cada código de matrícula de 7 caracteres.
 - [x] Exibir o código de matrícula nas listas de alunos e em todos os relatórios exportados.
-- [ ] Corrigir a criação da planilha no backup e validar o envio.
+- [x] Corrigir a criação da planilha no backup e validar o envio.
