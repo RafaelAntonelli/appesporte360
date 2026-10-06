@@ -11,3 +11,4 @@
 
 - Treat each active student enrollment as an independent modality/class choice, allowing up to three distinct modalities; attendance is unique per student, class, and date so multi-enrolled students remain independent.
 - Generate student enrollment codes in the database as unique uppercase alphanumeric identifiers with exactly 7 characters so every creation path stays consistent.
+- Use the shared certificate notification predicates in student filters and certificate reports so notification counts and lists follow the same eligibility rule.

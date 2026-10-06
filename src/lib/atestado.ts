@@ -2,6 +2,20 @@
 
 export const PRAZO_AVISO_PADRAO = 30;
 
+type AlunoAtestado = {
+  ativo?: boolean | null;
+  atestado_entregue?: boolean | null;
+  atestado_data?: string | null;
+};
+
+export function notificarAtestadoVencido(aluno: AlunoAtestado) {
+  return aluno.ativo === true && aluno.atestado_entregue === true && atestadoVencido(aluno.atestado_data);
+}
+
+export function notificarAtestadoVencendo(aluno: AlunoAtestado, dias = PRAZO_AVISO_PADRAO) {
+  return aluno.ativo === true && aluno.atestado_entregue === true && atestadoVencendo(aluno.atestado_data, dias);
+}
+
 export function vencimentoAtestado(data: string | null | undefined) {
   if (!data) return null;
   const limite = new Date(`${data}T00:00:00`);
