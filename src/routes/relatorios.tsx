@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { atestadoVencendo, atestadoVencido, diasParaVencer, vencimentoAtestado } from "@/lib/atestado";
+import { notificarAtestadoVencendo, notificarAtestadoVencido, diasParaVencer, vencimentoAtestado } from "@/lib/atestado";
 import { usePrazoAvisoAtestado } from "@/lib/configuracoes";
 import { montarPlanilhaAlunos, ExportacaoCancelada, type AlunoPlanilha } from "@/lib/planilha-alunos";
 import { linksArquivosFn } from "@/lib/links-arquivos.functions";
@@ -179,13 +179,13 @@ function RelatoriosPage() {
   }
 
   const vencidos = useMemo(
-    () => alunos.filter((a) => a.atestado_entregue && atestadoVencido(a.atestado_data)),
+    () => alunos.filter(notificarAtestadoVencido),
     [alunos],
   );
   const vencendo = useMemo(
     () =>
       alunos
-        .filter((a) => a.atestado_entregue && atestadoVencendo(a.atestado_data, prazo))
+        .filter((a) => notificarAtestadoVencendo(a, prazo))
         .sort((x, y) => diasParaVencer(x.atestado_data) - diasParaVencer(y.atestado_data)),
     [alunos, prazo],
   );
