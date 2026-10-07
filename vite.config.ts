@@ -5,8 +5,26 @@
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { guardWorkerRequire } from "./src/lib/worker-require-guard";
 
 export default defineConfig({
+  nitro: {
+    rollupConfig: {
+      plugins: [
+        {
+          name: "esporte360-worker-require-guard",
+          generateBundle: {
+            order: "post",
+            handler(_options, bundle) {
+              for (const entry of Object.values(bundle)) {
+                if (entry.type === "chunk") entry.code = guardWorkerRequire(entry.code);
+              }
+            },
+          },
+        },
+      ],
+    },
+  },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
