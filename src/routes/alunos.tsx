@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 import { encontrarAlunoDuplicado } from "@/lib/duplicidade";
 import { TURNOS, turnoDoHorario, idadePorNascimento, faixaEtariaECA } from "@/lib/turnos";
 import { MODALIDADES, MODALIDADE_PADRAO } from "@/lib/modalidades";
-import { escolasDaRede } from "@/lib/escolas";
 import { gerarCrachaPreviewImagem, gerarCrachasPdfFielAoPreview, type DadosCracha } from "@/lib/cracha";
 import { atestadoVencido, notificarAtestadoVencido, notificarAtestadoVencendo, diasParaVencer } from "@/lib/atestado";
 import { usePrazoAvisoAtestado } from "@/lib/configuracoes";
@@ -25,6 +24,7 @@ import { linksArquivosFn } from "@/lib/links-arquivos.functions";
 import { AppShell } from "@/components/AppShell";
 import { ImportarAlunos } from "@/components/ImportarAlunos";
 import { ConversarWhatsApp } from "@/components/ConversarWhatsApp";
+import { SelecionarEscola } from "@/components/SelecionarEscola";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1407,19 +1407,12 @@ function AlunosPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="nome-escola">Nome da escola</Label>
-                  <Input
-                    id="nome-escola"
-                    list="escolas-rede"
-                    autoComplete="off"
-                    placeholder="Selecione ou digite a escola"
+                  <SelecionarEscola
+                    key={form.rede_ensino}
+                    rede={form.rede_ensino}
                     value={form.escola}
-                    onChange={(e) => setForm({ ...form, escola: e.target.value })}
+                    onChange={(escola) => setForm({ ...form, escola })}
                   />
-                  <datalist id="escolas-rede">
-                    {escolasDaRede(form.rede_ensino).map((escola) => (
-                      <option key={escola} value={escola} />
-                    ))}
-                  </datalist>
                 </div>
               </div>
               <div className="space-y-3 rounded-lg border border-border/70 p-3">

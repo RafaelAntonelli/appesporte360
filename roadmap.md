@@ -7,3 +7,4 @@
 - [x] Adicionar contato pelo WhatsApp no cadastro, nos perfis, nas cinco notificações e na lista de atestados dos relatórios, com testes dos links.
 - [x] Aplicar proteção à inicialização publicada, validar os três testes de regressão e a abertura local.
 - [ ] Publicar a correção e confirmar a abertura no site público; depende da publicação pelo usuário.
+- [x] Permitir pesquisar escolas e adicionar escola fora da lista no formulário de matrícula.
