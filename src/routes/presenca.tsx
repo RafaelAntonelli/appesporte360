@@ -557,13 +557,25 @@ function PresencaPage() {
                           </div>
                         </div>
                         <div className="flex gap-1">
-                          <Button size="sm" variant={atual === "presente" ? "default" : "outline"} onClick={() => void registrar(a, "manual", "presente")}>
+                          <Button
+                            size="sm"
+                            variant={atual === "presente" ? "default" : "outline"}
+                            onClick={() => void (atual === "presente" ? removerRegistro(a) : registrar(a, "manual", "presente"))}
+                          >
                             <Check className="size-4" /> Presença
                           </Button>
-                          <Button size="sm" variant={atual === "falta" ? "destructive" : "outline"} onClick={() => void registrar(a, "manual", "falta")}>
+                          <Button
+                            size="sm"
+                            variant={atual === "falta" ? "destructive" : "outline"}
+                            onClick={() => void (atual === "falta" ? removerRegistro(a) : registrar(a, "manual", "falta"))}
+                          >
                             <X className="size-4" /> Falta
                           </Button>
-                          <Button size="sm" variant={atual === "falta_justificada" ? "secondary" : "outline"} onClick={() => void registrar(a, "manual", "falta_justificada")}>
+                          <Button
+                            size="sm"
+                            variant={atual === "falta_justificada" ? "secondary" : "outline"}
+                            onClick={() => void (atual === "falta_justificada" ? removerRegistro(a) : registrar(a, "manual", "falta_justificada"))}
+                          >
                             <FileCheck className="size-4" /> Justificada
                           </Button>
                         </div>
