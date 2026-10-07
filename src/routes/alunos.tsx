@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { encontrarAlunoDuplicado } from "@/lib/duplicidade";
 import { TURNOS, turnoDoHorario, idadePorNascimento, faixaEtariaECA } from "@/lib/turnos";
 import { MODALIDADES, MODALIDADE_PADRAO } from "@/lib/modalidades";
+import { escolasDaRede } from "@/lib/escolas";
 import { gerarCrachaPreviewImagem, gerarCrachasPdfFielAoPreview, type DadosCracha } from "@/lib/cracha";
 import { atestadoVencido, notificarAtestadoVencido, notificarAtestadoVencendo, diasParaVencer } from "@/lib/atestado";
 import { usePrazoAvisoAtestado } from "@/lib/configuracoes";
@@ -1379,7 +1380,7 @@ function AlunosPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Estuda na rede</Label>
-                  <Select value={form.rede_ensino} onValueChange={(v) => setForm({ ...form, rede_ensino: v })}>
+                  <Select value={form.rede_ensino} onValueChange={(v) => setForm({ ...form, rede_ensino: v, escola: v === form.rede_ensino ? form.escola : "" })}>
                     <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Pública">Pública</SelectItem>
@@ -1388,8 +1389,20 @@ function AlunosPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Nome da escola</Label>
-                  <Input value={form.escola} onChange={(e) => setForm({ ...form, escola: e.target.value })} />
+                  <Label htmlFor="nome-escola">Nome da escola</Label>
+                  <Input
+                    id="nome-escola"
+                    list="escolas-rede"
+                    autoComplete="off"
+                    placeholder="Selecione ou digite a escola"
+                    value={form.escola}
+                    onChange={(e) => setForm({ ...form, escola: e.target.value })}
+                  />
+                  <datalist id="escolas-rede">
+                    {escolasDaRede(form.rede_ensino).map((escola) => (
+                      <option key={escola} value={escola} />
+                    ))}
+                  </datalist>
                 </div>
               </div>
               <div className="space-y-3 rounded-lg border border-border/70 p-3">
