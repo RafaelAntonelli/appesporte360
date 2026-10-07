@@ -15,7 +15,10 @@ const workerNitroConfig: NitroConfig = {
           name: "esporte360-worker-require-guard",
           generateBundle: {
             order: "post",
-            handler(_options, bundle) {
+            handler(
+              _options: unknown,
+              bundle: Record<string, { type: "chunk"; code: string } | { type: "asset" }>,
+            ) {
               for (const entry of Object.values(bundle)) {
                 if (entry.type === "chunk") entry.code = guardWorkerRequire(entry.code);
               }
