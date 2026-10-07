@@ -230,6 +230,36 @@ function PresencaPage() {
     void carregarPresencasDoDia();
   }
 
+  /** Segundo clique no botão já ativo: desmarca e apaga o registro do dia. */
+  async function removerRegistro(aluno: Aluno) {
+    const chave = `${aluno.id}:${turmaId}`;
+    setStatusPorAluno((s) => {
+      const copia = { ...s };
+      delete copia[chave];
+      return copia;
+    });
+    setRegistros((r) => r.filter((x) => !(x.nome === aluno.nome && x.codigo === aluno.codigo)));
+    if (!estaOnline()) {
+      toast.success(`Registro removido: ${aluno.nome} (salvo offline)`);
+      return;
+    }
+    const existente = await supabase
+      .from("presencas")
+      .select("id")
+      .eq("aluno_id", aluno.id)
+      .eq("data", hoje)
+      .eq("turma_id", turmaId)
+      .maybeSingle();
+    if (existente.data) {
+      const { error } = await supabase.from("presencas").delete().eq("id", existente.data.id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+    }
+    toast.success(`Registro removido: ${aluno.nome}`);
+    void carregarPresencasDoDia();
+  }
 
   function onScan(texto: string) {
     const agora = Date.now();
