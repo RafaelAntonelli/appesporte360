@@ -34,7 +34,10 @@ export function SelecionarEscola({ rede, value, onChange }: Props) {
           </Button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
-          <Command>
+          <Command filter={(escola, pesquisa) => {
+            const normalizar = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase();
+            return normalizar(escola).includes(normalizar(pesquisa).trim()) ? 1 : 0;
+          }}>
             <CommandInput placeholder="Pesquisar escola..." aria-label="Pesquisar escola" value={busca} onValueChange={setBusca} />
             <CommandList className="max-h-60 overscroll-contain">
               <CommandEmpty>{rede ? "Nenhuma escola encontrada." : "Selecione a rede de ensino."}</CommandEmpty>
