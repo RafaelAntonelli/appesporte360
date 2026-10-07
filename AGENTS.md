@@ -13,3 +13,4 @@
 - Generate student enrollment codes in the database as unique uppercase alphanumeric identifiers with exactly 7 characters so every creation path stays consistent.
 - Use the shared certificate notification predicates in student filters and certificate reports so notification counts and lists follow the same eligibility rule.
 - Keep school suggestions grouped by education network in a browser-safe shared module; the enrollment form filters suggestions without rejecting existing or manually entered school names.
+- Use one shared browser-safe WhatsApp link helper and contact button for student forms, profiles, and notification lists; click-to-chat delegates app/web handoff without claiming number availability.

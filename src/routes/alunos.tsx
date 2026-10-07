@@ -24,6 +24,7 @@ import { linksArquivosFn } from "@/lib/links-arquivos.functions";
 
 import { AppShell } from "@/components/AppShell";
 import { ImportarAlunos } from "@/components/ImportarAlunos";
+import { ConversarWhatsApp } from "@/components/ConversarWhatsApp";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1001,21 +1002,24 @@ function AlunosPage() {
             </div>
             {notificacoesAbertas["inativos"] ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
               {inativos.map((a) => (
-                <button
-                  key={a.id}
+                <div key={a.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-card p-2" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     void abrirDetalhe(a);
                   }}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg bg-card px-3 py-1.5 text-left text-sm hover:bg-secondary"
+                  className="h-auto min-w-0 flex-1 justify-between gap-2 whitespace-normal px-1 py-1.5 text-left text-sm"
                 >
                   <span><span className="font-mono text-xs text-muted-foreground">{a.codigo}</span> · {a.nome}</span>
                   <span className="text-right text-xs text-muted-foreground">
                     {a.motivo_inativacao ?? "Sem turma"}
                     {a.inativado_em ? ` · ${new Date(a.inativado_em).toLocaleDateString("pt-BR")}` : ""}
                   </span>
-                </button>
+                </Button>
+                <ConversarWhatsApp telefone={a.telefone} />
+                </div>
               ))}
             </div> : null}
           </CardContent>
@@ -1040,18 +1044,21 @@ function AlunosPage() {
             </div>
             {notificacoesAbertas["sem_atestado"] ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
               {semAtestado.map((a) => (
-                <button
-                  key={a.id}
+                <div key={a.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-card p-2" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     abrirEdicao(a);
                   }}
-                  className="flex w-full items-center justify-between rounded-lg bg-card px-3 py-1.5 text-left text-sm hover:bg-secondary"
+                  className="h-auto min-w-0 flex-1 justify-between gap-2 whitespace-normal px-1 py-1.5 text-left text-sm"
                 >
                   <span><span className="font-mono text-xs text-muted-foreground">{a.codigo}</span> · {a.nome}</span>
                   <span className="text-xs text-muted-foreground">Não entregue</span>
-                </button>
+                </Button>
+                <ConversarWhatsApp telefone={a.telefone} />
+                </div>
               ))}
             </div> : null}
           </CardContent>
@@ -1077,20 +1084,23 @@ function AlunosPage() {
 
             {notificacoesAbertas["atestado_vencido"] ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
               {vencidos.map((a) => (
-                <button
-                  key={a.id}
+                <div key={a.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-card p-2" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     abrirEdicao(a);
                   }}
-                  className="flex w-full items-center justify-between rounded-lg bg-card px-3 py-1.5 text-left text-sm hover:bg-secondary"
+                  className="h-auto min-w-0 flex-1 justify-between gap-2 whitespace-normal px-1 py-1.5 text-left text-sm"
                 >
                   <span><span className="font-mono text-xs text-muted-foreground">{a.codigo}</span> · {a.nome}</span>
                   <span className="text-xs text-muted-foreground">
                     Atestado de {a.atestado_data ? new Date(`${a.atestado_data}T00:00:00`).toLocaleDateString("pt-BR") : "-"}
                   </span>
-                </button>
+                </Button>
+                <ConversarWhatsApp telefone={a.telefone} />
+                </div>
               ))}
             </div> : null}
           </CardContent>
@@ -1115,20 +1125,23 @@ function AlunosPage() {
             </div>
             {notificacoesAbertas["atestado_vencer"] ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
               {proximosVencimento.map((a) => (
-                <button
-                  key={a.id}
+                <div key={a.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-card p-2" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     abrirEdicao(a);
                   }}
-                  className="flex w-full items-center justify-between rounded-lg bg-card px-3 py-1.5 text-left text-sm hover:bg-secondary"
+                  className="h-auto min-w-0 flex-1 justify-between gap-2 whitespace-normal px-1 py-1.5 text-left text-sm"
                 >
                   <span><span className="font-mono text-xs text-muted-foreground">{a.codigo}</span> · {a.nome}</span>
                   <span className="text-xs text-muted-foreground">
                     Vence em {diasParaVencer(a.atestado_data)} dia(s)
                   </span>
-                </button>
+                </Button>
+                <ConversarWhatsApp telefone={a.telefone} />
+                </div>
               ))}
             </div> : null}
           </CardContent>
@@ -1153,18 +1166,21 @@ function AlunosPage() {
             </div>
             {notificacoesAbertas["excesso_faltas"] ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
               {excessoFaltas.map((a) => (
-                <button
-                  key={a.id}
+                <div key={a.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-card p-2" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     void abrirDetalhe(a);
                   }}
-                  className="flex w-full items-center justify-between rounded-lg bg-card px-3 py-1.5 text-left text-sm hover:bg-secondary"
+                  className="h-auto min-w-0 flex-1 justify-between gap-2 whitespace-normal px-1 py-1.5 text-left text-sm"
                 >
                   <span><span className="font-mono text-xs text-muted-foreground">{a.codigo}</span> · {a.nome}</span>
                   <span className="text-xs text-muted-foreground">{faltasPorAluno[a.id]} faltas</span>
-                </button>
+                </Button>
+                <ConversarWhatsApp telefone={a.telefone} />
+                </div>
               ))}
             </div> : null}
           </CardContent>
@@ -1338,6 +1354,7 @@ function AlunosPage() {
                     value={form.telefone}
                     onChange={(e) => setForm({ ...form, telefone: formatarCelular(e.target.value) })}
                   />
+                  <ConversarWhatsApp telefone={form.telefone} />
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -1912,6 +1929,8 @@ function AlunosPage() {
                   </p>
                 </div>
               </div>
+
+              <ConversarWhatsApp telefone={detalhe.telefone} />
 
               <Button
                 variant="outline"
