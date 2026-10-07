@@ -5,10 +5,10 @@
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import type { NitroConfig } from "nitro/types";
 import { guardWorkerRequire } from "./src/lib/worker-require-guard";
 
-export default defineConfig({
-  nitro: {
+const workerNitroConfig: NitroConfig = {
     rollupConfig: {
       plugins: [
         {
@@ -24,7 +24,10 @@ export default defineConfig({
         },
       ],
     },
-  },
+};
+
+export default defineConfig({
+  nitro: workerNitroConfig,
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
