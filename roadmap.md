@@ -4,4 +4,4 @@
 - [x] Corrigir a criação da planilha no backup e validar o envio.
 - [x] Excluir alunos inativados das notificações de atestados vencidos e vencendo, com testes de regressão.
 - [x] Adicionar as listas de escolas públicas e privadas ao formulário de matrícula conforme a rede selecionada.
-- [ ] Adicionar contato pelo WhatsApp no cadastro e em todas as notificações de alunos, usando o celular registrado sem presumir disponibilidade.
+- [x] Adicionar contato pelo WhatsApp no cadastro, nos perfis, nas cinco notificações e na lista de atestados dos relatórios, com testes dos links.
