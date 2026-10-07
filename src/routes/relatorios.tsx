@@ -6,6 +6,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
+import { ConversarWhatsApp } from "@/components/ConversarWhatsApp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -679,6 +680,7 @@ function RelatoriosPage() {
                     {CABECALHO_RELATORIO.map((c) => (
                       <th key={c} className="py-2 pr-4 font-medium">{c}</th>
                     ))}
+                    <th className="py-2 pr-4 font-medium">Contato</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -700,6 +702,7 @@ function RelatoriosPage() {
                           <Badge variant={situacao === "Vencido" ? "destructive" : "secondary"}>{situacao}</Badge>
                         </td>
                         <td className="py-2 pr-4">{situacao === "Vencido" ? 0 : diasParaVencer(aluno.atestado_data)}</td>
+                        <td className="py-2 pr-4"><ConversarWhatsApp telefone={aluno.telefone} /></td>
                       </tr>
                     );
                   })}
