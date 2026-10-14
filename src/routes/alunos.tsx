@@ -25,6 +25,8 @@ import { AppShell } from "@/components/AppShell";
 import { ImportarAlunos } from "@/components/ImportarAlunos";
 import { ConversarWhatsApp } from "@/components/ConversarWhatsApp";
 import { SelecionarEscola } from "@/components/SelecionarEscola";
+import { LicencaMedicaSecao } from "@/components/LicencaMedica";
+import { dataISO, formatarDataCurta, ignorarNoAlertaFaltas, licencaTerminada, type LicencaMedica } from "@/lib/licenca";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -222,6 +224,7 @@ function AlunosPage() {
 
   const [historico, setHistorico] = useState<Presenca[] | null>(null);
   const [faltasPorAluno, setFaltasPorAluno] = useState<Record<string, number>>({});
+  const [licencas, setLicencas] = useState<LicencaMedica[]>([]);
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [confirmarExclusao, setConfirmarExclusao] = useState<Aluno[] | null>(null);
   const [inativando, setInativando] = useState<Aluno[] | null>(null);
@@ -274,6 +277,8 @@ function AlunosPage() {
         }
         setFaltasPorAluno(contagem);
       }
+      const lic = await supabase.from("licencas_medicas").select("*").eq("status", "ativa");
+      if (lic.data) setLicencas(lic.data as LicencaMedica[]);
       const comFoto = (a.data as Aluno[]).filter((x) => x.foto_path);
       if (comFoto.length) {
         const { data: signed } = await supabase.storage
@@ -970,7 +975,12 @@ function AlunosPage() {
 
   const vencidos = alunos.filter(notificarAtestadoVencido);
   const proximosVencimento = alunos.filter((a) => notificarAtestadoVencendo(a, prazoAviso));
-  const excessoFaltas = alunos.filter((a) => (faltasPorAluno[a.id] ?? 0) >= 5);
+  const hojeISO = dataISO();
+  const excessoFaltas = alunos.filter((a) => (faltasPorAluno[a.id] ?? 0) >= 5 && !ignorarNoAlertaFaltas(licencas, a.id, hojeISO));
+  const licencasTerminadas = licencas
+    .filter((l) => licencaTerminada(l, hojeISO))
+    .map((l) => ({ licenca: l, aluno: alunos.find((a) => a.id === l.aluno_id) }))
+    .filter((x): x is { licenca: LicencaMedica; aluno: Aluno } => !!x.aluno && x.aluno.ativo);
   const inativos = alunos.filter((a) => !a.ativo).sort((a, b) => a.nome.localeCompare(b.nome));
   const semAtestado = alunos.filter((a) => a.ativo && !a.atestado_entregue).sort((a, b) => a.nome.localeCompare(b.nome));
 
@@ -1141,6 +1151,35 @@ function AlunosPage() {
                   </span>
                 </Button>
                 <ConversarWhatsApp telefone={a.telefone} />
+                </div>
+              ))}
+            </div> : null}
+          </CardContent>
+        </Card>
+      ) : null}
+      {licencasTerminadas.length ? (
+        <Card className="mb-6 border-amber-500/40 bg-amber-500/5">
+          <CardContent className="space-y-2 py-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-2 font-medium text-amber-600">
+                <Bell className="size-4" /> Notificações · {licencasTerminadas.length} licença(s) médica(s) terminada(s)
+              </p>
+              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["licencas"] ? "Esconder licenças terminadas" : "Mostrar licenças terminadas"} onClick={() => alternarNotificacao("licencas")}>
+                {notificacoesAbertas["licencas"] ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              </Button>
+            </div>
+            {notificacoesAbertas["licencas"] ? <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
+              {licencasTerminadas.map(({ licenca, aluno: a }) => (
+                <div key={licenca.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-card p-2">
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => void abrirDetalhe(a)}
+                    className="h-auto min-w-0 flex-1 justify-start whitespace-normal px-1 py-1.5 text-left text-sm"
+                  >
+                    Licença de {a.nome} terminou em {formatarDataCurta(licenca.data_retorno)} — confirmar retorno ou renovar
+                  </Button>
+                  <ConversarWhatsApp telefone={a.telefone} />
                 </div>
               ))}
             </div> : null}
@@ -1924,6 +1963,8 @@ function AlunosPage() {
               </div>
 
               <ConversarWhatsApp telefone={detalhe.telefone} />
+
+              <LicencaMedicaSecao key={detalhe.id} alunoId={detalhe.id} />
 
               <Button
                 variant="outline"

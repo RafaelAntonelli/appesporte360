@@ -28,6 +28,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { formatarDataCurta, licencaVigente, type LicencaMedica } from "@/lib/licenca";
 import { FAIXAS_ETARIAS, faixaEtariaECA, TURNOS, turnoDoHorario, type FaixaEtaria } from "@/lib/turnos";
 import { enfileirar, estaOnline, lerCache, salvarCache } from "@/lib/offline";
 import { correspondeBusca, relevanciaBusca } from "@/lib/formatacao";
@@ -93,6 +94,7 @@ function PresencaPage() {
   const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null);
   const lastRef = useRef<{ code: string; at: number }>({ code: "", at: 0 });
   const [confirmacao, setConfirmacao] = useState<{ aluno: Aluno; jaRegistrado: StatusPresenca | null } | null>(null);
+  const [licencas, setLicencas] = useState<LicencaMedica[]>([]);
   const statusRef = useRef<Record<string, StatusPresenca>>({});
   statusRef.current = statusPorAluno;
 
@@ -117,6 +119,8 @@ function PresencaPage() {
         supabase.from("alunos").select("id,nome,codigo,foto_path,data_nascimento,idade").eq("ativo", true).order("nome"),
         supabase.from("matriculas").select("aluno_id,turma_id").eq("status", "ativa"),
       ]);
+      const lic = await supabase.from("licencas_medicas").select("*").eq("status", "ativa");
+      if (lic.data) setLicencas(lic.data as LicencaMedica[]);
       if (t.data) setTurmas(t.data as Turma[]);
       const listaAlunos = (a.data ?? []) as Aluno[];
       if (a.data) setAlunos(listaAlunos);
@@ -138,7 +142,7 @@ function PresencaPage() {
   }, []);
 
 
-  async function carregarPresencasDoDia() {
+  async function carregarPresencasDoDia(autoLicenca = false): Promise<void> {
     if (!estaOnline()) return;
     let consulta = supabase
       .from("presencas")
@@ -148,6 +152,28 @@ function PresencaPage() {
     if (turmaId) consulta = consulta.eq("turma_id", turmaId);
     const { data } = await consulta;
     if (!data) return;
+    if (turmaId && !autoLicenca) {
+      const registrados = new Set(data.map((r) => String(r.aluno_id)));
+      const pendentes = licencas.filter(
+        (l) =>
+          licencaVigente(l, hoje) &&
+          !registrados.has(l.aluno_id) &&
+          matriculas.some((m) => m.aluno_id === l.aluno_id && m.turma_id === turmaId),
+      );
+      if (pendentes.length) {
+        await supabase.from("presencas").insert(
+          pendentes.map((l) => ({
+            aluno_id: l.aluno_id,
+            turma_id: turmaId,
+            data: hoje,
+            metodo: "licenca",
+            status: "falta_justificada",
+            observacoes: `Licença médica até ${formatarDataCurta(l.data_retorno)}`,
+          })),
+        );
+        return carregarPresencasDoDia(true);
+      }
+    }
     const mapa: Record<string, StatusPresenca> = {};
     data.forEach((r) => {
       mapa[`${String(r.aluno_id)}:${String(r.turma_id ?? "")}`] = (r.status as StatusPresenca) ?? "presente";
@@ -167,7 +193,7 @@ function PresencaPage() {
   useEffect(() => {
     void carregarPresencasDoDia();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hoje, turmaId]);
+  }, [hoje, turmaId, licencas, matriculas]);
 
   async function registrar(aluno: Aluno, metodo: "qrcode" | "manual", status: StatusPresenca = "presente") {
     const obs = observacao.trim() ? observacao.trim() : null;
@@ -553,6 +579,14 @@ function PresencaPage() {
                           <div className="min-w-0">
                             <span className="font-medium">{a.nome}</span>
                              <p className="font-mono text-xs text-muted-foreground">Matrícula {a.codigo}</p>
+                            {(() => {
+                              const lic = licencas.find((l) => l.aluno_id === a.id && licencaVigente(l, hoje));
+                              return lic ? (
+                                <span className="mt-0.5 inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                  Licença até {formatarDataCurta(lic.data_retorno)}
+                                </span>
+                              ) : null;
+                            })()}
                             {atual ? <p className="text-xs text-muted-foreground">{rotuloStatus[atual]}</p> : null}
                           </div>
                         </div>
