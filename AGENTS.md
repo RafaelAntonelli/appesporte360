@@ -15,3 +15,4 @@
 - Keep school suggestions grouped by education network in a browser-safe shared module and use a dedicated searchable selector with manual addition in the enrollment form, so existing and unlisted school names remain valid without changing the shared catalog.
 - Use one shared browser-safe WhatsApp link helper and contact button for student forms, profiles, and notification lists; click-to-chat delegates app/web handoff without claiming number availability.
 - Normalize emitted server createRequire helpers to a literal file URL in the Nitro output hook; the hosted Worker may not provide import.meta.url during module initialization.
+- Medical leave lives in licencas_medicas (one active per student) with shared rules in src/lib/licenca.ts; enrollments stay active during leave so the seat stays reserved.
