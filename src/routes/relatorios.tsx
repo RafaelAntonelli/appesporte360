@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, BarChart3, Download, FileSpreadsheet, FileText, IdCard, Settings2 } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronDown, Download, FileSpreadsheet, FileText, IdCard, Settings2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -80,6 +81,17 @@ const PARAMETROS = [
 ] as const;
 
 type ParametroId = (typeof PARAMETROS)[number]["id"];
+const ORDEM_FILTROS: ParametroId[] = ["faixa", "sexo", "modalidade", "horario", "dias", "turno", "pcd", "situacao"];
+const ROTULO_FILTRO: Record<ParametroId, string> = {
+  faixa: "Faixa etária",
+  sexo: "Sexo",
+  modalidade: "Modalidade",
+  horario: "Horários",
+  dias: "Dias",
+  turno: "Turno",
+  pcd: "Alunos PCD",
+  situacao: "Ativos e Inativos",
+};
 type PontoGrafico = { nome: string; total: number; alunos: Aluno[] };
 
 function RelatoriosPage() {
@@ -94,7 +106,6 @@ function RelatoriosPage() {
     const comValor = ORDEM_FILTROS.filter((id) => valoresEscolhidos[id]?.length);
     return comValor.length ? comValor : ["faixa"];
   }, [valoresEscolhidos]);
-  const [valoresEscolhidos, setValoresEscolhidos] = useState<Partial<Record<ParametroId, string[]>>>({});
   const modoGrafico = "cruzado" as "cruzado" | "separado";
   const [detalhe, setDetalhe] = useState<{ titulo: string; alunos: Aluno[] } | null>(null);
   const { valor: prazo, salvar: salvarPrazo } = usePrazoAvisoAtestado();
