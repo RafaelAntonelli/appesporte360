@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, Search, Pencil, Image as ImageIcon, AlertTriangle, Bell, Trash2, UserX, UserCheck, Download, Camera, Upload, IdCard, FileDown, FileSpreadsheet, ChevronDown, ChevronUp, FileWarning } from "lucide-react";
+import { Plus, Search, Pencil, Image as ImageIcon, AlertTriangle, Bell, Trash2, UserX, UserCheck, Download, Camera, Upload, IdCard, FileDown, FileSpreadsheet, ChevronDown, ChevronUp, FileWarning, Stethoscope } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -1912,6 +1912,9 @@ function AlunosPage() {
                 {aluno.pcd ? <Badge variant="outline">PCD</Badge> : null}
                 <Badge variant={aluno.ativo ? "default" : "secondary"}>{aluno.ativo ? "Ativo" : "Inativo"}</Badge>
                 <Button variant="ghost" size="icon" onClick={() => abrirEdicao(aluno)}><Pencil className="size-4" /></Button>
+                <Button variant="outline" size="sm" title="Registrar Licença Médica" onClick={() => void abrirDetalhe(aluno)}>
+                  <Stethoscope className="size-4" /> Licença médica
+                </Button>
                 <Button variant="outline" size="icon" title="Visualizar crachá" onClick={() => void abrirPreviewCracha(aluno)}><IdCard className="size-4" /></Button>
                 <Button variant="ghost" size="icon" title={aluno.ativo ? "Inativar" : "Reativar"} onClick={() => void alternarAtivo([aluno], !aluno.ativo)}>
                   {aluno.ativo ? <UserX className="size-4" /> : <UserCheck className="size-4" />}
