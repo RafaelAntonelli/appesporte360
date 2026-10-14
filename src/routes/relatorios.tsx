@@ -391,9 +391,9 @@ function RelatoriosPage() {
       return;
     }
     const linhas = [["Parâmetro", "Categoria", "Alunos"]];
-    for (const id of parametros) {
-      const rotulo = PARAMETROS.find((p) => p.id === id)?.rotulo ?? id;
-      for (const ponto of graficos[id] ?? []) linhas.push([rotulo, ponto.nome, String(ponto.total)]);
+    if (descricaoFiltros) linhas.unshift(["Filtros", descricaoFiltros, ""]);
+    for (const secao of secoesGrafico()) {
+      for (const ponto of secao.dados) linhas.push([secao.rotulo, ponto.nome, String(ponto.total)]);
     }
     const csv = linhas.map((l) => l.map((c) => `"${c.replace(/"/g, '""')}"`).join(";")).join("\n");
     baixarArquivo("\uFEFF" + csv, `graficos-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv;charset=utf-8");
