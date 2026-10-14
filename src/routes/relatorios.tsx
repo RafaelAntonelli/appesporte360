@@ -354,10 +354,10 @@ function RelatoriosPage() {
       pcd: ["PCD", "Não PCD"],
       faixa: FAIXAS_ETARIAS,
       turno: TURNOS,
-      dias: GRUPOS_DIAS_PADRAO.map((g) => g.label),
+      dias: Array.from(new Set(turmas.map((t) => rotuloDias(t.dias_semana)).filter(Boolean))),
     };
     for (const p of PARAMETROS) {
-      const encontrados = contarPor(alunos, (a) => valoresDe(p.id, a)).map((x) => x.nome);
+      const encontrados = p.id === "dias" ? [] : contarPor(alunos, (a) => valoresDe(p.id, a)).map((x) => x.nome);
       const base = fixos[p.id] ?? [];
       const extras = encontrados.filter((v) => !base.includes(v)).sort((x, y) => x.localeCompare(y, "pt-BR"));
       r[p.id] = [...base, ...extras];
