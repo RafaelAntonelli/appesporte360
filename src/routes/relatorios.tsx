@@ -67,6 +67,7 @@ type Matricula = { id: string; aluno_id: string; turma_id: string; modalidade: s
 const PRAZOS = [15, 30, 45, 60, 90];
 
 const PARAMETROS = [
+  { id: "situacao", rotulo: "Ativos/Inativos" },
   { id: "pcd", rotulo: "Alunos PCD" },
   { id: "faixa", rotulo: "Faixa etária" },
   { id: "sexo", rotulo: "Sexo" },
@@ -86,6 +87,8 @@ function RelatoriosPage() {
   const [fotos, setFotos] = useState<Record<string, string>>({});
   const [carregando, setCarregando] = useState(true);
   const [parametros, setParametros] = useState<ParametroId[]>(["faixa"]);
+  const [valoresEscolhidos, setValoresEscolhidos] = useState<Partial<Record<ParametroId, string[]>>>({});
+  const [modoGrafico, setModoGrafico] = useState<"cruzado" | "separado">("cruzado");
   const [detalhe, setDetalhe] = useState<{ titulo: string; alunos: Aluno[] } | null>(null);
   const { valor: prazo, salvar: salvarPrazo } = usePrazoAvisoAtestado();
   const [prazoEditado, setPrazoEditado] = useState<string>("");
@@ -290,37 +293,93 @@ function RelatoriosPage() {
     return;
   }
 
-  const graficos = useMemo(() => {
-    const contar = (valorDe: (a: Aluno) => string | string[]) => {
-      const mapa = new Map<string, Aluno[]>();
-      for (const a of alunos) {
-        const valores = valorDe(a);
-        for (const v of Array.isArray(valores) ? valores : [valores]) {
-          const chave = v || "Não informado";
-          const atual = mapa.get(chave);
-          if (atual) atual.push(a);
-          else mapa.set(chave, [a]);
-        }
-      }
-      return [...mapa.entries()]
-        .map(([nome, lista]): PontoGrafico => ({ nome, total: lista.length, alunos: lista }))
-        .sort((x, y) => y.total - x.total);
-    };
+  function valoresDe(id: ParametroId, a: Aluno): string[] {
+    let v: string | string[];
+    switch (id) {
+      case "situacao": v = a.ativo === false ? "Inativos" : "Ativos"; break;
+      case "pcd": v = a.pcd ? "PCD" : "Não PCD"; break;
+      case "faixa": v = a.faixa_etaria || faixaEtariaECA(a.data_nascimento, a.idade) || ""; break;
+      case "sexo": v = a.sexo ?? ""; break;
+      case "modalidade": v = modalidadeDoAluno(a.id); break;
+      case "horario": v = turmaDoAluno(a.id)?.horario ?? ""; break;
+      case "dias": { const d = turmaDoAluno(a.id)?.dias_semana ?? []; v = d.length ? d.join(" e ") : ""; break; }
+      case "turno": v = turnoDoHorario(turmaDoAluno(a.id)?.horario) || ""; break;
+    }
+    return (Array.isArray(v) ? v : [v]).map((x) => x || "Não informado");
+  }
 
-    return {
-      pcd: contar((a) => (a.pcd ? "PCD" : "Não PCD")),
-      faixa: contar((a) => a.faixa_etaria || faixaEtariaECA(a.data_nascimento, a.idade) || ""),
-      sexo: contar((a) => a.sexo ?? ""),
-      modalidade: contar((a) => modalidadeDoAluno(a.id)),
-      horario: contar((a) => turmaDoAluno(a.id)?.horario ?? ""),
-      dias: contar((a) => {
-        const dias = turmaDoAluno(a.id)?.dias_semana ?? [];
-        return dias.length ? dias.join(" e ") : "";
-      }),
-      turno: contar((a) => turnoDoHorario(turmaDoAluno(a.id)?.horario) || ""),
-    } as Record<ParametroId, PontoGrafico[]>;
+  const contarPor = (lista: Aluno[], chavesDe: (a: Aluno) => string[]) => {
+    const mapa = new Map<string, Aluno[]>();
+    for (const a of lista) {
+      for (const chave of new Set(chavesDe(a))) {
+        const atual = mapa.get(chave);
+        if (atual) atual.push(a);
+        else mapa.set(chave, [a]);
+      }
+    }
+    return [...mapa.entries()]
+      .map(([nome, l]): PontoGrafico => ({ nome, total: l.length, alunos: l }))
+      .sort((x, y) => y.total - x.total);
+  };
+
+  /** Opções disponíveis de cada parâmetro (sobre todos os alunos). */
+  const opcoesParametro = useMemo(() => {
+    const r = {} as Record<ParametroId, string[]>;
+    for (const p of PARAMETROS) r[p.id] = contarPor(alunos, (a) => valoresDe(p.id, a)).map((x) => x.nome).sort((x, y) => x.localeCompare(y, "pt-BR"));
+    return r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alunos, turmas, matriculas]);
+
+  /** Alunos que atendem aos valores escolhidos em todos os parâmetros selecionados. */
+  const alunosFiltrados = useMemo(
+    () =>
+      alunos.filter((a) =>
+        parametros.every((id) => {
+          const escolhidos = valoresEscolhidos[id];
+          if (!escolhidos?.length) return true;
+          return valoresDe(id, a).some((v) => escolhidos.includes(v));
+        }),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [alunos, turmas, matriculas, parametros, valoresEscolhidos],
+  );
+
+  const passaValor = (id: ParametroId, v: string) => {
+    const escolhidos = valoresEscolhidos[id];
+    return !escolhidos?.length || escolhidos.includes(v);
+  };
+
+  const graficos = useMemo(() => {
+    const r = {} as Record<ParametroId, PontoGrafico[]>;
+    for (const p of PARAMETROS) r[p.id] = contarPor(alunosFiltrados, (a) => valoresDe(p.id, a).filter((v) => passaValor(p.id, v)));
+    return r;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alunosFiltrados, valoresEscolhidos]);
+
+  /** Gráfico único cruzando as combinações dos parâmetros selecionados. */
+  const graficoCruzado = useMemo(() => {
+    if (!parametros.length) return [] as PontoGrafico[];
+    return contarPor(alunosFiltrados, (a) => {
+      let combos: string[] = [""];
+      for (const id of parametros) {
+        const vs = valoresDe(id, a).filter((v) => passaValor(id, v));
+        combos = combos.flatMap((c) => vs.map((v) => (c ? `${c} · ${v}` : v)));
+      }
+      return combos;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alunosFiltrados, parametros, valoresEscolhidos]);
+
+  const rotuloCruzado = parametros.map((id) => PARAMETROS.find((p) => p.id === id)?.rotulo ?? id).join(" × ");
+  const descricaoFiltros = parametros
+    .filter((id) => valoresEscolhidos[id]?.length)
+    .map((id) => `${PARAMETROS.find((p) => p.id === id)?.rotulo}: ${valoresEscolhidos[id]!.join(", ")}`)
+    .join(" | ");
+
+  function secoesGrafico(): { id: string; rotulo: string; dados: PontoGrafico[] }[] {
+    if (modoGrafico === "cruzado") return [{ id: "cruzado", rotulo: rotuloCruzado, dados: graficoCruzado }];
+    return parametros.map((id) => ({ id, rotulo: PARAMETROS.find((p) => p.id === id)?.rotulo ?? id, dados: graficos[id] ?? [] }));
+  }
 
   function baixarArquivo(conteudo: BlobPart, nome: string, tipo: string) {
     const url = URL.createObjectURL(new Blob([conteudo], { type: tipo }));
@@ -337,9 +396,9 @@ function RelatoriosPage() {
       return;
     }
     const linhas = [["Parâmetro", "Categoria", "Alunos"]];
-    for (const id of parametros) {
-      const rotulo = PARAMETROS.find((p) => p.id === id)?.rotulo ?? id;
-      for (const ponto of graficos[id] ?? []) linhas.push([rotulo, ponto.nome, String(ponto.total)]);
+    if (descricaoFiltros) linhas.unshift(["Filtros", descricaoFiltros, ""]);
+    for (const secao of secoesGrafico()) {
+      for (const ponto of secao.dados) linhas.push([secao.rotulo, ponto.nome, String(ponto.total)]);
     }
     const csv = linhas.map((l) => l.map((c) => `"${c.replace(/"/g, '""')}"`).join(";")).join("\n");
     baixarArquivo("\uFEFF" + csv, `graficos-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv;charset=utf-8");
@@ -402,18 +461,21 @@ function RelatoriosPage() {
       y += 18;
       pdf.setFontSize(10);
       pdf.text(
-        `Gerado em ${new Date().toLocaleString("pt-BR")} · ${alunos.length} aluno(s) · Parâmetros: ${parametros
-          .map((id) => PARAMETROS.find((p) => p.id === id)?.rotulo ?? id)
-          .join(", ")}`,
+        `Gerado em ${new Date().toLocaleString("pt-BR")} · ${alunosFiltrados.length} aluno(s) · Parâmetros: ${rotuloCruzado}`,
         margem,
         y,
       );
-      y += 20;
+      y += 14;
+      if (descricaoFiltros) {
+        for (const l of pdf.splitTextToSize(`Filtros: ${descricaoFiltros}`, larguraUtil) as string[]) {
+          pdf.text(l, margem, y);
+          y += 12;
+        }
+      }
+      y += 8;
 
-      for (const id of parametros) {
-        const rotulo = PARAMETROS.find((p) => p.id === id)?.rotulo ?? id;
+      for (const { id, rotulo, dados } of secoesGrafico()) {
         const svg = document.querySelector<SVGSVGElement>(`#grafico-${id} svg`);
-        const dados = graficos[id] ?? [];
 
         if (y > pdf.internal.pageSize.getHeight() - 160) {
           pdf.addPage();
@@ -566,13 +628,59 @@ function RelatoriosPage() {
             })}
           </div>
 
+          {parametros.length ? (
+            <div className="space-y-3 rounded-xl border border-border p-3">
+              <p className="text-xs text-muted-foreground">
+                Escolha os valores de cada filtro (nenhum marcado = todos). {alunosFiltrados.length} aluno(s) no resultado.
+              </p>
+              {parametros.map((id) => {
+                const rotulo = PARAMETROS.find((p) => p.id === id)?.rotulo ?? id;
+                const escolhidos = valoresEscolhidos[id] ?? [];
+                return (
+                  <div key={id} className="space-y-1">
+                    <p className="text-sm font-medium">{rotulo}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(opcoesParametro[id] ?? []).map((v) => {
+                        const marcado = escolhidos.includes(v);
+                        return (
+                          <Button
+                            key={v}
+                            type="button"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            variant={marcado ? "secondary" : "outline"}
+                            aria-pressed={marcado}
+                            onClick={() =>
+                              setValoresEscolhidos((atual) => ({
+                                ...atual,
+                                [id]: marcado ? escolhidos.filter((x) => x !== v) : [...escolhidos, v],
+                              }))
+                            }
+                          >
+                            {v}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex gap-2 pt-1">
+                <Button type="button" size="sm" variant={modoGrafico === "cruzado" ? "default" : "outline"} onClick={() => setModoGrafico("cruzado")}>
+                  Gráfico único (cruzado)
+                </Button>
+                <Button type="button" size="sm" variant={modoGrafico === "separado" ? "default" : "outline"} onClick={() => setModoGrafico("separado")}>
+                  Gráficos separados
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           {!parametros.length ? (
             <p className="text-sm text-muted-foreground">Selecione um ou mais parâmetros para ver os gráficos.</p>
           ) : (
-            <div className="grid gap-6 lg:grid-cols-2">
-              {parametros.map((id) => {
-                const dados = graficos[id] ?? [];
-                const rotulo = PARAMETROS.find((p) => p.id === id)?.rotulo ?? id;
+            <div className={modoGrafico === "cruzado" ? "grid gap-6" : "grid gap-6 lg:grid-cols-2"}>
+              {secoesGrafico().map(({ id, rotulo, dados }) => {
                 return (
                   <div key={id} id={`grafico-${id}`} className="rounded-xl border border-border p-3">
                     <p className="mb-2 text-sm font-medium">{rotulo}</p>
@@ -584,7 +692,7 @@ function RelatoriosPage() {
                           <BarChart data={dados} layout="vertical" margin={{ left: 8, right: 24 }}>
                             <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-border" />
                             <XAxis type="number" allowDecimals={false} fontSize={12} />
-                            <YAxis type="category" dataKey="nome" width={130} fontSize={12} />
+                            <YAxis type="category" dataKey="nome" width={id === "cruzado" ? 220 : 130} fontSize={12} />
                             <Tooltip formatter={(v: number) => [`${v} aluno(s)`, "Total"]} />
                             <Bar
                               dataKey="total"
