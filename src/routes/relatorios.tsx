@@ -628,13 +628,59 @@ function RelatoriosPage() {
             })}
           </div>
 
+          {parametros.length ? (
+            <div className="space-y-3 rounded-xl border border-border p-3">
+              <p className="text-xs text-muted-foreground">
+                Escolha os valores de cada filtro (nenhum marcado = todos). {alunosFiltrados.length} aluno(s) no resultado.
+              </p>
+              {parametros.map((id) => {
+                const rotulo = PARAMETROS.find((p) => p.id === id)?.rotulo ?? id;
+                const escolhidos = valoresEscolhidos[id] ?? [];
+                return (
+                  <div key={id} className="space-y-1">
+                    <p className="text-sm font-medium">{rotulo}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(opcoesParametro[id] ?? []).map((v) => {
+                        const marcado = escolhidos.includes(v);
+                        return (
+                          <Button
+                            key={v}
+                            type="button"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            variant={marcado ? "secondary" : "outline"}
+                            aria-pressed={marcado}
+                            onClick={() =>
+                              setValoresEscolhidos((atual) => ({
+                                ...atual,
+                                [id]: marcado ? escolhidos.filter((x) => x !== v) : [...escolhidos, v],
+                              }))
+                            }
+                          >
+                            {v}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex gap-2 pt-1">
+                <Button type="button" size="sm" variant={modoGrafico === "cruzado" ? "default" : "outline"} onClick={() => setModoGrafico("cruzado")}>
+                  Gráfico único (cruzado)
+                </Button>
+                <Button type="button" size="sm" variant={modoGrafico === "separado" ? "default" : "outline"} onClick={() => setModoGrafico("separado")}>
+                  Gráficos separados
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           {!parametros.length ? (
             <p className="text-sm text-muted-foreground">Selecione um ou mais parâmetros para ver os gráficos.</p>
           ) : (
-            <div className="grid gap-6 lg:grid-cols-2">
-              {parametros.map((id) => {
-                const dados = graficos[id] ?? [];
-                const rotulo = PARAMETROS.find((p) => p.id === id)?.rotulo ?? id;
+            <div className={modoGrafico === "cruzado" ? "grid gap-6" : "grid gap-6 lg:grid-cols-2"}>
+              {secoesGrafico().map(({ id, rotulo, dados }) => {
                 return (
                   <div key={id} id={`grafico-${id}`} className="rounded-xl border border-border p-3">
                     <p className="mb-2 text-sm font-medium">{rotulo}</p>
@@ -646,7 +692,7 @@ function RelatoriosPage() {
                           <BarChart data={dados} layout="vertical" margin={{ left: 8, right: 24 }}>
                             <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-border" />
                             <XAxis type="number" allowDecimals={false} fontSize={12} />
-                            <YAxis type="category" dataKey="nome" width={130} fontSize={12} />
+                            <YAxis type="category" dataKey="nome" width={id === "cruzado" ? 220 : 130} fontSize={12} />
                             <Tooltip formatter={(v: number) => [`${v} aluno(s)`, "Total"]} />
                             <Bar
                               dataKey="total"
