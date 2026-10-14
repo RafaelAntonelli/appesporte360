@@ -88,7 +88,7 @@ function RelatoriosPage() {
   const [carregando, setCarregando] = useState(true);
   const [parametros, setParametros] = useState<ParametroId[]>(["faixa"]);
   const [valoresEscolhidos, setValoresEscolhidos] = useState<Partial<Record<ParametroId, string[]>>>({});
-  const [modoGrafico, setModoGrafico] = useState<"cruzado" | "separado">("cruzado");
+  const modoGrafico = "cruzado" as "cruzado" | "separado";
   const [detalhe, setDetalhe] = useState<{ titulo: string; alunos: Aluno[] } | null>(null);
   const { valor: prazo, salvar: salvarPrazo } = usePrazoAvisoAtestado();
   const [prazoEditado, setPrazoEditado] = useState<string>("");
@@ -302,7 +302,13 @@ function RelatoriosPage() {
       case "sexo": v = a.sexo ?? ""; break;
       case "modalidade": v = modalidadeDoAluno(a.id); break;
       case "horario": v = turmaDoAluno(a.id)?.horario ?? ""; break;
-      case "dias": { const d = turmaDoAluno(a.id)?.dias_semana ?? []; v = d.length ? d : ""; break; }
+      case "dias": {
+        const d = turmaDoAluno(a.id)?.dias_semana ?? [];
+        const chave = [...d].sort().join("|");
+        const grupo = GRUPOS_DIAS_PADRAO.find((g) => [...g.dias].sort().join("|") === chave);
+        v = grupo ? grupo.label : d.length ? d.join(" e ") : "";
+        break;
+      }
       case "turno": v = turnoDoHorario(turmaDoAluno(a.id)?.horario) || ""; break;
     }
     return (Array.isArray(v) ? v : [v]).map((x) => x || "Não informado");
@@ -607,38 +613,25 @@ function RelatoriosPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="flex flex-wrap gap-2">
-            {PARAMETROS.map((p) => {
-              const ativo = parametros.includes(p.id);
-              return (
-                <Button
-                  key={p.id}
-                  type="button"
-                  size="sm"
-                  variant={ativo ? "default" : "outline"}
-                  onClick={() =>
-                    setParametros((atual) =>
-                      atual.includes(p.id) ? atual.filter((x) => x !== p.id) : [...atual, p.id],
-                    )
-                  }
-                >
-                  {p.rotulo}
-                </Button>
-              );
-            })}
-          </div>
-
-          {PARAMETROS.length ? (
-            <div className="space-y-3 rounded-xl border border-border p-3">
-              <p className="text-xs text-muted-foreground">
-                Escolha os valores de cada filtro (nenhum marcado = todos). Os filtros escolhidos são cruzados no gráfico. {alunosFiltrados.length} aluno(s) no resultado.
-              </p>
-              {PARAMETROS.map(({ id }) => {
-                const rotulo = PARAMETROS.find((p) => p.id === id)?.rotulo ?? id;
+          <div className="rounded-xl border border-border">
+            <p className="border-b border-border px-3 py-2 text-xs text-muted-foreground">
+              Marque os parâmetros e escolha os valores (nenhum valor marcado = todos). Eles são cruzados no gráfico. {alunosFiltrados.length} aluno(s) no resultado.
+            </p>
+            <ul className="divide-y divide-border">
+              {PARAMETROS.map(({ id, rotulo }) => {
+                const ativo = parametros.includes(id);
                 const escolhidos = valoresEscolhidos[id] ?? [];
                 return (
-                  <div key={id} className="space-y-1">
-                    <p className="text-sm font-medium">{rotulo}</p>
+                  <li key={id} className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start">
+                    <label className="flex w-44 shrink-0 cursor-pointer items-center gap-2 pt-1 text-sm font-medium">
+                      <Checkbox
+                        checked={ativo}
+                        onCheckedChange={() =>
+                          setParametros((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]))
+                        }
+                      />
+                      {rotulo}
+                    </label>
                     <div className="flex flex-wrap gap-1.5">
                       {(opcoesParametro[id] ?? []).map((v) => {
                         const marcado = escolhidos.includes(v);
@@ -663,19 +656,11 @@ function RelatoriosPage() {
                         );
                       })}
                     </div>
-                  </div>
+                  </li>
                 );
               })}
-              <div className="flex gap-2 pt-1">
-                <Button type="button" size="sm" variant={modoGrafico === "cruzado" ? "default" : "outline"} onClick={() => setModoGrafico("cruzado")}>
-                  Gráfico único (cruzado)
-                </Button>
-                <Button type="button" size="sm" variant={modoGrafico === "separado" ? "default" : "outline"} onClick={() => setModoGrafico("separado")}>
-                  Gráficos separados
-                </Button>
-              </div>
-            </div>
-          ) : null}
+            </ul>
+          </div>
 
           {!parametros.length ? (
             <p className="text-sm text-muted-foreground">Selecione um ou mais parâmetros para ver os gráficos.</p>
