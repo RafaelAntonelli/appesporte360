@@ -302,7 +302,7 @@ function RelatoriosPage() {
       case "sexo": v = a.sexo ?? ""; break;
       case "modalidade": v = modalidadeDoAluno(a.id); break;
       case "horario": v = turmaDoAluno(a.id)?.horario ?? ""; break;
-      case "dias": { const d = turmaDoAluno(a.id)?.dias_semana ?? []; v = d.length ? d.join(" e ") : ""; break; }
+      case "dias": { const d = turmaDoAluno(a.id)?.dias_semana ?? []; v = d.length ? d : ""; break; }
       case "turno": v = turnoDoHorario(turmaDoAluno(a.id)?.horario) || ""; break;
     }
     return (Array.isArray(v) ? v : [v]).map((x) => x || "Não informado");
@@ -628,12 +628,12 @@ function RelatoriosPage() {
             })}
           </div>
 
-          {parametros.length ? (
+          {PARAMETROS.length ? (
             <div className="space-y-3 rounded-xl border border-border p-3">
               <p className="text-xs text-muted-foreground">
-                Escolha os valores de cada filtro (nenhum marcado = todos). {alunosFiltrados.length} aluno(s) no resultado.
+                Escolha os valores de cada filtro (nenhum marcado = todos). Os filtros escolhidos são cruzados no gráfico. {alunosFiltrados.length} aluno(s) no resultado.
               </p>
-              {parametros.map((id) => {
+              {PARAMETROS.map(({ id }) => {
                 const rotulo = PARAMETROS.find((p) => p.id === id)?.rotulo ?? id;
                 const escolhidos = valoresEscolhidos[id] ?? [];
                 return (
@@ -650,12 +650,13 @@ function RelatoriosPage() {
                             className="h-7 px-2 text-xs"
                             variant={marcado ? "secondary" : "outline"}
                             aria-pressed={marcado}
-                            onClick={() =>
+                            onClick={() => {
                               setValoresEscolhidos((atual) => ({
                                 ...atual,
                                 [id]: marcado ? escolhidos.filter((x) => x !== v) : [...escolhidos, v],
-                              }))
-                            }
+                              }));
+                              if (!marcado) setParametros((atual) => (atual.includes(id) ? atual : [...atual, id]));
+                            }}
                           >
                             {v}
                           </Button>
