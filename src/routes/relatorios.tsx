@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, BarChart3, Download, FileSpreadsheet, FileText, IdCard, Settings2 } from "lucide-react";
 import { toast } from "sonner";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -682,19 +682,44 @@ function RelatoriosPage() {
           ) : (
             <div className={modoGrafico === "cruzado" ? "grid gap-6" : "grid gap-6 lg:grid-cols-2"}>
               {secoesGrafico().map(({ id, rotulo, dados }) => {
+                const totalBase = alunosFiltrados.length || 1;
+                const maior = dados[0];
+                const comPct = dados.map((d) => ({ ...d, rotuloBarra: `${d.total} (${Math.round((d.total / totalBase) * 100)}%)` }));
                 return (
                   <div key={id} id={`grafico-${id}`} className="rounded-xl border border-border p-3">
-                    <p className="mb-2 text-sm font-medium">{rotulo}</p>
+                    <div className="mb-3 space-y-1">
+                      <p className="text-sm font-semibold">
+                        {id === "cruzado" ? "Quantos alunos há em cada combinação de " : "Quantos alunos há em cada opção de "}
+                        <span className="text-primary">{rotulo}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Base: {alunosFiltrados.length} aluno(s){descricaoFiltros ? ` · Filtros: ${descricaoFiltros}` : " · sem filtros de valor"}
+                      </p>
+                      {maior ? (
+                        <p className="text-xs">
+                          Maior grupo: <strong>{maior.nome}</strong> com {maior.total} aluno(s).
+                        </p>
+                      ) : null}
+                    </div>
                     {!dados.length ? (
-                      <p className="py-8 text-center text-sm text-muted-foreground">Sem dados.</p>
+                      <p className="py-8 text-center text-sm text-muted-foreground">Nenhum aluno com esses filtros.</p>
                     ) : (
                       <>
-                        <ResponsiveContainer width="100%" height={Math.max(200, dados.length * 34 + 40)}>
-                          <BarChart data={dados} layout="vertical" margin={{ left: 8, right: 24 }}>
+                        <ResponsiveContainer width="100%" height={Math.max(200, dados.length * 38 + 50)}>
+                          <BarChart data={comPct} layout="vertical" margin={{ left: 8, right: 70 }}>
                             <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-border" />
-                            <XAxis type="number" allowDecimals={false} fontSize={12} />
-                            <YAxis type="category" dataKey="nome" width={id === "cruzado" ? 220 : 130} fontSize={12} />
-                            <Tooltip formatter={(v: number) => [`${v} aluno(s)`, "Total"]} />
+                            <XAxis
+                              type="number"
+                              allowDecimals={false}
+                              fontSize={12}
+                              label={{ value: "Número de alunos", position: "insideBottom", offset: -2, fontSize: 11 }}
+                              height={40}
+                            />
+                            <YAxis type="category" dataKey="nome" width={id === "cruzado" ? 240 : 140} fontSize={12} />
+                            <Tooltip
+                              formatter={(v: number) => [`${v} aluno(s) · ${Math.round((v / totalBase) * 100)}% da base`, "Total"]}
+                              labelFormatter={(l: string) => (id === "cruzado" ? l.split(" · ").join(" + ") : l)}
+                            />
                             <Bar
                               dataKey="total"
                               radius={[0, 6, 6, 0]}
@@ -704,11 +729,13 @@ function RelatoriosPage() {
                                 const dado = ponto as { payload?: PontoGrafico };
                                 if (dado?.payload) setDetalhe({ titulo: `${rotulo}: ${dado.payload.nome}`, alunos: dado.payload.alunos });
                               }}
-                            />
+                            >
+                              <LabelList dataKey="rotuloBarra" position="right" fontSize={12} className="fill-foreground" />
+                            </Bar>
                           </BarChart>
                         </ResponsiveContainer>
                         <p className="mt-1 text-center text-xs text-muted-foreground">
-                          Clique em uma barra para ver os alunos.
+                          Cada barra mostra a quantidade de alunos e a porcentagem da base. Clique em uma barra para ver a lista de alunos.
                         </p>
                       </>
                     )}
