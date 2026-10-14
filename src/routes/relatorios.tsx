@@ -81,6 +81,15 @@ const PARAMETROS = [
 ] as const;
 
 type ParametroId = (typeof PARAMETROS)[number]["id"];
+
+/** Rótulo dos dias de uma turma, igual ao do formulário (ex.: "Terça e Quinta"). */
+function rotuloDias(dias: string[] | null | undefined) {
+  const d = dias ?? [];
+  if (!d.length) return "";
+  const chave = [...d].sort().join("|");
+  const grupo = GRUPOS_DIAS_PADRAO.find((g) => [...g.dias].sort().join("|") === chave);
+  return grupo ? grupo.label : d.join(" e ");
+}
 const ORDEM_FILTROS: ParametroId[] = ["faixa", "sexo", "modalidade", "horario", "dias", "turno", "pcd", "situacao"];
 const ROTULO_FILTRO: Record<ParametroId, string> = {
   faixa: "Faixa etária",
@@ -313,20 +322,14 @@ function RelatoriosPage() {
 
   function valoresDe(id: ParametroId, a: Aluno): string[] {
     let v: string | string[];
-    switch (id) {
+    switch (id as ParametroId) {
       case "situacao": v = a.ativo === false ? "Inativos" : "Ativos"; break;
       case "pcd": v = a.pcd ? "PCD" : "Não PCD"; break;
       case "faixa": v = a.faixa_etaria || faixaEtariaECA(a.data_nascimento, a.idade) || ""; break;
       case "sexo": v = a.sexo ?? ""; break;
       case "modalidade": v = modalidadeDoAluno(a.id); break;
       case "horario": v = turmaDoAluno(a.id)?.horario ?? ""; break;
-      case "dias": {
-        const d = turmaDoAluno(a.id)?.dias_semana ?? [];
-        const chave = [...d].sort().join("|");
-        const grupo = GRUPOS_DIAS_PADRAO.find((g) => [...g.dias].sort().join("|") === chave);
-        v = grupo ? grupo.label : d.length ? d.join(" e ") : "";
-        break;
-      }
+      case "dias": v = rotuloDias(turmaDoAluno(a.id)?.dias_semana); break;
       case "turno": v = turnoDoHorario(turmaDoAluno(a.id)?.horario) || ""; break;
     }
     return (Array.isArray(v) ? v : [v]).map((x) => x || "Não informado");
