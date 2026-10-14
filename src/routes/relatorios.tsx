@@ -88,7 +88,12 @@ function RelatoriosPage() {
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
   const [fotos, setFotos] = useState<Record<string, string>>({});
   const [carregando, setCarregando] = useState(true);
-  const [parametros, setParametros] = useState<ParametroId[]>(["faixa"]);
+  const [valoresEscolhidosEstado, setValoresEscolhidos] = useState<Partial<Record<ParametroId, string[]>>>({});
+  const valoresEscolhidos = valoresEscolhidosEstado;
+  const parametros = useMemo<ParametroId[]>(() => {
+    const comValor = ORDEM_FILTROS.filter((id) => valoresEscolhidos[id]?.length);
+    return comValor.length ? comValor : ["faixa"];
+  }, [valoresEscolhidos]);
   const [valoresEscolhidos, setValoresEscolhidos] = useState<Partial<Record<ParametroId, string[]>>>({});
   const modoGrafico = "cruzado" as "cruzado" | "separado";
   const [detalhe, setDetalhe] = useState<{ titulo: string; alunos: Aluno[] } | null>(null);
@@ -627,53 +632,54 @@ function RelatoriosPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="rounded-xl border border-border">
-            <p className="border-b border-border px-3 py-2 text-xs text-muted-foreground">
-              Marque os parâmetros e escolha os valores (nenhum valor marcado = todos). Eles são cruzados no gráfico. {alunosFiltrados.length} aluno(s) no resultado.
-            </p>
-            <ul className="divide-y divide-border">
-              {PARAMETROS.map(({ id, rotulo }) => {
-                const ativo = parametros.includes(id);
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {ORDEM_FILTROS.map((id) => {
+                const rotulo = ROTULO_FILTRO[id];
                 const escolhidos = valoresEscolhidos[id] ?? [];
+                const resumo = !escolhidos.length ? "Todos" : escolhidos.length === 1 ? escolhidos[0] : `${escolhidos.length} selecionados`;
                 return (
-                  <li key={id} className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-start">
-                    <label className="flex w-44 shrink-0 cursor-pointer items-center gap-2 pt-1 text-sm font-medium">
-                      <Checkbox
-                        checked={ativo}
-                        onCheckedChange={() =>
-                          setParametros((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]))
-                        }
-                      />
-                      {rotulo}
-                    </label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(opcoesParametro[id] ?? []).map((v) => {
-                        const marcado = escolhidos.includes(v);
-                        return (
-                          <Button
-                            key={v}
-                            type="button"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            variant={marcado ? "secondary" : "outline"}
-                            aria-pressed={marcado}
-                            onClick={() => {
-                              setValoresEscolhidos((atual) => ({
-                                ...atual,
-                                [id]: marcado ? escolhidos.filter((x) => x !== v) : [...escolhidos, v],
-                              }));
-                              if (!marcado) setParametros((atual) => (atual.includes(id) ? atual : [...atual, id]));
-                            }}
-                          >
-                            {v}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </li>
+                  <div key={id} className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{rotulo}</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="h-11 w-full justify-between font-medium">
+                          <span className="truncate">{resumo}</span>
+                          <ChevronDown className="size-4 opacity-70" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent align="start" className="w-64 p-2">
+                        <div className="max-h-72 space-y-1 overflow-y-auto">
+                          {(opcoesParametro[id] ?? []).map((v) => {
+                            const marcado = escolhidos.includes(v);
+                            return (
+                              <label key={v} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent">
+                                <Checkbox
+                                  checked={marcado}
+                                  onCheckedChange={() =>
+                                    setValoresEscolhidos((atual) => ({
+                                      ...atual,
+                                      [id]: marcado ? escolhidos.filter((x) => x !== v) : [...escolhidos, v],
+                                    }))
+                                  }
+                                />
+                                {v}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setValoresEscolhidos({})}>
+                Limpar filtros
+              </Button>
+              <p className="text-xs text-muted-foreground">{alunosFiltrados.length} aluno(s) no resultado</p>
+            </div>
           </div>
 
           {!parametros.length ? (
