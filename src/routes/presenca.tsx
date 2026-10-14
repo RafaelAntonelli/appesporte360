@@ -28,6 +28,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { PerfilAluno } from "@/components/PerfilAluno";
 import { formatarDataCurta, licencaVigente, type LicencaMedica } from "@/lib/licenca";
 import { FAIXAS_ETARIAS, faixaEtariaECA, TURNOS, turnoDoHorario, type FaixaEtaria } from "@/lib/turnos";
 import { enfileirar, estaOnline, lerCache, salvarCache } from "@/lib/offline";
@@ -94,6 +95,7 @@ function PresencaPage() {
   const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null);
   const lastRef = useRef<{ code: string; at: number }>({ code: "", at: 0 });
   const [confirmacao, setConfirmacao] = useState<{ aluno: Aluno; jaRegistrado: StatusPresenca | null } | null>(null);
+  const [perfilAlunoId, setPerfilAlunoId] = useState<string | null>(null);
   const [licencas, setLicencas] = useState<LicencaMedica[]>([]);
   const statusRef = useRef<Record<string, StatusPresenca>>({});
   statusRef.current = statusPorAluno;
@@ -577,7 +579,7 @@ function PresencaPage() {
                             </span>
                           )}
                           <div className="min-w-0">
-                            <span className="font-medium">{a.nome}</span>
+                            <button type="button" className="text-left font-medium hover:underline" title="Abrir perfil do aluno" onClick={() => setPerfilAlunoId(a.id)}>{a.nome}</button>
                              <p className="font-mono text-xs text-muted-foreground">Matrícula {a.codigo}</p>
                             {(() => {
                               const lic = licencas.find((l) => l.aluno_id === a.id && licencaVigente(l, hoje));
@@ -686,6 +688,7 @@ function PresencaPage() {
 
         </AlertDialogContent>
       </AlertDialog>
+      <PerfilAluno alunoId={perfilAlunoId} onFechar={() => setPerfilAlunoId(null)} />
     </AppShell>
 
   );
