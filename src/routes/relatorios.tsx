@@ -34,7 +34,9 @@ import { montarPlanilhaAlunos, ExportacaoCancelada, type AlunoPlanilha } from "@
 import { linksArquivosFn } from "@/lib/links-arquivos.functions";
 
 import { gerarCrachasPdfFielAoPreview, type DadosCracha } from "@/lib/cracha";
-import { faixaEtariaECA, turnoDoHorario } from "@/lib/turnos";
+import { FAIXAS_ETARIAS, TURNOS, faixaEtariaECA, turnoDoHorario } from "@/lib/turnos";
+import { GRUPOS_DIAS_PADRAO } from "@/lib/dias";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 export const Route = createFileRoute("/relatorios")({
@@ -331,7 +333,19 @@ function RelatoriosPage() {
   /** Opções disponíveis de cada parâmetro (sobre todos os alunos). */
   const opcoesParametro = useMemo(() => {
     const r = {} as Record<ParametroId, string[]>;
-    for (const p of PARAMETROS) r[p.id] = contarPor(alunos, (a) => valoresDe(p.id, a)).map((x) => x.nome).sort((x, y) => x.localeCompare(y, "pt-BR"));
+    const fixos: Partial<Record<ParametroId, readonly string[]>> = {
+      situacao: ["Ativos", "Inativos"],
+      pcd: ["PCD", "Não PCD"],
+      faixa: FAIXAS_ETARIAS,
+      turno: TURNOS,
+      dias: GRUPOS_DIAS_PADRAO.map((g) => g.label),
+    };
+    for (const p of PARAMETROS) {
+      const encontrados = contarPor(alunos, (a) => valoresDe(p.id, a)).map((x) => x.nome);
+      const base = fixos[p.id] ?? [];
+      const extras = encontrados.filter((v) => !base.includes(v)).sort((x, y) => x.localeCompare(y, "pt-BR"));
+      r[p.id] = [...base, ...extras];
+    }
     return r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alunos, turmas, matriculas]);
