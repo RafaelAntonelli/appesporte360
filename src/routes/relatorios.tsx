@@ -456,18 +456,21 @@ function RelatoriosPage() {
       y += 18;
       pdf.setFontSize(10);
       pdf.text(
-        `Gerado em ${new Date().toLocaleString("pt-BR")} · ${alunos.length} aluno(s) · Parâmetros: ${parametros
-          .map((id) => PARAMETROS.find((p) => p.id === id)?.rotulo ?? id)
-          .join(", ")}`,
+        `Gerado em ${new Date().toLocaleString("pt-BR")} · ${alunosFiltrados.length} aluno(s) · Parâmetros: ${rotuloCruzado}`,
         margem,
         y,
       );
-      y += 20;
+      y += 14;
+      if (descricaoFiltros) {
+        for (const l of pdf.splitTextToSize(`Filtros: ${descricaoFiltros}`, larguraUtil) as string[]) {
+          pdf.text(l, margem, y);
+          y += 12;
+        }
+      }
+      y += 8;
 
-      for (const id of parametros) {
-        const rotulo = PARAMETROS.find((p) => p.id === id)?.rotulo ?? id;
+      for (const { id, rotulo, dados } of secoesGrafico()) {
         const svg = document.querySelector<SVGSVGElement>(`#grafico-${id} svg`);
-        const dados = graficos[id] ?? [];
 
         if (y > pdf.internal.pageSize.getHeight() - 160) {
           pdf.addPage();
