@@ -307,6 +307,59 @@ export type Database = {
         }
         Relationships: []
       }
+      licencas_medicas: {
+        Row: {
+          aluno_id: string
+          anexo_path: string | null
+          concluida_em: string | null
+          concluida_por: string | null
+          created_at: string
+          data_inicio: string
+          data_retorno: string
+          id: string
+          liberacao_path: string | null
+          motivo: string | null
+          registrado_por: string | null
+          status: string
+        }
+        Insert: {
+          aluno_id: string
+          anexo_path?: string | null
+          concluida_em?: string | null
+          concluida_por?: string | null
+          created_at?: string
+          data_inicio?: string
+          data_retorno: string
+          id?: string
+          liberacao_path?: string | null
+          motivo?: string | null
+          registrado_por?: string | null
+          status?: string
+        }
+        Update: {
+          aluno_id?: string
+          anexo_path?: string | null
+          concluida_em?: string | null
+          concluida_por?: string | null
+          created_at?: string
+          data_inicio?: string
+          data_retorno?: string
+          id?: string
+          liberacao_path?: string | null
+          motivo?: string | null
+          registrado_por?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "licencas_medicas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matriculas: {
         Row: {
           aluno_id: string

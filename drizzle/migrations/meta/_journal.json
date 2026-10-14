@@ -29,6 +29,13 @@
       "when": 1790721234121,
       "tag": "0003_validar_codigo_com_letra_e_numero",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792013487007,
+      "tag": "0004_licencas_medicas",
+      "breakpoints": true
     }
   ]
 }
