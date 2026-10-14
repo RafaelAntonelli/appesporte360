@@ -67,6 +67,7 @@ type Matricula = { id: string; aluno_id: string; turma_id: string; modalidade: s
 const PRAZOS = [15, 30, 45, 60, 90];
 
 const PARAMETROS = [
+  { id: "situacao", rotulo: "Ativos/Inativos" },
   { id: "pcd", rotulo: "Alunos PCD" },
   { id: "faixa", rotulo: "Faixa etária" },
   { id: "sexo", rotulo: "Sexo" },
@@ -86,6 +87,8 @@ function RelatoriosPage() {
   const [fotos, setFotos] = useState<Record<string, string>>({});
   const [carregando, setCarregando] = useState(true);
   const [parametros, setParametros] = useState<ParametroId[]>(["faixa"]);
+  const [valoresEscolhidos, setValoresEscolhidos] = useState<Partial<Record<ParametroId, string[]>>>({});
+  const [modoGrafico, setModoGrafico] = useState<"cruzado" | "separado">("cruzado");
   const [detalhe, setDetalhe] = useState<{ titulo: string; alunos: Aluno[] } | null>(null);
   const { valor: prazo, salvar: salvarPrazo } = usePrazoAvisoAtestado();
   const [prazoEditado, setPrazoEditado] = useState<string>("");
