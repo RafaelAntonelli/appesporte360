@@ -290,37 +290,88 @@ function RelatoriosPage() {
     return;
   }
 
-  const graficos = useMemo(() => {
-    const contar = (valorDe: (a: Aluno) => string | string[]) => {
-      const mapa = new Map<string, Aluno[]>();
-      for (const a of alunos) {
-        const valores = valorDe(a);
-        for (const v of Array.isArray(valores) ? valores : [valores]) {
-          const chave = v || "Não informado";
-          const atual = mapa.get(chave);
-          if (atual) atual.push(a);
-          else mapa.set(chave, [a]);
-        }
-      }
-      return [...mapa.entries()]
-        .map(([nome, lista]): PontoGrafico => ({ nome, total: lista.length, alunos: lista }))
-        .sort((x, y) => y.total - x.total);
-    };
+  function valoresDe(id: ParametroId, a: Aluno): string[] {
+    let v: string | string[];
+    switch (id) {
+      case "situacao": v = a.ativo === false ? "Inativos" : "Ativos"; break;
+      case "pcd": v = a.pcd ? "PCD" : "Não PCD"; break;
+      case "faixa": v = a.faixa_etaria || faixaEtariaECA(a.data_nascimento, a.idade) || ""; break;
+      case "sexo": v = a.sexo ?? ""; break;
+      case "modalidade": v = modalidadeDoAluno(a.id); break;
+      case "horario": v = turmaDoAluno(a.id)?.horario ?? ""; break;
+      case "dias": { const d = turmaDoAluno(a.id)?.dias_semana ?? []; v = d.length ? d.join(" e ") : ""; break; }
+      case "turno": v = turnoDoHorario(turmaDoAluno(a.id)?.horario) || ""; break;
+    }
+    return (Array.isArray(v) ? v : [v]).map((x) => x || "Não informado");
+  }
 
-    return {
-      pcd: contar((a) => (a.pcd ? "PCD" : "Não PCD")),
-      faixa: contar((a) => a.faixa_etaria || faixaEtariaECA(a.data_nascimento, a.idade) || ""),
-      sexo: contar((a) => a.sexo ?? ""),
-      modalidade: contar((a) => modalidadeDoAluno(a.id)),
-      horario: contar((a) => turmaDoAluno(a.id)?.horario ?? ""),
-      dias: contar((a) => {
-        const dias = turmaDoAluno(a.id)?.dias_semana ?? [];
-        return dias.length ? dias.join(" e ") : "";
-      }),
-      turno: contar((a) => turnoDoHorario(turmaDoAluno(a.id)?.horario) || ""),
-    } as Record<ParametroId, PontoGrafico[]>;
+  const contarPor = (lista: Aluno[], chavesDe: (a: Aluno) => string[]) => {
+    const mapa = new Map<string, Aluno[]>();
+    for (const a of lista) {
+      for (const chave of new Set(chavesDe(a))) {
+        const atual = mapa.get(chave);
+        if (atual) atual.push(a);
+        else mapa.set(chave, [a]);
+      }
+    }
+    return [...mapa.entries()]
+      .map(([nome, l]): PontoGrafico => ({ nome, total: l.length, alunos: l }))
+      .sort((x, y) => y.total - x.total);
+  };
+
+  /** Opções disponíveis de cada parâmetro (sobre todos os alunos). */
+  const opcoesParametro = useMemo(() => {
+    const r = {} as Record<ParametroId, string[]>;
+    for (const p of PARAMETROS) r[p.id] = contarPor(alunos, (a) => valoresDe(p.id, a)).map((x) => x.nome).sort((x, y) => x.localeCompare(y, "pt-BR"));
+    return r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alunos, turmas, matriculas]);
+
+  /** Alunos que atendem aos valores escolhidos em todos os parâmetros selecionados. */
+  const alunosFiltrados = useMemo(
+    () =>
+      alunos.filter((a) =>
+        parametros.every((id) => {
+          const escolhidos = valoresEscolhidos[id];
+          if (!escolhidos?.length) return true;
+          return valoresDe(id, a).some((v) => escolhidos.includes(v));
+        }),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [alunos, turmas, matriculas, parametros, valoresEscolhidos],
+  );
+
+  const passaValor = (id: ParametroId, v: string) => {
+    const escolhidos = valoresEscolhidos[id];
+    return !escolhidos?.length || escolhidos.includes(v);
+  };
+
+  const graficos = useMemo(() => {
+    const r = {} as Record<ParametroId, PontoGrafico[]>;
+    for (const p of PARAMETROS) r[p.id] = contarPor(alunosFiltrados, (a) => valoresDe(p.id, a).filter((v) => passaValor(p.id, v)));
+    return r;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alunosFiltrados, valoresEscolhidos]);
+
+  /** Gráfico único cruzando as combinações dos parâmetros selecionados. */
+  const graficoCruzado = useMemo(() => {
+    if (!parametros.length) return [] as PontoGrafico[];
+    return contarPor(alunosFiltrados, (a) => {
+      let combos: string[] = [""];
+      for (const id of parametros) {
+        const vs = valoresDe(id, a).filter((v) => passaValor(id, v));
+        combos = combos.flatMap((c) => vs.map((v) => (c ? `${c} · ${v}` : v)));
+      }
+      return combos;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alunosFiltrados, parametros, valoresEscolhidos]);
+
+  const rotuloCruzado = parametros.map((id) => PARAMETROS.find((p) => p.id === id)?.rotulo ?? id).join(" × ");
+  const descricaoFiltros = parametros
+    .filter((id) => valoresEscolhidos[id]?.length)
+    .map((id) => `${PARAMETROS.find((p) => p.id === id)?.rotulo}: ${valoresEscolhidos[id]!.join(", ")}`)
+    .join(" | ");
 
   function baixarArquivo(conteudo: BlobPart, nome: string, tipo: string) {
     const url = URL.createObjectURL(new Blob([conteudo], { type: tipo }));
