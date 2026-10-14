@@ -32,7 +32,8 @@ export type DadosCracha = {
 const CAMPOS = {
   nome: { x: 526, y: 312, w: 890, pt: 12 },
   pcd: { x: 1474, y: 312, w: 350, pt: 12 },
-  documento: { x: 526, y: 498, w: 1300, pt: 10 },
+  documento: { x: 526, y: 498, w: 820, pt: 10 },
+  matricula: { x: 1400, y: 498, w: 424, pt: 10 },
   responsavel: { x: 526, y: 650, w: 1300, pt: 10 },
   celular: { x: 526, y: 807, w: 700, pt: 10 },
   modalidade: { x: 1269, y: 807, w: 555, pt: 10 },
@@ -103,7 +104,7 @@ function escrever(doc: jsPDF, campo: { x: number; y: number; w: number }, texto:
 }
 
 function documentoFormatado(d: DadosCracha) {
-  return [d.rg, d.cpf].filter(Boolean).join("  /  ");
+  return (d.cpf && d.cpf.trim()) || (d.rg && d.rg.trim()) || "";
 }
 
 async function desenharCracha(doc: jsPDF, dados: DadosCracha, modelo: string, ox = 0, oy = 0) {
@@ -141,6 +142,7 @@ async function desenharCracha(doc: jsPDF, dados: DadosCracha, modelo: string, ox
   put(CAMPOS.nome, dados.nome ?? "");
   put(CAMPOS.pcd, dados.pcd ? "Sim" : "Não");
   put(CAMPOS.documento, documentoFormatado(dados));
+  put(CAMPOS.matricula, dados.codigo ? `Matrícula: ${dados.codigo}` : "");
   put(CAMPOS.responsavel, dados.responsavel ?? "");
   put(CAMPOS.celular, dados.telefone ?? "");
   put(CAMPOS.modalidade, dados.modalidade ?? "");
@@ -362,6 +364,7 @@ export async function renderizarCrachaCanvas(
   put(CAMPOS.nome, dados.nome ?? "");
   put(CAMPOS.pcd, dados.pcd ? "Sim" : "Não");
   put(CAMPOS.documento, documentoFormatado(dados));
+  put(CAMPOS.matricula, dados.codigo ? `Matrícula: ${dados.codigo}` : "");
   put(CAMPOS.responsavel, dados.responsavel ?? "");
   put(CAMPOS.celular, dados.telefone ?? "");
   put(CAMPOS.modalidade, dados.modalidade ?? "");
