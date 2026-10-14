@@ -376,6 +376,11 @@ function RelatoriosPage() {
     .map((id) => `${PARAMETROS.find((p) => p.id === id)?.rotulo}: ${valoresEscolhidos[id]!.join(", ")}`)
     .join(" | ");
 
+  function secoesGrafico(): { id: string; rotulo: string; dados: PontoGrafico[] }[] {
+    if (modoGrafico === "cruzado") return [{ id: "cruzado", rotulo: rotuloCruzado, dados: graficoCruzado }];
+    return parametros.map((id) => ({ id, rotulo: PARAMETROS.find((p) => p.id === id)?.rotulo ?? id, dados: graficos[id] ?? [] }));
+  }
+
   function baixarArquivo(conteudo: BlobPart, nome: string, tipo: string) {
     const url = URL.createObjectURL(new Blob([conteudo], { type: tipo }));
     const a = document.createElement("a");
