@@ -97,6 +97,7 @@ type Aluno = {
   motivo_inativacao: string | null;
   inativado_em: string | null;
   inativado_por: string | null;
+  inativado_por_nome?: string | null;
 };
 
 const DOCUMENTOS = [
@@ -117,7 +118,7 @@ const ROTULO_STATUS = {
 } as const;
 
 type Turma = { id: string; nome: string; horario: string | null; dias_semana: string[] | null; modalidade: string | null; capacidade: number | null };
-type Matricula = { id: string; aluno_id: string; turma_id: string; status: string; modalidade: string; data_inicio: string | null; created_at: string | null; registrado_por: string | null };
+type Matricula = { id: string; aluno_id: string; turma_id: string; status: string; modalidade: string; data_inicio: string | null; created_at: string | null; registrado_por: string | null; registrado_por_nome?: string | null };
 type Presenca = { id: string; data: string; status: string; turma_id: string | null; observacoes: string | null };
 type EscolhaMatricula = { modalidade: string; turmaId: string; turno: string };
 
@@ -2055,7 +2056,7 @@ function AlunosPage() {
                   {detalhe.inativado_em ? (
                     <p className="text-xs text-muted-foreground">
                       Inativado em {new Date(detalhe.inativado_em).toLocaleDateString("pt-BR")} às {new Date(detalhe.inativado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                      {detalhe.inativado_por ? ` por ${nomesUsuarios[detalhe.inativado_por] ?? "usuário"}` : ""}
+                      {detalhe.inativado_por || detalhe.inativado_por_nome ? ` por ${(detalhe.inativado_por && nomesUsuarios[detalhe.inativado_por]) || detalhe.inativado_por_nome || "usuário"}` : ""}
                     </p>
                   ) : null}
                 </div>
@@ -2076,7 +2077,7 @@ function AlunosPage() {
                         {m.created_at ? (
                           <p className="text-xs text-muted-foreground">
                             Matriculado em {new Date(m.created_at).toLocaleDateString("pt-BR")} às {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                            {m.registrado_por ? ` por ${nomesUsuarios[m.registrado_por] ?? "usuário"}` : ""}
+                            {m.registrado_por || m.registrado_por_nome ? ` por ${(m.registrado_por && nomesUsuarios[m.registrado_por]) || m.registrado_por_nome || "usuário"}` : ""}
                           </p>
                         ) : null}
                       </div>
