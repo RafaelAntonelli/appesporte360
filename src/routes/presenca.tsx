@@ -1,3 +1,4 @@
+import { ordenarTurmasDoProfessor, usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Camera, CameraOff, Check, Search, X, FileCheck, CalendarIcon, SlidersHorizontal } from "lucide-react";
@@ -77,6 +78,7 @@ const GRUPOS_DIAS = [
 ];
 
 function PresencaPage() {
+  const { minhasTurmas } = usePermissoes();
   const { lista: listaGrupos } = useGruposDias();
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [alunos, setAlunos] = useState<Aluno[]>([]);
@@ -359,7 +361,7 @@ function PresencaPage() {
       return true;
     })
     .sort((a, b) => relevanciaBusca(a.nome, busca) - relevanciaBusca(b.nome, busca) || a.nome.localeCompare(b.nome));
-  const turmasVisiveis = turmas.filter(
+  const turmasVisiveis = ordenarTurmasDoProfessor(turmas, minhasTurmas).filter(
     (t) => {
       if (filtroModalidade !== "todas" && t.modalidade !== filtroModalidade) return false;
       if (filtroTurno !== "todos" && turnoDoHorario(t.horario) !== filtroTurno) return false;

@@ -8,6 +8,7 @@ export type MembroEquipe = {
   email: string | null;
   roles: AppRole[];
   criadoEm: string;
+  ultimoAcesso: string | null;
 };
 
 export const listarEquipeFn = createServerFn({ method: "GET" })
@@ -58,6 +59,26 @@ export const listarEquipeFn = createServerFn({ method: "GET" })
         email: usuario.email ?? null,
         roles: papeisPorUsuario.get(usuario.id) ?? [],
         criadoEm: usuario.created_at,
+        ultimoAcesso: usuario.last_sign_in_at ?? null,
       };
     });
+  });
+
+export const removerContaPendenteFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string }) => {
+    if (typeof input?.userId !== "string" || !/^[0-9a-f-]{36}$/i.test(input.userId)) throw new Error("Conta inválida.");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    const { data: admin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
+    if (!admin) throw new Error("Apenas administradores podem remover contas.");
+    if (data.userId === context.userId) throw new Error("Você não pode remover a própria conta.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: papeis, error } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.userId);
+    if (error) throw new Error("Não foi possível verificar a conta.");
+    if ((papeis ?? []).length > 0) throw new Error("Só é possível remover contas que ainda não foram liberadas.");
+    const { error: delError } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (delError) throw new Error("Não foi possível remover a conta.");
+    return { ok: true };
   });

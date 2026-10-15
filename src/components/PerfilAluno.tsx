@@ -42,6 +42,7 @@ type AlunoPerfil = {
   motivo_inativacao: string | null;
   inativado_em: string | null;
   inativado_por: string | null;
+  inativado_por_nome?: string | null;
 };
 
 type MatriculaPerfil = {
@@ -52,6 +53,7 @@ type MatriculaPerfil = {
   data_inicio: string;
   created_at: string;
   registrado_por: string | null;
+  registrado_por_nome?: string | null;
 };
 
 type PresencaPerfil = {
@@ -150,7 +152,7 @@ export function PerfilAluno({ alunoId, onFechar }: { alunoId: string | null; onF
       void carregarAnotacoes(perfil.id);
 
       const [{ data: ms }, { data: ts }, { data: ps }] = await Promise.all([
-        supabase.from("matriculas").select("id,turma_id,status,modalidade,data_inicio,created_at,registrado_por").eq("aluno_id", perfil.id),
+        supabase.from("matriculas").select("id,turma_id,status,modalidade,data_inicio,created_at,registrado_por,registrado_por_nome").eq("aluno_id", perfil.id),
         supabase.from("turmas").select("id,nome,horario"),
         supabase.from("presencas").select("id,data,status,observacoes").eq("aluno_id", perfil.id).order("data", { ascending: false }),
       ]);
@@ -308,7 +310,7 @@ export function PerfilAluno({ alunoId, onFechar }: { alunoId: string | null; onF
                   <p className="text-xs text-muted-foreground">
                     Inativado em {new Date(aluno.inativado_em).toLocaleDateString("pt-BR")} às{" "}
                     {new Date(aluno.inativado_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    {aluno.inativado_por ? ` por ${nomesUsuarios[aluno.inativado_por] ?? "usuário"}` : ""}
+                    {aluno.inativado_por || aluno.inativado_por_nome ? ` por ${(aluno.inativado_por && nomesUsuarios[aluno.inativado_por]) || aluno.inativado_por_nome || "usuário"}` : ""}
                   </p>
                 ) : null}
               </div>
@@ -328,7 +330,7 @@ export function PerfilAluno({ alunoId, onFechar }: { alunoId: string | null; onF
                       <p className="text-xs text-muted-foreground">
                         Matriculado em {new Date(m.created_at).toLocaleDateString("pt-BR")} às{" "}
                         {new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                        {m.registrado_por ? ` por ${nomesUsuarios[m.registrado_por] ?? "usuário"}` : ""}
+                        {m.registrado_por || m.registrado_por_nome ? ` por ${(m.registrado_por && nomesUsuarios[m.registrado_por]) || m.registrado_por_nome || "usuário"}` : ""}
                       </p>
                     ) : null}
                   </div>
