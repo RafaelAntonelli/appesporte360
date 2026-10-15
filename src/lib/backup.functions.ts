@@ -41,7 +41,8 @@ export const gerarPlanilhaBackupFn = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     await garantirAdmin(context);
     const { gerarPlanilhaBackup } = await import("@/lib/backup.server");
-    return { planilha: await gerarPlanilhaBackup() };
+    const p = await gerarPlanilhaBackup();
+    return { planilha: p.nome, planilhaId: p.id };
   });
 
 /** Links dos arquivos (fotos e documentos) já enviados ao Google Drive. */
@@ -57,6 +58,55 @@ export const linksArquivosDriveFn = createServerFn({ method: "POST" })
     }
   });
 
+
+const falhaSchema = z.object({
+  caminho: z.string(),
+  nome: z.string(),
+  pasta: z.string(),
+  marcador: z.string(),
+  motivo: z.string(),
+});
+
+/** Últimos 30 backups (manuais e automáticos). */
+export const historicoBackupFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await garantirAdmin(context);
+    const { data, error } = await context.supabase
+      .from("backup_historico")
+      .select("*")
+      .order("iniciado_em", { ascending: false })
+      .limit(30);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r: Record<string, unknown>) => ({
+      ...(r as {
+        id: string; iniciado_em: string; concluido_em: string | null; tipo: string; usuario_nome: string | null;
+        enviados: number; total: number; status: string; planilha_nome: string | null; planilha_id: string | null; resumo: string | null;
+      }),
+      falhas: (r["falhas"] ?? []) as z.infer<typeof falhaSchema>[],
+    }));
+  });
+
+/** Reenvia só os arquivos que falharam num backup e atualiza o histórico. */
+export const reenviarFalhasFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ context, data }) => {
+    await garantirAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: linha, error } = await supabaseAdmin.from("backup_historico").select("*").eq("id", data.id).maybeSingle();
+    if (error || !linha) throw new Error("Backup não encontrado.");
+    const falhas = (linha.falhas ?? []) as z.infer<typeof falhaSchema>[];
+    if (!falhas.length) return { enviados: 0, falhas: 0 };
+    const { enviarLoteBackup } = await import("@/lib/backup.server");
+    const r = await enviarLoteBackup(falhas.map(({ motivo: _m, ...a }) => a));
+    const enviados = linha.enviados + r.enviados;
+    await supabaseAdmin
+      .from("backup_historico")
+      .update({ enviados, falhas: r.falhas, status: r.falhas.length ? "falha" : "sucesso" })
+      .eq("id", data.id);
+    return { enviados: r.enviados, falhas: r.falhas.length };
+  });
 
 const loteSchema = z.object({
   arquivos: z.array(
@@ -103,12 +153,43 @@ export const validarPastasDriveFn = createServerFn({ method: "POST" })
 export const registrarBackupFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
-    z.object({ resumo: z.string(), status: z.enum(["sucesso", "falha"]).optional() }).parse(data),
+    z
+      .object({
+        resumo: z.string(),
+        status: z.enum(["sucesso", "falha"]).optional(),
+        historico: z
+          .object({
+            iniciado_em: z.string(),
+            enviados: z.number().int(),
+            total: z.number().int(),
+            planilha_nome: z.string().nullable(),
+            planilha_id: z.string().nullable(),
+            falhas: z.array(falhaSchema),
+          })
+          .optional(),
+      })
+      .parse(data),
   )
   .handler(async ({ context, data }) => {
     await garantirAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const quando = new Date().toISOString();
+    const h = data.historico;
+    const { data: usuario } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+    await supabaseAdmin.from("backup_historico").insert({
+      iniciado_em: h?.iniciado_em ?? quando,
+      concluido_em: quando,
+      tipo: "manual",
+      usuario_id: context.userId,
+      usuario_nome: (usuario?.user?.user_metadata?.["full_name"] as string | undefined) ?? usuario?.user?.email ?? null,
+      enviados: h?.enviados ?? 0,
+      total: h?.total ?? 0,
+      status: data.status ?? "sucesso",
+      planilha_nome: h?.planilha_nome ?? null,
+      planilha_id: h?.planilha_id ?? null,
+      falhas: h?.falhas ?? [],
+      resumo: data.resumo,
+    });
     await supabaseAdmin
       .from("backup_cron")
       .update({ ultimo_backup: quando, ultimo_resultado: data.resumo, ultimo_status: data.status ?? "sucesso" })

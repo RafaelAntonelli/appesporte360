@@ -77,10 +77,48 @@ function cabecalhosDrive() {
   };
 }
 
+class ErroDrive extends Error {
+  constructor(public status: number, mensagem: string) {
+    super(mensagem);
+  }
+}
+
 async function erroDrive(resp: Response) {
   const corpo = await resp.text();
   console.error(`[backup] Google Drive [${resp.status}]: ${corpo}`);
-  return new Error(`Google Drive respondeu ${resp.status}: ${corpo}`);
+  return new ErroDrive(resp.status, `Google Drive respondeu ${resp.status}: ${corpo}`);
+}
+
+/** Drive temporariamente indisponível (limite de uso, erro interno ou falha de rede). */
+export function erroTemporario(err: unknown) {
+  if (err instanceof ErroDrive) return err.status === 429 || err.status >= 500 || (err.status === 403 && /rateLimit|userRateLimit/i.test(err.message));
+  return err instanceof TypeError; // falha de rede no fetch
+}
+
+/** Motivo da falha em linguagem simples. */
+export function motivoFalha(err: unknown) {
+  if (erroTemporario(err)) return "Drive temporariamente indisponível";
+  if (err instanceof ErroDrive) {
+    if (err.status === 401 || err.status === 403) return "Sem permissão na pasta do Drive";
+    if (err.status === 404) return "Pasta do Drive não encontrada";
+    return `Drive recusou o arquivo (${err.status})`;
+  }
+  return err instanceof Error ? err.message.slice(0, 160) : "Erro desconhecido";
+}
+
+const TENTATIVAS = 3;
+async function comTentativas<T>(fn: () => Promise<T>): Promise<T> {
+  let ultimo: unknown;
+  for (let i = 0; i < TENTATIVAS; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      ultimo = err;
+      if (!erroTemporario(err) || i === TENTATIVAS - 1) break;
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
+    }
+  }
+  throw ultimo;
 }
 
 function nomeArquivoSeguro(texto: string) {
@@ -255,9 +293,13 @@ export async function enviarParaDrive(opcoes: {
 
 type Resultado = {
   planilha: string;
+  planilhaId: string;
   imagens: number;
-  falhas: string[];
+  total: number;
+  falhas: FalhaBackup[];
 };
+
+export type FalhaBackup = ArquivoBackup & { motivo: string };
 
 export type ArquivoBackup = {
   caminho: string;
@@ -322,7 +364,7 @@ export async function linksArquivosDrive(): Promise<Record<string, string>> {
 }
 
 /** Gera a planilha (com os links do Drive) e envia para a pasta de planilhas. */
-export async function gerarPlanilhaBackup(): Promise<string> {
+export async function gerarPlanilhaBackup(): Promise<{ nome: string; id: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const [{ data: alunos, error: erroAlunos }, { data: turmas }, { data: matriculas }] = await Promise.all([
     supabaseAdmin.from("alunos").select("*"),
@@ -349,13 +391,13 @@ export async function gerarPlanilhaBackup(): Promise<string> {
 
   const pastas = await pastasDrive();
   const data = new Date().toISOString().slice(0, 10);
-  const planilha = await enviarParaDrive({
+  const planilha = await comTentativas(() => enviarParaDrive({
     nome: `alunos-${data}.xlsx`,
     pasta: pastas.planilhas,
     conteudo: buffer,
     tipo: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  return planilha.nome;
+  }));
+  return { nome: planilha.nome, id: planilha.id };
 }
 
 /** Prepara a fila de fotos/documentos a enviar para o Drive. */
@@ -429,10 +471,10 @@ export async function prepararBackup(): Promise<{
 export async function enviarLoteBackup(
   arquivos: ArquivoBackup[],
   existentes?: ExistentesBackup,
-): Promise<{ enviados: number; falhas: string[] }> {
+): Promise<{ enviados: number; falhas: FalhaBackup[] }> {
   const indices: ExistentesBackup = {};
   for (const [pasta, itens] of Object.entries(existentes ?? {})) indices[pasta] = [...itens];
-  const falhas: string[] = [];
+  const falhas: FalhaBackup[] = [];
   let enviados = 0;
   const CONCORRENCIA = 8;
   let proximo = 0;
@@ -444,21 +486,24 @@ export async function enviarLoteBackup(
       try {
         const conteudo = await baixarArquivoStorage(arquivo.caminho);
         if (!conteudo) {
-          falhas.push(arquivo.nome);
+          falhas.push({ ...arquivo, motivo: "Arquivo não encontrado no sistema" });
           continue;
         }
-        await enviarParaDrive({
-          nome: arquivo.nome,
-          pasta: arquivo.pasta,
-          conteudo,
-          tipo: tipoPorExtensao(arquivo.caminho),
-          marcador: arquivo.marcador,
-          existentes: indices[arquivo.pasta],
-        });
+        if (!indices[arquivo.pasta]) indices[arquivo.pasta] = await comTentativas(() => listarPasta(arquivo.pasta));
+        await comTentativas(() =>
+          enviarParaDrive({
+            nome: arquivo.nome,
+            pasta: arquivo.pasta,
+            conteudo,
+            tipo: tipoPorExtensao(arquivo.caminho),
+            marcador: arquivo.marcador,
+            existentes: indices[arquivo.pasta],
+          }),
+        );
         enviados++;
       } catch (err) {
         console.error("[backup] falha ao enviar arquivo", arquivo.nome, err);
-        falhas.push(arquivo.nome);
+        falhas.push({ ...arquivo, motivo: motivoFalha(err) });
       }
     }
   }
@@ -473,6 +518,5 @@ export async function executarBackupCompleto(): Promise<Resultado> {
   const { enviados, falhas } = await enviarLoteBackup(arquivos, existentes);
   // A planilha é gerada depois do envio para que os links apontem para os arquivos já no Drive.
   const planilha = await gerarPlanilhaBackup();
-  return { planilha, imagens: enviados, falhas };
+  return { planilha: planilha.nome, planilhaId: planilha.id, imagens: enviados, total: arquivos.length, falhas };
 }
-
