@@ -24,6 +24,7 @@ const adminNav = [
 
 export function AppShell({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
   const { session, loading, isStaff, isAdmin } = useAuth();
+  const { pode } = usePermissoes();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -63,7 +64,6 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
     );
   }
 
-  const { pode } = usePermissoes();
   const nav = (isAdmin ? [...baseNav, ...adminNav] : baseNav).filter((i) => i.to !== "/relatorios" || pode("ver_relatorios"));
 
   return (
