@@ -43,6 +43,13 @@
       "when": 1792083521853,
       "tag": "0005_backup_historico",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792083756976,
+      "tag": "0006_permissoes_professores_e_turmas",
+      "breakpoints": true
     }
   ]
 }
