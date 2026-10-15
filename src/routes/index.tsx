@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Users, CalendarDays, ListOrdered, Plus, Trash2 } from "lucide-react";
+import { Users, CalendarDays, ListOrdered, Plus, Trash2, Search, Stethoscope } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CONDICOES_PCD } from "@/lib/pcd";
 import { useHorarios } from "@/lib/horarios";
-import { capitalizarNome, formatarCelular } from "@/lib/formatacao";
+import { capitalizarNome, formatarCelular, correspondeBusca, relevanciaBusca, normalizarTexto } from "@/lib/formatacao";
+import { dataISO, somarDias, formatarDataCurta, licencaTerminada } from "@/lib/licenca";
+import { PerfilAluno } from "@/components/PerfilAluno";
 import { MODALIDADES, MODALIDADE_PADRAO } from "@/lib/modalidades";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -54,7 +56,11 @@ function Painel() {
   const { lista: listaHorarios } = useHorarios();
   const [stats, setStats] = useState({ alunos: 0, turmas: 0 });
   const [alunosPorModalidade, setAlunosPorModalidade] = useState<Record<string, number>>({});
-  const [ultimas, setUltimas] = useState<{ nome: string; hora: string }[]>([]);
+  const [busca, setBusca] = useState("");
+  const [alunosBusca, setAlunosBusca] = useState<{ id: string; nome: string; codigo: string | null; cpf: string | null }[]>([]);
+  const [perfilId, setPerfilId] = useState<string | null>(null);
+  const [aulas, setAulas] = useState<{ id: string; nome: string; horario: string | null; capacidade: number; ocupacao: number }[]>([]);
+  const [licencas, setLicencas] = useState<{ id: string; aluno_id: string; nome: string; data_retorno: string; vencida: boolean }[]>([]);
   const [fila, setFila] = useState<Fila[]>([]);
   const filaVazia: {
     nome: string;
@@ -127,11 +133,14 @@ function Painel() {
 
   useEffect(() => {
     void (async () => {
-      const [alunos, turmas, matriculasAtivas, recentes] = await Promise.all([
+      const [alunos, turmas, matriculasAtivas, listaAlunos, listaTurmas, matTurmas, lics] = await Promise.all([
         supabase.from("alunos").select("id", { count: "exact", head: true }).eq("ativo", true),
         supabase.from("turmas").select("id", { count: "exact", head: true }).eq("ativa", true),
         supabase.from("matriculas").select("aluno_id,modalidade,alunos!inner(ativo)").eq("status", "ativa").eq("alunos.ativo", true),
-        supabase.from("presencas").select("horario,alunos(nome)").order("horario", { ascending: false }).limit(6),
+        supabase.from("alunos").select("id,nome,codigo,cpf").order("nome"),
+        supabase.from("turmas").select("id,nome,horario,capacidade,dias_semana").eq("ativa", true),
+        supabase.from("matriculas").select("turma_id").eq("status", "ativa"),
+        supabase.from("licencas_medicas").select("id,aluno_id,data_retorno,status,alunos(nome)").eq("status", "ativa"),
       ]);
       setStats({
         alunos: alunos.count ?? 0,
@@ -143,16 +152,30 @@ function Painel() {
         (contagens[modalidade] ??= new Set()).add(matricula.aluno_id as string);
       }
       setAlunosPorModalidade(Object.fromEntries(Object.entries(contagens).map(([nome, ids]) => [nome, ids.size])));
-      setUltimas(
-        (recentes.data ?? []).map((r) => ({
-          nome: (r.alunos as { nome: string } | null)?.nome ?? "Aluno",
-          hora: new Date(r.horario as string).toLocaleString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        })),
+      setAlunosBusca((listaAlunos.data ?? []) as typeof alunosBusca);
+      const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
+      const hojeDia = DIAS[new Date().getDay()];
+      const ocup: Record<string, number> = {};
+      for (const m of matTurmas.data ?? []) if (m.turma_id) ocup[m.turma_id] = (ocup[m.turma_id] ?? 0) + 1;
+      setAulas(
+        (listaTurmas.data ?? [])
+          .filter((t) => (t.dias_semana ?? []).some((d: string) => normalizarTexto(d).slice(0, 3) === hojeDia))
+          .map((t) => ({ id: t.id, nome: t.nome, horario: t.horario, capacidade: t.capacidade, ocupacao: ocup[t.id] ?? 0 }))
+          .sort((x, y) => (x.horario ?? "99").localeCompare(y.horario ?? "99")),
+      );
+      const hoje = dataISO();
+      const limite = somarDias(hoje, 7);
+      setLicencas(
+        (lics.data ?? [])
+          .filter((l) => l.data_retorno <= limite)
+          .map((l) => ({
+            id: l.id,
+            aluno_id: l.aluno_id,
+            nome: (l.alunos as { nome: string } | null)?.nome ?? "Aluno",
+            data_retorno: l.data_retorno,
+            vencida: licencaTerminada(l, hoje),
+          }))
+          .sort((x, y) => (x.vencida !== y.vencida ? (x.vencida ? -1 : 1) : x.data_retorno.localeCompare(y.data_retorno))),
       );
     })();
   }, []);
@@ -163,8 +186,42 @@ function Painel() {
     { label: "Na fila de espera", value: fila.length, icon: ListOrdered },
   ];
 
+  const resultados = busca.trim()
+    ? alunosBusca
+        .filter((a) => correspondeBusca({ nome: a.nome, cpf: a.cpf, codigo: a.codigo }, busca))
+        .sort((x, y) => relevanciaBusca(x.nome, busca) - relevanciaBusca(y.nome, busca))
+        .slice(0, 8)
+    : [];
+
   return (
     <AppShell title="Painel" subtitle="Visão geral do Esporte 360">
+      <div className="relative mb-6">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          className="pl-9"
+          placeholder="Buscar aluno por nome, matrícula ou CPF"
+          aria-label="Buscar aluno"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+        />
+        {busca.trim() ? (
+          <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-border/70 bg-popover shadow-lg">
+            {resultados.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-secondary"
+                onClick={() => { setPerfilId(a.id); setBusca(""); }}
+              >
+                <span className="font-medium">{a.nome}</span>
+                <span className="text-xs text-muted-foreground">{a.codigo}{a.cpf ? ` · ${a.cpf}` : ""}</span>
+              </button>
+            ))}
+            {!resultados.length && <p className="px-3 py-3 text-sm text-muted-foreground">Nenhum aluno encontrado.</p>}
+          </div>
+        ) : null}
+      </div>
+      <PerfilAluno alunoId={perfilId} onFechar={() => setPerfilId(null)} />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         {cards.map((c) => (
           <Card key={c.label} className="border-border/70">
@@ -205,25 +262,52 @@ function Painel() {
                 <Link to="/presenca">Registrar presença</Link>
               </Button>
               <Button asChild variant="outline" className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10">
-                <Link to="/alunos">Nova matrícula</Link>
+                <Link to="/alunos" search={{ novo: true }}>Nova matrícula</Link>
               </Button>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-border/70">
-          <CardHeader><CardTitle className="font-display text-lg">Últimas presenças</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-display text-lg">Aulas de hoje</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            {ultimas.map((u, i) => (
-              <div key={i} className="flex items-center justify-between rounded-lg bg-secondary/60 px-3 py-2 text-sm">
-                <span>{u.nome}</span>
-                <span className="text-muted-foreground">{u.hora}</span>
+            {aulas.map((t) => (
+              <div key={t.id} className="flex flex-wrap items-center gap-3 rounded-lg bg-secondary/60 px-3 py-2 text-sm">
+                <span className="font-medium">{t.horario ?? "--"}</span>
+                <span className="flex-1">{t.nome}</span>
+                <Badge variant="secondary" className="bg-card">{t.ocupacao}/{t.capacidade}</Badge>
+                <Button asChild size="sm">
+                  <Link to="/turmas" search={{ turma: t.id }}>Abrir chamada</Link>
+                </Button>
               </div>
             ))}
-            {!ultimas.length && <p className="py-8 text-center text-sm text-muted-foreground">Ainda não há registros de presença.</p>}
+            {!aulas.length && <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma aula hoje.</p>}
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-6 border-border/70">
+        <CardHeader><CardTitle className="font-display text-lg">Licenças e retornos da semana</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {licencas.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => setPerfilId(l.aluno_id)}
+              className="flex w-full flex-wrap items-center gap-3 rounded-lg bg-secondary/60 px-3 py-2 text-left text-sm hover:bg-secondary"
+            >
+              <Stethoscope className="size-4 text-primary" />
+              <span className="flex-1 font-medium">{l.nome}</span>
+              {l.vencida ? (
+                <Badge variant="destructive">Terminou em {formatarDataCurta(l.data_retorno)} — confirmar retorno</Badge>
+              ) : (
+                <Badge variant="outline">Retorno {formatarDataCurta(l.data_retorno)}</Badge>
+              )}
+            </button>
+          ))}
+          {!licencas.length && <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma licença ou retorno nesta semana.</p>}
+        </CardContent>
+      </Card>
 
       <Card className="mt-6 border-border/70">
         <CardHeader><CardTitle className="font-display text-lg">Fila de espera</CardTitle></CardHeader>
