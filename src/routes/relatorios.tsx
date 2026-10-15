@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, BarChart3, ChevronDown, Download, FileSpreadsheet, FileText, IdCard, Settings2 } from "lucide-react";
+import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, Download, FileSpreadsheet, FileText, IdCard, Settings2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -38,6 +38,7 @@ import { gerarCrachasPdfFielAoPreview, type DadosCracha } from "@/lib/cracha";
 import { FAIXAS_ETARIAS, TURNOS, faixaEtariaECA, turnoDoHorario } from "@/lib/turnos";
 import { GRUPOS_DIAS_PADRAO } from "@/lib/dias";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 export const Route = createFileRoute("/relatorios")({
@@ -109,6 +110,10 @@ function RelatoriosPage() {
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
   const [fotos, setFotos] = useState<Record<string, string>>({});
   const [carregando, setCarregando] = useState(true);
+  const [emLicenca, setEmLicenca] = useState<Set<string>>(new Set());
+  const [filtroModalidadeTurma, setFiltroModalidadeTurma] = useState("todas");
+  const [filtroTurnoTurma, setFiltroTurnoTurma] = useState("todos");
+  const [mostrarAtestados, setMostrarAtestados] = useState(false);
   const [valoresEscolhidosEstado, setValoresEscolhidos] = useState<Partial<Record<ParametroId, string[]>>>({});
   const valoresEscolhidos = valoresEscolhidosEstado;
   const parametros = useMemo<ParametroId[]>(() => {
@@ -165,11 +170,13 @@ function RelatoriosPage() {
   async function carregar() {
     setCarregando(true);
     try {
-      const [a, t, m] = await Promise.all([
+      const [a, t, m, lic] = await Promise.all([
         supabase.from("alunos").select("*").order("nome"),
-        supabase.from("turmas").select("id,nome,horario,dias_semana,modalidade,capacidade").order("nome"),
+        supabase.from("turmas").select("id,nome,horario,dias_semana,modalidade,capacidade,ativa").order("nome"),
         supabase.from("matriculas").select("*"),
+        supabase.from("licencas_medicas").select("aluno_id").eq("status", "ativa"),
       ]);
+      setEmLicenca(new Set((lic.data ?? []).map((l) => l.aluno_id)));
       if (a.error) throw a.error;
       setAlunos((a.data ?? []) as Aluno[]);
       setTurmas((t.data ?? []) as Turma[]);
@@ -569,68 +576,80 @@ function RelatoriosPage() {
     return;
   }
 
+  const turmasAtivas = turmas.filter((t) => (t as Turma & { ativa?: boolean }).ativa !== false);
+  const matriculasAtivasTurma = matriculas.filter((m) => m.status === "ativa");
+  const linhasStatus = turmasAtivas
+    .filter((t) => filtroModalidadeTurma === "todas" || t.modalidade === filtroModalidadeTurma)
+    .filter((t) => filtroTurnoTurma === "todos" || turnoDoHorario(t.horario) === filtroTurnoTurma)
+    .map((t) => {
+      const mats = matriculasAtivasTurma.filter((m) => m.turma_id === t.id);
+      const matriculados = mats.length;
+      const licenca = mats.filter((m) => emLicenca.has(m.aluno_id)).length;
+      return { turma: t, turno: turnoDoHorario(t.horario) || "—", capacidade: t.capacidade, matriculados, licenca, livres: Math.max(0, t.capacidade - matriculados) };
+    });
+  const totalCap = linhasStatus.reduce((s, l) => s + l.capacidade, 0);
+  const totalOcup = linhasStatus.reduce((s, l) => s + l.matriculados, 0);
+  const totalLivres = linhasStatus.reduce((s, l) => s + l.livres, 0);
+  const taxaFiltro = totalCap ? Math.round((totalOcup / totalCap) * 100) : 0;
+  const capGeral = turmasAtivas.reduce((s, t) => s + t.capacidade, 0);
+  const ocupGeral = matriculasAtivasTurma.filter((m) => turmasAtivas.some((t) => t.id === m.turma_id)).length;
+  const taxaGeral = capGeral ? Math.round((ocupGeral / capGeral) * 100) : 0;
+  const totalAtivos = alunos.filter((a) => a.ativo).length;
+  const CAB_STATUS = ["Turma", "Modalidade", "Turno", "Capacidade", "Matriculados", "Em licença médica", "Vagas livres"];
+  const linhasStatusTexto = () => [
+    ...linhasStatus.map((l) => [l.turma.nome, l.turma.modalidade ?? "", l.turno, String(l.capacidade), String(l.matriculados), String(l.licenca), String(l.livres)]),
+  ];
+  const rodapeStatus = `Capacidade total: ${totalCap} · Total ocupado: ${totalOcup} · Vagas disponíveis: ${totalLivres} · Taxa de ocupação: ${taxaFiltro}%`;
+
+  function exportarStatusCsv() {
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const csv = [CAB_STATUS, ...linhasStatusTexto(), ["Totais", "", "", String(totalCap), String(totalOcup), "", String(totalLivres)], ["Taxa de ocupação", `${taxaFiltro}%`]]
+      .map((l) => l.map(esc).join(";")).join("\n");
+    baixarArquivo(`\uFEFF${csv}`, `status-turmas-${new Date().toISOString().slice(0, 10)}.csv`, "text/csv;charset=utf-8");
+  }
+
+  async function exportarStatusPdf() {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const larg = [90, 40, 28, 26, 28, 34, 26];
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+    doc.text("Status das turmas — Esporte 360", 12, 12);
+    let y = 22;
+    const linha = (cel: string[], negrito = false) => {
+      doc.setFont("helvetica", negrito ? "bold" : "normal"); doc.setFontSize(9);
+      let x = 12;
+      cel.forEach((c, i) => { doc.text(doc.splitTextToSize(c, (larg[i] ?? 24) - 2)[0] ?? "", x, y); x += larg[i] ?? 24; });
+      y += 6;
+      if (y > 195) { doc.addPage(); y = 15; }
+    };
+    linha(CAB_STATUS, true);
+    linhasStatusTexto().forEach((l) => linha(l));
+    y += 2;
+    doc.setFont("helvetica", "bold");
+    doc.text(rodapeStatus, 12, y);
+    doc.save(`status-turmas-${new Date().toISOString().slice(0, 10)}.pdf`);
+  }
+
   return (
     <AppShell title="Relatórios" subtitle="Atestados, exportações e backup da Arena Aquática">
-      <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 font-display text-base">
-            <Settings2 className="size-4" /> Prazo do aviso de atestado
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="space-y-1">
-            <Label>Avisar com antecedência de</Label>
-            <div className="flex items-center gap-2">
-              <Select value={PRAZOS.includes(Number(prazoEditado)) ? prazoEditado : "custom"} onValueChange={(v) => v !== "custom" && setPrazoEditado(v)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Prazo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRAZOS.map((p) => (
-                    <SelectItem key={p} value={String(p)}>{p} dias</SelectItem>
-                  ))}
-                  <SelectItem value="custom">Personalizado</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                className="w-24"
-                type="number"
-                min={1}
-                value={prazoEditado}
-                onChange={(e) => setPrazoEditado(e.target.value)}
-              />
-              <span className="text-sm text-muted-foreground">dias</span>
-            </div>
-          </div>
-          <Button onClick={() => void aplicarPrazo(prazoEditado)}>Salvar prazo</Button>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 font-display text-base">
-            <FileSpreadsheet className="size-4" /> Planilha de alunos
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" disabled={exportando} onClick={() => void exportarPlanilha()}>
-              <FileSpreadsheet className="size-4" /> {exportando ? "Exportando..." : "Exportar planilha"}
-            </Button>
-            {exportando ? (
-              <Button variant="destructive" onClick={() => cancelarRef.current?.abort()}>
-                Cancelar exportação
-              </Button>
-            ) : null}
-          </div>
-          {progressoPlanilha ? (
-            <p className="text-xs text-muted-foreground">
-              Processando imagens: {progressoPlanilha.feitos} de {progressoPlanilha.total}
-            </p>
-          ) : null}
-        </CardContent>
-      </Card>
-
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+        <Card><CardContent className="py-6">
+          <p className="font-display text-2xl font-semibold">{totalAtivos}</p>
+          <p className="text-sm text-muted-foreground">Alunos ativos</p>
+        </CardContent></Card>
+        <Card><CardContent className="py-6">
+          <p className="font-display text-2xl font-semibold">{taxaGeral}%</p>
+          <p className="text-sm text-muted-foreground">Taxa geral de ocupação ({ocupGeral} de {capGeral} vagas)</p>
+        </CardContent></Card>
+      </div>
+      <Tabs defaultValue="indicadores">
+        <TabsList className="mb-4 flex h-auto flex-wrap">
+          <TabsTrigger value="indicadores">Indicadores e gráficos</TabsTrigger>
+          <TabsTrigger value="turmas">Status das turmas</TabsTrigger>
+          <TabsTrigger value="atestados">Atestados médicos</TabsTrigger>
+          <TabsTrigger value="exportacoes">Exportações</TabsTrigger>
+        </TabsList>
+        <TabsContent value="indicadores">
       <Card className="mb-6">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
           <CardTitle className="flex items-center gap-2 font-display text-base">
@@ -806,12 +825,110 @@ function RelatoriosPage() {
 
 
 
+        </TabsContent>
+        <TabsContent value="turmas">
+      <Card>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
+          <CardTitle className="font-display text-base">Status das turmas</CardTitle>
+          <div className="flex flex-wrap gap-2">
+            <Select value={filtroModalidadeTurma} onValueChange={setFiltroModalidadeTurma}>
+              <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todas">Todas as modalidades</SelectItem>
+                {Array.from(new Set(turmasAtivas.map((t) => t.modalidade).filter(Boolean))).sort().map((m) => (
+                  <SelectItem key={m as string} value={m as string}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filtroTurnoTurma} onValueChange={setFiltroTurnoTurma}>
+              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os turnos</SelectItem>
+                {TURNOS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={exportarStatusCsv}><Download className="size-4" /> CSV</Button>
+            <Button variant="outline" size="sm" onClick={() => void exportarStatusPdf()}><FileText className="size-4" /> PDF</Button>
+          </div>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs uppercase text-muted-foreground">
+                {CAB_STATUS.map((c) => <th key={c} className="py-2 pr-4 font-medium">{c}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {linhasStatus.map((l) => (
+                <tr key={l.turma.id} className="border-b last:border-0">
+                  <td className="py-2 pr-4 font-medium">{l.turma.nome}</td>
+                  <td className="py-2 pr-4">{l.turma.modalidade ?? "—"}</td>
+                  <td className="py-2 pr-4">{l.turno}</td>
+                  <td className="py-2 pr-4">{l.capacidade}</td>
+                  <td className="py-2 pr-4">{l.matriculados}</td>
+                  <td className="py-2 pr-4">{l.licenca}</td>
+                  <td className="py-2 pr-4">{l.livres}</td>
+                </tr>
+              ))}
+              {!linhasStatus.length && (
+                <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">Nenhuma turma para este filtro.</td></tr>
+              )}
+            </tbody>
+            <tfoot>
+              <tr className="border-t font-semibold">
+                <td colSpan={7} className="py-3">{rodapeStatus}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </CardContent>
+      </Card>
+        </TabsContent>
+        <TabsContent value="atestados">
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 font-display text-base">
+            <Settings2 className="size-4" /> Prazo do aviso de atestado
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="space-y-1">
+            <Label>Avisar com antecedência de</Label>
+            <div className="flex items-center gap-2">
+              <Select value={PRAZOS.includes(Number(prazoEditado)) ? prazoEditado : "custom"} onValueChange={(v) => v !== "custom" && setPrazoEditado(v)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Prazo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRAZOS.map((p) => (
+                    <SelectItem key={p} value={String(p)}>{p} dias</SelectItem>
+                  ))}
+                  <SelectItem value="custom">Personalizado</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                className="w-24"
+                type="number"
+                min={1}
+                value={prazoEditado}
+                onChange={(e) => setPrazoEditado(e.target.value)}
+              />
+              <span className="text-sm text-muted-foreground">dias</span>
+            </div>
+          </div>
+          <Button onClick={() => void aplicarPrazo(prazoEditado)}>Salvar prazo</Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
           <CardTitle className="flex items-center gap-2 font-display text-base">
             <AlertTriangle className="size-4 text-destructive" /> Atestados vencidos e a vencer
           </CardTitle>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setMostrarAtestados((v) => !v)}>
+              {mostrarAtestados ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              {mostrarAtestados ? "Esconder" : "Mostrar"}
+            </Button>
             <Button variant="outline" size="sm" onClick={exportarCsv}>
               <Download className="size-4" /> CSV
             </Button>
@@ -820,7 +937,7 @@ function RelatoriosPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        {mostrarAtestados ? <CardContent>
           {carregando ? (
             <p className="py-6 text-sm text-muted-foreground">Carregando...</p>
           ) : !relatorio.length ? (
@@ -865,8 +982,37 @@ function RelatoriosPage() {
               </table>
             </div>
           )}
+        </CardContent> : null}
+      </Card>
+        </TabsContent>
+        <TabsContent value="exportacoes">
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 font-display text-base">
+            <FileSpreadsheet className="size-4" /> Planilha de alunos
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" disabled={exportando} onClick={() => void exportarPlanilha()}>
+              <FileSpreadsheet className="size-4" /> {exportando ? "Exportando..." : "Exportar planilha"}
+            </Button>
+            {exportando ? (
+              <Button variant="destructive" onClick={() => cancelarRef.current?.abort()}>
+                Cancelar exportação
+              </Button>
+            ) : null}
+          </div>
+          {progressoPlanilha ? (
+            <p className="text-xs text-muted-foreground">
+              Processando imagens: {progressoPlanilha.feitos} de {progressoPlanilha.total}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
+
+        </TabsContent>
+      </Tabs>
     </AppShell>
   );
 }
