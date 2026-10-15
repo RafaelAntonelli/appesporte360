@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/turmas")({
+  validateSearch: (s: Record<string, unknown>): { turma?: string } => (typeof s.turma === "string" ? { turma: s.turma } : {}),
   component: TurmasPage,
   head: () => ({
     meta: [
@@ -138,6 +139,18 @@ function TurmasPage() {
   useEffect(() => {
     void carregar();
   }, []);
+
+  const { turma: turmaInicial } = Route.useSearch();
+  const [turmaInicialAberta, setTurmaInicialAberta] = useState(false);
+  useEffect(() => {
+    if (!turmaInicial || turmaInicialAberta) return;
+    const t = turmas.find((x) => x.id === turmaInicial);
+    if (t) {
+      setTurmaInicialAberta(true);
+      void abrirTurma(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turmaInicial, turmas]);
 
   function abrirNova() {
     setEditando(null);
