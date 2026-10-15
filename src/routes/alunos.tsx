@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/alunos")({
-  validateSearch: (s: Record<string, unknown>): { novo?: boolean } => (s.novo ? { novo: true } : {}),
+  validateSearch: (s: Record<string, unknown>): { novo?: boolean } => (s['novo'] ? { novo: true } : {}),
   component: AlunosPage,
   head: () => ({
     meta: [

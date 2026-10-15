@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/turmas")({
-  validateSearch: (s: Record<string, unknown>): { turma?: string } => (typeof s.turma === "string" ? { turma: s.turma } : {}),
+  validateSearch: (s: Record<string, unknown>): { turma?: string } => (typeof s['turma'] === "string" ? { turma: s['turma'] } : {}),
   component: TurmasPage,
   head: () => ({
     meta: [
