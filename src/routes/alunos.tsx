@@ -185,6 +185,7 @@ function AlunosPage() {
   const [filtroNotificacao, setFiltroNotificacao] = useState<
     "todos" | "ativos" | "inativos" | "sem_atestado" | "atestado_vencido" | "atestado_vencer" | "excesso_faltas"
   >("todos");
+  const [mostrarNotificacoes, setMostrarNotificacoes] = useState(false);
   const [notificacoesAbertas, setNotificacoesAbertas] = useState<Record<string, boolean>>({
     inativos: true,
     sem_atestado: true,
@@ -985,11 +986,14 @@ function AlunosPage() {
   const hojeISO = dataISO();
   const excessoFaltas = alunos.filter((a) => (faltasPorAluno[a.id] ?? 0) >= 5 && !ignorarNoAlertaFaltas(licencas, a.id, hojeISO));
   const licencasTerminadas = licencas
-    .filter((l) => licencaTerminada(l, hojeISO))
+    .filter((l) => l.status === "ativa")
+    .sort((x, y) => Number(licencaTerminada(y, hojeISO)) - Number(licencaTerminada(x, hojeISO)) || x.data_retorno.localeCompare(y.data_retorno))
     .map((l) => ({ licenca: l, aluno: alunos.find((a) => a.id === l.aluno_id) }))
     .filter((x): x is { licenca: LicencaMedica; aluno: Aluno } => !!x.aluno && x.aluno.ativo);
   const inativos = alunos.filter((a) => !a.ativo).sort((a, b) => a.nome.localeCompare(b.nome));
   const semAtestado = alunos.filter((a) => a.ativo && !a.atestado_entregue).sort((a, b) => a.nome.localeCompare(b.nome));
+
+  const totalNotificacoes = vencidos.length + proximosVencimento.length + semAtestado.length + excessoFaltas.length + licencasTerminadas.length;
 
   function alternarNotificacao(tipo: string) {
     setNotificacoesAbertas((atuais) => ({ ...atuais, [tipo]: !atuais[tipo] }));
@@ -1000,13 +1004,19 @@ function AlunosPage() {
 
   return (
     <AppShell title="Alunos" subtitle="Cadastro e matrículas da Arena Aquática">
+      <div className="mb-4 flex justify-end">
+        <Button variant="outline" size="sm" onClick={() => setMostrarNotificacoes((v) => !v)}>
+          <Bell className="size-4" />
+          {mostrarNotificacoes ? "Esconder notificações" : "Mostrar notificações"} ({totalNotificacoes})
+        </Button>
+      </div>
+      {mostrarNotificacoes ? (
+        <>
       {inativos.length ? (
         <Card
           className={cn(
-            "mb-6 cursor-pointer border-muted-foreground/30 bg-muted/40 transition-shadow hover:opacity-90",
-            filtroNotificacao === "inativos" && "ring-2 ring-muted-foreground ring-offset-2",
+            "mb-6 border-muted-foreground/30 bg-muted/40 transition-shadow hover:opacity-90",
           )}
-          onClick={() => setFiltroNotificacao(filtroNotificacao === "inativos" ? "todos" : "inativos")}
         >
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between gap-2">
@@ -1045,10 +1055,8 @@ function AlunosPage() {
       {semAtestado.length ? (
         <Card
           className={cn(
-            "mb-6 cursor-pointer border-amber-500/40 bg-amber-500/5 transition-shadow hover:opacity-90",
-            filtroNotificacao === "sem_atestado" && "ring-2 ring-amber-500 ring-offset-2",
+            "mb-6 border-amber-500/40 bg-amber-500/5 transition-shadow hover:opacity-90",
           )}
-          onClick={() => setFiltroNotificacao(filtroNotificacao === "sem_atestado" ? "todos" : "sem_atestado")}
         >
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between gap-2">
@@ -1084,10 +1092,8 @@ function AlunosPage() {
       {vencidos.length ? (
         <Card
           className={cn(
-            "mb-6 cursor-pointer border-destructive/40 bg-destructive/5 transition-shadow hover:opacity-90",
-            filtroNotificacao === "atestado_vencido" && "ring-2 ring-destructive ring-offset-2",
+            "mb-6 border-destructive/40 bg-destructive/5 transition-shadow hover:opacity-90",
           )}
-          onClick={() => setFiltroNotificacao(filtroNotificacao === "atestado_vencido" ? "todos" : "atestado_vencido")}
         >
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between gap-2">
@@ -1126,10 +1132,8 @@ function AlunosPage() {
       {proximosVencimento.length ? (
         <Card
           className={cn(
-            "mb-6 cursor-pointer border-orange-500/40 bg-orange-500/5 transition-shadow hover:opacity-90",
-            filtroNotificacao === "atestado_vencer" && "ring-2 ring-orange-500 ring-offset-2",
+            "mb-6 border-orange-500/40 bg-orange-500/5 transition-shadow hover:opacity-90",
           )}
-          onClick={() => setFiltroNotificacao(filtroNotificacao === "atestado_vencer" ? "todos" : "atestado_vencer")}
         >
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between gap-2">
@@ -1169,9 +1173,9 @@ function AlunosPage() {
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between gap-2">
               <p className="flex items-center gap-2 font-medium text-amber-600">
-                <Bell className="size-4" /> Notificações · {licencasTerminadas.length} licença(s) médica(s) terminada(s)
+                <Bell className="size-4" /> Notificações · {licencasTerminadas.length} licença(s) médica(s)
               </p>
-              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["licencas"] ? "Esconder licenças terminadas" : "Mostrar licenças terminadas"} onClick={() => alternarNotificacao("licencas")}>
+              <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["licencas"] ? "Esconder licenças médicas" : "Mostrar licenças médicas"} onClick={() => alternarNotificacao("licencas")}>
                 {notificacoesAbertas["licencas"] ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
               </Button>
             </div>
@@ -1184,7 +1188,9 @@ function AlunosPage() {
                     onClick={() => void abrirDetalhe(a)}
                     className="h-auto min-w-0 flex-1 justify-start whitespace-normal px-1 py-1.5 text-left text-sm"
                   >
-                    Licença de {a.nome} terminou em {formatarDataCurta(licenca.data_retorno)} — confirmar retorno ou renovar
+                    {licencaTerminada(licenca, hojeISO)
+                      ? `Licença de ${a.nome} terminou em ${formatarDataCurta(licenca.data_retorno)} — confirmar retorno ou renovar`
+                      : `${a.nome} em licença até ${formatarDataCurta(licenca.data_retorno)}`}
                   </Button>
                   <ConversarWhatsApp telefone={a.telefone} />
                 </div>
@@ -1196,10 +1202,8 @@ function AlunosPage() {
       {excessoFaltas.length ? (
         <Card
           className={cn(
-            "mb-6 cursor-pointer border-amber-500/40 bg-amber-500/5 transition-shadow hover:opacity-90",
-            filtroNotificacao === "excesso_faltas" && "ring-2 ring-amber-500 ring-offset-2",
+            "mb-6 border-amber-500/40 bg-amber-500/5 transition-shadow hover:opacity-90",
           )}
-          onClick={() => setFiltroNotificacao(filtroNotificacao === "excesso_faltas" ? "todos" : "excesso_faltas")}
         >
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between gap-2">
@@ -1231,6 +1235,8 @@ function AlunosPage() {
             </div> : null}
           </CardContent>
         </Card>
+      ) : null}
+        </>
       ) : null}
       {filtroNotificacao !== "todos" && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2 text-sm">

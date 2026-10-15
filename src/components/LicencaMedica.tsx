@@ -26,7 +26,6 @@ export function LicencaMedicaSecao({ alunoId }: { alunoId: string }) {
   const [licencas, setLicencas] = useState<LicencaMedica[]>([]);
   const [modo, setModo] = useState<"nenhum" | "registrar" | "renovar" | "concluir">("nenhum");
   const [inicio, setInicio] = useState(hoje);
-  const [usarDias, setUsarDias] = useState(false);
   const [retorno, setRetorno] = useState("");
   const [dias, setDias] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -48,6 +47,13 @@ export function LicencaMedicaSecao({ alunoId }: { alunoId: string }) {
   }, [alunoId]);
 
   const ativa = licencas.find((l) => l.status === "ativa");
+  const [miniatura, setMiniatura] = useState<string | null>(null);
+  useEffect(() => {
+    setMiniatura(null);
+    const path = ativa?.anexo_path;
+    if (!path || /\.pdf$/i.test(path)) return;
+    void supabase.storage.from("fotos-alunos").createSignedUrl(path, 3600).then(({ data }) => setMiniatura(data?.signedUrl ?? null));
+  }, [ativa?.anexo_path]);
 
   function limpar() {
     setModo("nenhum");
@@ -59,11 +65,7 @@ export function LicencaMedicaSecao({ alunoId }: { alunoId: string }) {
     setExigirLiberacao(false);
   }
 
-  function retornoCalculado(base: string) {
-    if (usarDias) {
-      const n = Number(dias);
-      return n > 0 ? somarDias(base, n) : "";
-    }
+  function retornoCalculado(_base: string) {
     return retorno;
   }
 
@@ -147,22 +149,23 @@ export function LicencaMedicaSecao({ alunoId }: { alunoId: string }) {
 
   const camposData = (base: string) => (
     <>
-      <div className="flex items-center gap-2">
-        <Switch id="licenca-dias" checked={usarDias} onCheckedChange={setUsarDias} />
-        <Label htmlFor="licenca-dias">Informar período em dias</Label>
+      <div className="space-y-1">
+        <Label>Período em dias (opcional)</Label>
+        <Input
+          type="number"
+          min={1}
+          value={dias}
+          onChange={(e) => {
+            setDias(e.target.value);
+            const n = Number(e.target.value);
+            if (n > 0) setRetorno(somarDias(base, n));
+          }}
+        />
       </div>
-      {usarDias ? (
-        <div className="space-y-1">
-          <Label>Período (dias)</Label>
-          <Input type="number" min={1} value={dias} onChange={(e) => setDias(e.target.value)} />
-          {retornoCalculado(base) ? <p className="text-xs text-muted-foreground">Retorno previsto: {fmt(retornoCalculado(base))}</p> : null}
-        </div>
-      ) : (
-        <div className="space-y-1">
-          <Label>{modo === "renovar" ? "Nova data prevista de retorno" : "Data prevista de retorno"}</Label>
-          <Input type="date" value={retorno} min={base} onChange={(e) => setRetorno(e.target.value)} />
-        </div>
-      )}
+      <div className="space-y-1">
+        <Label>{modo === "renovar" ? "Nova data prevista de retorno" : "Data prevista de retorno"}</Label>
+        <Input type="date" value={retorno} min={base} onChange={(e) => { setRetorno(e.target.value); setDias(""); }} />
+      </div>
     </>
   );
 
@@ -181,14 +184,23 @@ export function LicencaMedicaSecao({ alunoId }: { alunoId: string }) {
             {fmt(ativa.data_inicio)} a {fmt(ativa.data_retorno)} · {ativa.motivo ?? "Sem motivo"}
           </p>
           {ativa.anexo_path ? (
-            <Button size="sm" variant="outline" onClick={() => void abrirArquivo(ativa.anexo_path!)}>
-              Ver atestado / laudo
-            </Button>
+            <button
+              type="button"
+              title="Abrir atestado / laudo"
+              onClick={() => void abrirArquivo(ativa.anexo_path!)}
+              className="block overflow-hidden rounded-md border border-border/70 bg-card"
+            >
+              {miniatura ? (
+                <img src={miniatura} alt="Atestado da licença" className="h-24 w-24 object-cover" />
+              ) : (
+                <span className="grid h-24 w-24 place-items-center text-xs text-muted-foreground">PDF</span>
+              )}
+            </button>
           ) : null}
           {modo === "nenhum" ? (
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => setModo("concluir")}>Concluir licença / Retornar às aulas</Button>
-              <Button size="sm" variant="outline" onClick={() => setModo("renovar")}>Renovar licença</Button>
+              <Button size="sm" onClick={() => setModo("concluir")}>Confirmar retorno</Button>
+              <Button size="sm" variant="outline" onClick={() => setModo("renovar")}>Prorrogar licença</Button>
             </div>
           ) : null}
         </div>
