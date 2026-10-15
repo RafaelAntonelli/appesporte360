@@ -250,7 +250,7 @@ function Painel() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+      <div className="grid gap-6">
         <Card className="overflow-hidden border-none bg-pool text-primary-foreground shadow-pool">
           <CardContent className="space-y-4 py-8">
             <h2 className="font-display text-2xl font-semibold">Comece a aula</h2>
