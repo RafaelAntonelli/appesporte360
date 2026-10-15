@@ -221,7 +221,7 @@ function Painel() {
         ) : null}
       </div>
       <PerfilAluno alunoId={perfilId} onFechar={() => setPerfilId(null)} />
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
         {cards.map((c) => (
           <Card key={c.label} className="border-border/70">
             <CardContent className="flex items-center gap-4 py-6">
