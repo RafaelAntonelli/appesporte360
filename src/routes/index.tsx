@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Users, CalendarDays, ListOrdered, Plus, Trash2, Search, Stethoscope } from "lucide-react";
+import { Users, CalendarDays, Plus, Trash2, Search, Stethoscope } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CONDICOES_PCD } from "@/lib/pcd";
@@ -183,7 +183,6 @@ function Painel() {
   const cards = [
     { label: "Alunos ativos", value: stats.alunos, icon: Users },
     { label: "Turmas abertas", value: stats.turmas, icon: CalendarDays },
-    { label: "Na fila de espera", value: fila.length, icon: ListOrdered },
   ];
 
   const resultados = busca.trim()
@@ -222,7 +221,7 @@ function Painel() {
         ) : null}
       </div>
       <PerfilAluno alunoId={perfilId} onFechar={() => setPerfilId(null)} />
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
         {cards.map((c) => (
           <Card key={c.label} className="border-border/70">
             <CardContent className="flex items-center gap-4 py-6">
