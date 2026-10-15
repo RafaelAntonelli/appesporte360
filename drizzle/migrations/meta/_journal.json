@@ -50,6 +50,13 @@
       "when": 1792083756976,
       "tag": "0006_permissoes_professores_e_turmas",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792083775706,
+      "tag": "0007_preservar_nome_inativacao",
+      "breakpoints": true
     }
   ]
 }
