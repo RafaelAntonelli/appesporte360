@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { AtSign, CalendarClock, CheckCircle2, CloudUpload, FolderCog, FolderTree, KeyRound, ShieldAlert, XCircle } from "lucide-react";
+import { History, AtSign, CalendarClock, CheckCircle2, CloudUpload, FolderCog, FolderTree, KeyRound, ShieldAlert, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -27,7 +27,18 @@ import {
   statusBackupFn,
   salvarAgendamentoFn,
   contaDriveFn,
+  historicoBackupFn,
+  reenviarFalhasFn,
 } from "@/lib/backup.functions";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+function duracao(inicio: string, fim: string | null) {
+  if (!fim) return "—";
+  const seg = Math.max(0, Math.round((new Date(fim).getTime() - new Date(inicio).getTime()) / 1000));
+  return seg >= 60 ? `${Math.floor(seg / 60)} min ${seg % 60} s` : `${seg} s`;
+}
 
 import { assinarBackup, estadoBackupAtual, executarBackupGlobal, notificar, type EstadoBackup } from "@/lib/backup-execucao";
 import { Switch } from "@/components/ui/switch";
@@ -291,6 +302,21 @@ function BackupPage() {
   const [agenda, setAgenda] = useState({ dia_semana: 1, hora: 3, minuto: 0, ativo: true });
   const [salvandoAgenda, setSalvandoAgenda] = useState(false);
   const ultimoAvisadoRef = useRef<string | null>(null);
+  const lerHistorico = useServerFn(historicoBackupFn);
+  const reenviarFalhas = useServerFn(reenviarFalhasFn);
+  const [historico, setHistorico] = useState<Awaited<ReturnType<typeof historicoBackupFn>>>([]);
+  const [vendoFalhas, setVendoFalhas] = useState<(typeof historico)[number] | null>(null);
+  const [reenviando, setReenviando] = useState<string | null>(null);
+  const carregarHistorico = useCallback(async () => {
+    try {
+      setHistorico(await lerHistorico({ data: undefined }));
+    } catch {
+      /* leitura opcional */
+    }
+  }, [lerHistorico]);
+  useEffect(() => {
+    if (isAdmin && !backupando) void carregarHistorico();
+  }, [isAdmin, backupando, carregarHistorico]);
 
   const atualizarStatus = useCallback(
     async (avisar: boolean) => {
@@ -386,10 +412,31 @@ function BackupPage() {
     );
   }
 
+  async function reenviar(id: string) {
+    setReenviando(id);
+    try {
+      const r = await reenviarFalhas({ data: { id } });
+      if (r.falhas) toast.error(`${r.enviados} arquivo(s) reenviado(s); ${r.falhas} ainda com falha.`);
+      else toast.success(`${r.enviados} arquivo(s) reenviado(s) com sucesso.`);
+      await carregarHistorico();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao reenviar");
+    } finally {
+      setReenviando(null);
+    }
+  }
+
   const pct = progresso && progresso.total > 0 ? Math.round((progresso.enviados / progresso.total) * 100) : 0;
 
   return (
     <AppShell title="Backup" subtitle="Envio da planilha e dos documentos para o Google Drive">
+      <Tabs defaultValue="backup">
+        <TabsList className="mb-4 flex h-auto flex-wrap">
+          <TabsTrigger value="backup">Backup e histórico</TabsTrigger>
+          <TabsTrigger value="agenda">Agendamento</TabsTrigger>
+          <TabsTrigger value="destino">Destino no Drive</TabsTrigger>
+        </TabsList>
+        <TabsContent value="backup">
       <Card className="max-w-2xl">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 font-display text-base">
@@ -470,7 +517,81 @@ function BackupPage() {
         </CardContent>
       </Card>
 
-      <Card className="mt-4 max-w-2xl">
+      <Card className="mt-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 font-display text-base">
+            <History className="size-4" /> Histórico dos últimos 30 backups
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          <table className="w-full min-w-[820px] text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs uppercase text-muted-foreground">
+                <th className="py-2 pr-3 font-medium">Data e hora</th>
+                <th className="py-2 pr-3 font-medium">Tipo</th>
+                <th className="py-2 pr-3 font-medium">Quem fez</th>
+                <th className="py-2 pr-3 font-medium">Arquivos</th>
+                <th className="py-2 pr-3 font-medium">Duração</th>
+                <th className="py-2 pr-3 font-medium">Situação</th>
+                <th className="py-2 pr-3 font-medium">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historico.map((h) => (
+                <tr key={h.id} className="border-b last:border-0">
+                  <td className="py-2 pr-3">{new Date(h.iniciado_em).toLocaleString("pt-BR")}</td>
+                  <td className="py-2 pr-3">{h.tipo === "automatico" ? "Automático" : "Manual"}</td>
+                  <td className="py-2 pr-3">{h.usuario_nome ?? "—"}</td>
+                  <td className="py-2 pr-3">{h.enviados}/{h.total}</td>
+                  <td className="py-2 pr-3">{duracao(h.iniciado_em, h.concluido_em)}</td>
+                  <td className="py-2 pr-3">
+                    <Badge variant={h.status === "sucesso" ? "secondary" : "destructive"}>
+                      {h.status === "sucesso" ? "Sucesso" : "Com falhas"}
+                    </Badge>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <div className="flex flex-wrap gap-1">
+                      {h.planilha_id ? (
+                        <Button asChild size="sm" variant="outline">
+                          <a href={`https://drive.google.com/file/d/${h.planilha_id}/view`} target="_blank" rel="noopener noreferrer">Abrir planilha</a>
+                        </Button>
+                      ) : null}
+                      {h.falhas.length ? (
+                        <>
+                          <Button size="sm" variant="outline" onClick={() => setVendoFalhas(h)}>Ver falhas</Button>
+                          <Button size="sm" disabled={reenviando === h.id} onClick={() => void reenviar(h.id)}>
+                            {reenviando === h.id ? "Reenviando..." : "Reenviar arquivos com falha"}
+                          </Button>
+                        </>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!historico.length && (
+                <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">Nenhum backup registrado ainda.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!vendoFalhas} onOpenChange={(o) => !o && setVendoFalhas(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader><DialogTitle className="font-display">Arquivos que não subiram</DialogTitle></DialogHeader>
+          <ul className="space-y-2 text-sm">
+            {vendoFalhas?.falhas.map((f) => (
+              <li key={f.caminho} className="rounded-lg border border-border/70 p-2">
+                <p className="font-medium">{f.nome}</p>
+                <p className="text-xs text-muted-foreground">{f.motivo}</p>
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+      </Dialog>
+        </TabsContent>
+        <TabsContent value="agenda">
+      <Card className="max-w-2xl">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 font-display text-base">
             <CalendarClock className="size-4" /> Backup automático
@@ -528,7 +649,9 @@ function BackupPage() {
       </Card>
 
 
-      <Card className="mt-4 max-w-2xl">
+        </TabsContent>
+        <TabsContent value="destino">
+      <Card className="max-w-2xl">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 font-display text-base">
             <FolderCog className="size-4" /> Pastas de destino no Drive
@@ -618,6 +741,8 @@ function BackupPage() {
           ))}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </AppShell>
   );
 }
