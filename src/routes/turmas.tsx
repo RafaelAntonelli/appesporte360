@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Users, Trash2, Pencil, Check, X, FileCheck, Clock, CalendarDays } from "lucide-react";
+import { Plus, Users, Trash2, Pencil, Check, X, FileCheck, Clock, CalendarDays, Printer, Search } from "lucide-react";
+import { normalizarTexto } from "@/lib/formatacao";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useHorarios } from "@/lib/horarios";
@@ -120,6 +121,12 @@ function TurmasPage() {
   const [observacoesPresenca, setObservacoesPresenca] = useState<Record<string, string>>({});
   const [editandoObservacao, setEditandoObservacao] = useState<{ alunoId: string; nome: string; texto: string } | null>(null);
   const [turmaAberta, setTurmaAberta] = useState<Turma | null>(null);
+  const [buscaAluno, setBuscaAluno] = useState("");
+  const [fotoAmpliada, setFotoAmpliada] = useState<{ url: string; nome: string } | null>(null);
+  const diaHoje = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"][new Date().getDay()];
+  function temAulaHoje(t: Turma) {
+    return (t.dias_semana ?? []).some((d) => normalizarTexto(d).slice(0, 3) === diaHoje);
+  }
   const [alunosTurma, setAlunosTurma] = useState<AlunoTurma[] | null>(null);
   const [confirmarExclusao, setConfirmarExclusao] = useState<Turma | null>(null);
 
@@ -229,6 +236,7 @@ function TurmasPage() {
 
   async function abrirTurma(t: Turma) {
     setTurmaAberta(t);
+    setBuscaAluno("");
     setAlunosTurma(null);
     setStatusPresenca({});
     const { data, error } = await supabase
@@ -353,7 +361,62 @@ function TurmasPage() {
       (filtroHorario === "todos" || t.horario === filtroHorario) &&
       (filtroTurno === "todos" || turnoDoHorario(t.horario) === filtroTurno) &&
       (filtroDias === "todos" || grupoDosDias(t.dias_semana) === filtroDias),
-  );
+  ).sort((a, b) => {
+    const ha = temAulaHoje(a), hb = temAulaHoje(b);
+    if (ha !== hb) return ha ? -1 : 1;
+    return ha ? (a.horario ?? "99").localeCompare(b.horario ?? "99") : 0;
+  });
+
+  const alunosVisiveis = (alunosTurma ?? []).filter((a) => {
+    const b = normalizarTexto(buscaAluno);
+    return !b || normalizarTexto(a.nome).includes(b) || normalizarTexto(a.codigo).includes(b);
+  });
+
+  async function imprimirLista(t: Turma) {
+    const { data, error } = await supabase
+      .from("matriculas")
+      .select("alunos(nome,codigo)")
+      .eq("turma_id", t.id)
+      .eq("status", "ativa");
+    if (error) return toast.error(error.message);
+    const lista = (data ?? [])
+      .map((m) => m.alunos as { nome: string; codigo: string } | null)
+      .filter((a): a is { nome: string; codigo: string } => !!a)
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ orientation: "landscape" });
+    const colunas = 8;
+    const larguraNome = 110;
+    const larguraCol = (277 - 10 - 25 - larguraNome) / colunas;
+    let y = 15;
+    doc.setFontSize(14);
+    doc.text(t.nome, 10, y);
+    doc.setFontSize(9);
+    doc.text(`${t.professor ? `Professor: ${t.professor} · ` : ""}${lista.length} aluno(s)`, 10, y + 6);
+    y += 14;
+    const cabecalho = () => {
+      doc.setFont("helvetica", "bold");
+      doc.rect(10, y, 277, 8);
+      doc.text("Nº", 12, y + 5.5);
+      doc.text("Aluno", 22, y + 5.5);
+      doc.text("Matrícula", 22 + larguraNome, y + 5.5);
+      for (let i = 0; i < colunas; i++) doc.text("___/___", 10 + 25 + larguraNome + i * larguraCol + 1, y + 5.5);
+      doc.setFont("helvetica", "normal");
+      y += 8;
+    };
+    cabecalho();
+    lista.forEach((a, i) => {
+      if (y > 195) { doc.addPage(); y = 15; cabecalho(); }
+      doc.rect(10, y, 277, 8);
+      doc.text(String(i + 1), 12, y + 5.5);
+      doc.text(a.nome.slice(0, 60), 22, y + 5.5);
+      doc.text(a.codigo ?? "", 22 + larguraNome, y + 5.5);
+      for (let c = 0; c < colunas; c++) doc.rect(10 + 25 + larguraNome + c * larguraCol, y, larguraCol, 8);
+      y += 8;
+    });
+    window.open(doc.output("bloburl"), "_blank");
+    return;
+  }
 
 
   return (
@@ -485,6 +548,7 @@ function TurmasPage() {
                 <div className="flex flex-col items-end gap-1">
                   <Badge variant="secondary">{t.horario ?? "s/ horário"}</Badge>
                   {turnoDoHorario(t.horario) ? <Badge variant="outline">{turnoDoHorario(t.horario)}</Badge> : null}
+                  {temAulaHoje(t) ? <Badge>Aula hoje</Badge> : null}
                 </div>
 
               </div>
@@ -493,11 +557,33 @@ function TurmasPage() {
                   <span key={d} className="rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">{d}</span>
                 ))}
               </div>
+              {(() => {
+                const ocupados = contagem[t.id] ?? 0;
+                const pct = t.capacidade ? (ocupados / t.capacidade) * 100 : 0;
+                const cor = pct <= 70 ? "bg-emerald-500" : pct <= 90 ? "bg-amber-500" : "bg-destructive";
+                return (
+                  <div className="space-y-1">
+                    <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                      <div className={`h-full ${cor}`} style={{ width: `${Math.min(100, pct)}%` }} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">{Math.max(0, t.capacidade - ocupados)} vaga(s) livre(s)</p>
+                  </div>
+                );
+              })()}
               <div className="flex items-center justify-between gap-2">
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="size-4" /> {contagem[t.id] ?? 0} de {t.capacidade} vagas
                 </p>
                 <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Imprimir/PDF"
+                    aria-label="Imprimir/PDF"
+                    onClick={(e) => { e.stopPropagation(); void imprimirLista(t); }}
+                  >
+                    <Printer className="size-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -537,18 +623,24 @@ function TurmasPage() {
           <p className="text-sm text-muted-foreground">
             {turmaAberta?.horario ?? "Sem horário"} · {alunosTurma?.length ?? 0} de {turmaAberta?.capacidade ?? 40} vagas
           </p>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-9" placeholder="Buscar por nome ou matrícula" value={buscaAluno} onChange={(e) => setBuscaAluno(e.target.value)} />
+          </div>
           <div className="space-y-2">
             {alunosTurma === null ? (
               <p className="py-6 text-center text-sm text-muted-foreground">Carregando alunos...</p>
             ) : alunosTurma.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">Nenhum aluno matriculado nesta turma.</p>
             ) : (
-              alunosTurma.map((a) => (
+              alunosVisiveis.map((a) => (
                 <div key={a.id} className="space-y-2 rounded-lg border border-border/70 px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-3">
                       {fotos[a.id] ? (
-                        <img src={fotos[a.id]} alt={`Foto de ${a.nome}`} className="size-10 shrink-0 rounded-full object-cover" />
+                        <button type="button" title="Ampliar foto" onClick={() => setFotoAmpliada({ url: fotos[a.id]!, nome: a.nome })}>
+                          <img src={fotos[a.id]} alt={`Foto de ${a.nome}`} className="size-10 shrink-0 rounded-full object-cover" />
+                        </button>
                       ) : (
                         <div className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-xs font-semibold">
                           {a.nome.slice(0, 2).toUpperCase()}
@@ -611,6 +703,12 @@ function TurmasPage() {
 
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!fotoAmpliada} onOpenChange={(o) => !o && setFotoAmpliada(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle className="font-display">{fotoAmpliada?.nome}</DialogTitle></DialogHeader>
+          {fotoAmpliada ? <img src={fotoAmpliada.url} alt={`Foto de ${fotoAmpliada.nome}`} className="w-full rounded-lg object-contain" /> : null}
         </DialogContent>
       </Dialog>
       <Dialog open={!!editandoObservacao} onOpenChange={(o) => !o && setEditandoObservacao(null)}>
