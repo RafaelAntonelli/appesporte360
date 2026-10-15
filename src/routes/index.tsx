@@ -183,7 +183,6 @@ function Painel() {
   const cards = [
     { label: "Alunos ativos", value: stats.alunos, icon: Users },
     { label: "Turmas abertas", value: stats.turmas, icon: CalendarDays },
-    { label: "Na fila de espera", value: fila.length, icon: ListOrdered },
   ];
 
   const resultados = busca.trim()
