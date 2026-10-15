@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/alunos")({
+  validateSearch: (s: Record<string, unknown>): { novo?: boolean } => (s['novo'] ? { novo: true } : {}),
   component: AlunosPage,
   head: () => ({
     meta: [
@@ -302,6 +303,12 @@ function AlunosPage() {
   useEffect(() => {
     void carregar();
   }, []);
+
+  const { novo: abrirNovaMatricula } = Route.useSearch();
+  useEffect(() => {
+    if (abrirNovaMatricula) abrirNovo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abrirNovaMatricula]);
 
 
   function limparDocs() {
