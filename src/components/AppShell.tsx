@@ -3,6 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { LayoutDashboard, Users, CalendarDays, QrCode, LogOut, Waves, ShieldCheck, FileBarChart, CloudUpload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { usePermissoes } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { StatusOffline } from "@/components/StatusOffline";
@@ -62,7 +63,8 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
     );
   }
 
-  const nav = isAdmin ? [...baseNav, ...adminNav] : baseNav;
+  const { pode } = usePermissoes();
+  const nav = (isAdmin ? [...baseNav, ...adminNav] : baseNav).filter((i) => i.to !== "/relatorios" || pode("ver_relatorios"));
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0 md:pl-64">

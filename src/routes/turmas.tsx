@@ -1,3 +1,4 @@
+import { usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Plus, Users, Trash2, Pencil, Check, X, FileCheck, Clock, CalendarDays, Printer, Search } from "lucide-react";
@@ -66,6 +67,7 @@ const ROTULO_PRESENCA: Record<StatusPresenca, string> = {
 };
 
 function TurmasPage() {
+  const { minhasTurmas } = usePermissoes();
   const { horarios, lista: listaHorarios, recarregar: recarregarHorarios } = useHorarios();
   const { grupos, lista: listaGrupos, recarregar: recarregarGrupos } = useGruposDias();
   const [gerenciarDias, setGerenciarDias] = useState(false);
@@ -362,6 +364,8 @@ function TurmasPage() {
       (filtroTurno === "todos" || turnoDoHorario(t.horario) === filtroTurno) &&
       (filtroDias === "todos" || grupoDosDias(t.dias_semana) === filtroDias),
   ).sort((a, b) => {
+    const ma = minhasTurmas.has(a.id), mb = minhasTurmas.has(b.id);
+    if (ma !== mb) return ma ? -1 : 1;
     const ha = temAulaHoje(a), hb = temAulaHoje(b);
     if (ha !== hb) return ha ? -1 : 1;
     return ha ? (a.horario ?? "99").localeCompare(b.horario ?? "99") : 0;

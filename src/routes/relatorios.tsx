@@ -1,3 +1,4 @@
+import { usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, BarChart3, ChevronDown, ChevronUp, Download, FileSpreadsheet, FileText, IdCard, Settings2 } from "lucide-react";
@@ -105,6 +106,7 @@ const ROTULO_FILTRO: Record<ParametroId, string> = {
 type PontoGrafico = { nome: string; total: number; alunos: Aluno[] };
 
 function RelatoriosPage() {
+  const permissoes = usePermissoes();
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [matriculas, setMatriculas] = useState<Matricula[]>([]);
@@ -630,6 +632,13 @@ function RelatoriosPage() {
     doc.save(`status-turmas-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
+  if (!permissoes.carregando && !permissoes.pode("ver_relatorios")) {
+    return (
+      <AppShell title="Relatórios">
+        <p className="text-sm text-muted-foreground">Seu acesso aos relatórios foi desligado por um administrador.</p>
+      </AppShell>
+    );
+  }
   return (
     <AppShell title="Relatórios" subtitle="Atestados, exportações e backup da Arena Aquática">
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
