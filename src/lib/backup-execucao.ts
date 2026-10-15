@@ -10,6 +10,8 @@ import {
 
 const LOTE = 8;
 
+export type FalhaBackup = { caminho: string; nome: string; pasta: string; marcador: string; motivo: string };
+
 export type ProgressoBackup = {
   etapa: string;
   enviados: number;
@@ -83,7 +85,7 @@ export async function executarBackupGlobal(): Promise<void> {
     const total = arquivos.length;
     const inicio = Date.now();
     let enviados = 0;
-    const falhas: string[] = [];
+    const falhas: FalhaBackup[] = [];
 
     atualizar({
       progresso: { etapa: "Enviando fotos e documentos…", enviados: 0, total, falhas: 0, restante: null },
@@ -111,12 +113,25 @@ export async function executarBackupGlobal(): Promise<void> {
     atualizar({
       progresso: { etapa: "Gerando a planilha com os links…", enviados: total, total, falhas: falhas.length, restante: null },
     });
-    const { planilha } = await gerarPlanilhaBackupFn({ data: undefined });
+    const { planilha, planilhaId } = await gerarPlanilhaBackupFn({ data: undefined });
 
     const resumo = `${planilha} · ${enviados} arquivo(s)${falhas.length ? ` · ${falhas.length} falha(s)` : ""}`;
 
     const status = falhas.length > 0 ? ("falha" as const) : ("sucesso" as const);
-    await registrarBackupFn({ data: { resumo, status } });
+    await registrarBackupFn({
+      data: {
+        resumo,
+        status,
+        historico: {
+          iniciado_em: new Date(inicio).toISOString(),
+          enviados,
+          total,
+          planilha_nome: planilha,
+          planilha_id: planilhaId,
+          falhas,
+        },
+      },
+    });
     atualizar({
       progresso: { etapa: "Backup concluído", enviados: total, total, falhas: falhas.length, restante: 0 },
     });

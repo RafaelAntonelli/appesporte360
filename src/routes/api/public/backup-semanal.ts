@@ -17,7 +17,21 @@ export const Route = createFileRoute("/api/public/backup-semanal")({
         }
         try {
           const { executarBackupCompleto } = await import("@/lib/backup.server");
+          const inicio = new Date().toISOString();
           const resultado = await executarBackupCompleto();
+          await supabaseAdmin.from("backup_historico").insert({
+            iniciado_em: inicio,
+            concluido_em: new Date().toISOString(),
+            tipo: "automatico",
+            usuario_nome: "Agendamento automático",
+            enviados: resultado.imagens,
+            total: resultado.total,
+            status: resultado.falhas.length ? "falha" : "sucesso",
+            planilha_nome: resultado.planilha,
+            planilha_id: resultado.planilhaId,
+            falhas: resultado.falhas,
+            resumo: `${resultado.planilha} · ${resultado.imagens} arquivo(s)`,
+          });
           await supabaseAdmin
             .from("backup_cron")
             .update({
@@ -30,6 +44,13 @@ export const Route = createFileRoute("/api/public/backup-semanal")({
         } catch (err) {
           const mensagem = err instanceof Error ? err.message : "Falha no backup";
           console.error("[backup-semanal]", mensagem);
+          await supabaseAdmin.from("backup_historico").insert({
+            tipo: "automatico",
+            usuario_nome: "Agendamento automático",
+            concluido_em: new Date().toISOString(),
+            status: "falha",
+            resumo: mensagem,
+          });
           await supabaseAdmin
             .from("backup_cron")
             .update({

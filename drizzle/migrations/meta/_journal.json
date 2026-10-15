@@ -36,6 +36,13 @@
       "when": 1792013487007,
       "tag": "0004_licencas_medicas",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792083521853,
+      "tag": "0005_backup_historico",
+      "breakpoints": true
     }
   ]
 }

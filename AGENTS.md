@@ -16,3 +16,4 @@
 - Use one shared browser-safe WhatsApp link helper and contact button for student forms, profiles, and notification lists; click-to-chat delegates app/web handoff without claiming number availability.
 - Normalize emitted server createRequire helpers to a literal file URL in the Nitro output hook; the hosted Worker may not provide import.meta.url during module initialization.
 - Medical leave lives in licencas_medicas (one active per student) with shared rules in src/lib/licenca.ts; enrollments stay active during leave so the seat stays reserved.
+- Backup runs (manual and automatic) are recorded in backup_historico with per-file failures so failed files can be resent alone; Drive uploads retry transient errors (429/5xx/network) up to 3 times before failing.
