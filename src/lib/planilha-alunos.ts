@@ -5,6 +5,7 @@ export const DOCUMENTOS_PLANILHA = [
   { campo: "doc_residencia_path", rotulo: "Comprovante de residência" },
   { campo: "doc_matricula_path", rotulo: "Comprovante de matrícula escolar" },
   { campo: "doc_identidade_path", rotulo: "Documento de identidade" },
+  { campo: "doc_ficha_path", rotulo: "Ficha" },
 ] as const;
 
 export type CampoDocPlanilha = (typeof DOCUMENTOS_PLANILHA)[number]["campo"];

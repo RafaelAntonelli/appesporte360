@@ -21,6 +21,8 @@ export const Route = createFileRoute("/auth")({
       { name: "description", content: "Acesso da equipe do Esporte 360 ao sistema de matrículas e presença." },
       { property: "og:title", content: "Entrar | Esporte 360" },
       { property: "og:description", content: "Acesso da equipe ao sistema de matrículas e presença." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });

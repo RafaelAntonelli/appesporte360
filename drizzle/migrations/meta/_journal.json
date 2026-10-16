@@ -57,6 +57,13 @@
       "when": 1792083775706,
       "tag": "0007_preservar_nome_inativacao",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792192833769,
+      "tag": "0008_adicionar_foto_ficha_aluno",
+      "breakpoints": true
     }
   ]
 }

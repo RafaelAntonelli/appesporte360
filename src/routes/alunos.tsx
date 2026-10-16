@@ -17,7 +17,7 @@ import { gerarCrachaPreviewImagem, gerarCrachasPdfFielAoPreview, type DadosCrach
 import { atestadoVencido, notificarAtestadoVencido, notificarAtestadoVencendo, diasParaVencer } from "@/lib/atestado";
 import { usePrazoAvisoAtestado } from "@/lib/configuracoes";
 import { useAuth } from "@/lib/auth";
-import { montarPlanilhaAlunos, ExportacaoCancelada, type AlunoPlanilha } from "@/lib/planilha-alunos";
+import { montarPlanilhaAlunos, ExportacaoCancelada, DOCUMENTOS_PLANILHA, type AlunoPlanilha } from "@/lib/planilha-alunos";
 import { linksArquivosFn } from "@/lib/links-arquivos.functions";
 
 
@@ -94,18 +94,14 @@ type Aluno = {
   doc_residencia_path: string | null;
   doc_matricula_path: string | null;
   doc_identidade_path: string | null;
+  doc_ficha_path: string | null;
   motivo_inativacao: string | null;
   inativado_em: string | null;
   inativado_por: string | null;
   inativado_por_nome?: string | null;
 };
 
-const DOCUMENTOS = [
-  { campo: "doc_atestado_path", rotulo: "Atestado médico" },
-  { campo: "doc_residencia_path", rotulo: "Comprovante de residência" },
-  { campo: "doc_matricula_path", rotulo: "Comprovante de matrícula escolar" },
-  { campo: "doc_identidade_path", rotulo: "Documento de identidade" },
-] as const;
+const DOCUMENTOS = DOCUMENTOS_PLANILHA;
 
 type CampoDoc = (typeof DOCUMENTOS)[number]["campo"];
 
@@ -207,6 +203,7 @@ function AlunosPage() {
     doc_residencia_path: null,
     doc_matricula_path: null,
     doc_identidade_path: null,
+    doc_ficha_path: null,
   });
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Aluno | null>(null);
@@ -314,7 +311,7 @@ function AlunosPage() {
 
 
   function limparDocs() {
-    setDocs({ doc_atestado_path: null, doc_residencia_path: null, doc_matricula_path: null, doc_identidade_path: null });
+    setDocs({ doc_atestado_path: null, doc_residencia_path: null, doc_matricula_path: null, doc_identidade_path: null, doc_ficha_path: null });
   }
 
   async function excluirDocumento(campo: CampoDoc, rotulo: string) {
@@ -1746,6 +1743,7 @@ function AlunosPage() {
                     <div className="flex items-center gap-2">
                       <Input
                         id={`doc-${d.campo}`}
+                        aria-label={d.rotulo}
                         type="file"
                         accept="image/*,application/pdf"
                         aria-invalid={d.campo === "doc_atestado_path" && (atestadoAnexadoSemConfirmacao || atestadoAnexadoSemData)}

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { idadePorNascimento, turnoDoHorario } from "@/lib/turnos";
+import { DOCUMENTOS_PLANILHA } from "@/lib/planilha-alunos";
 
 import { Button } from "@/components/ui/button";
 import { ConversarWhatsApp } from "@/components/ConversarWhatsApp";
@@ -39,6 +40,7 @@ type AlunoPerfil = {
   doc_residencia_path: string | null;
   doc_matricula_path: string | null;
   doc_identidade_path: string | null;
+  doc_ficha_path?: string | null;
   motivo_inativacao: string | null;
   inativado_em: string | null;
   inativado_por: string | null;
@@ -63,12 +65,7 @@ type PresencaPerfil = {
   observacoes: string | null;
 };
 
-const DOCUMENTOS = [
-  { campo: "doc_atestado_path", rotulo: "Atestado médico" },
-  { campo: "doc_residencia_path", rotulo: "Comprovante de residência" },
-  { campo: "doc_matricula_path", rotulo: "Comprovante de matrícula escolar" },
-  { campo: "doc_identidade_path", rotulo: "Documento de identidade" },
-] as const;
+const DOCUMENTOS = DOCUMENTOS_PLANILHA;
 
 const ROTULO_STATUS: Record<string, string> = {
   presente: "Presença",

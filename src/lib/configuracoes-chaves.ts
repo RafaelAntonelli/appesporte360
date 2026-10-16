@@ -9,6 +9,7 @@ export const TIPOS_DOCUMENTO = [
   { campo: "doc_residencia_path", rotulo: "Comprovante de residência", padrao: "Residência" },
   { campo: "doc_matricula_path", rotulo: "Comprovante de matrícula escolar", padrao: "Matrícula escolar" },
   { campo: "doc_identidade_path", rotulo: "Documento de identidade", padrao: "Identidade" },
+  { campo: "doc_ficha_path", rotulo: "Ficha", padrao: "Fichas" },
 ] as const;
 
 export type CampoDocumento = (typeof TIPOS_DOCUMENTO)[number]["campo"];
