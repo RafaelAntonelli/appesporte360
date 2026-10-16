@@ -1,0 +1,1 @@
+ALTER TABLE public.alunos ADD COLUMN IF NOT EXISTS doc_ficha_path text;

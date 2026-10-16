@@ -24,6 +24,7 @@ export type Database = {
           created_at: string
           data_nascimento: string | null
           doc_atestado_path: string | null
+          doc_ficha_path: string | null
           doc_identidade_path: string | null
           doc_matricula_path: string | null
           doc_residencia_path: string | null
@@ -58,6 +59,7 @@ export type Database = {
           created_at?: string
           data_nascimento?: string | null
           doc_atestado_path?: string | null
+          doc_ficha_path?: string | null
           doc_identidade_path?: string | null
           doc_matricula_path?: string | null
           doc_residencia_path?: string | null
@@ -92,6 +94,7 @@ export type Database = {
           created_at?: string
           data_nascimento?: string | null
           doc_atestado_path?: string | null
+          doc_ficha_path?: string | null
           doc_identidade_path?: string | null
           doc_matricula_path?: string | null
           doc_residencia_path?: string | null
