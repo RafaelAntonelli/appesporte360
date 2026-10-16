@@ -8,3 +8,4 @@
 - [x] Aplicar proteção à inicialização publicada, validar os três testes de regressão e a abertura local.
 - [ ] Publicar a correção e confirmar a abertura no site público; depende da publicação pelo usuário.
 - [x] Permitir pesquisar escolas e adicionar escola fora da lista no formulário de matrícula.
+- [ ] Adicionar foto da Ficha no formulário e link na planilha exportada, validando o fluxo.
