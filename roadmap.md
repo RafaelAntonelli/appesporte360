@@ -8,4 +8,5 @@
 - [x] Aplicar proteção à inicialização publicada, validar os três testes de regressão e a abertura local.
 - [ ] Publicar a correção e confirmar a abertura no site público; depende da publicação pelo usuário.
 - [x] Permitir pesquisar escolas e adicionar escola fora da lista no formulário de matrícula.
-- [ ] Adicionar foto da Ficha no formulário e link na planilha exportada, validando o fluxo.
+- [x] Adicionar foto da Ficha no formulário, perfil e planilha exportada; teste de Excel aprovado.
+- [ ] Conferir upload e exportação da Ficha pela tela; depende de uma sessão autenticada na prévia.
