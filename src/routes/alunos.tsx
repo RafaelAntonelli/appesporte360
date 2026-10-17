@@ -22,6 +22,7 @@ import { linksArquivosFn } from "@/lib/links-arquivos.functions";
 
 
 import { AppShell } from "@/components/AppShell";
+import { LerFicha } from "@/components/AiRevisao";
 import { ImportarAlunos } from "@/components/ImportarAlunos";
 import { ConversarWhatsApp } from "@/components/ConversarWhatsApp";
 import { SelecionarEscola } from "@/components/SelecionarEscola";
@@ -1761,6 +1762,19 @@ function AlunosPage() {
                         <Trash2 className="size-4" />
                       </Button>
                     </div>
+                    {d.campo === "doc_ficha_path" ? <LerFicha arquivo={docs.doc_ficha_path} alunoId={editando?.id ?? null} caminho={editando?.doc_ficha_path ?? null} edicao={!!editando} aoAplicar={(campos) => {
+                      const patch = { ...campos };
+                      if (patch.cpf) patch.cpf = formatarCPF(patch.cpf);
+                      if (patch.telefone) patch.telefone = formatarCelular(patch.telefone);
+                      if (patch.telefone2) patch.telefone2 = formatarCelular(patch.telefone2);
+                      if (patch.sexo && !["Masculino", "Feminino"].includes(patch.sexo)) { toast.error("Revise o sexo: Masculino ou Feminino."); return; }
+                      if (patch.rede_ensino && !["Pública", "Privada"].includes(patch.rede_ensino)) { toast.error("Revise a rede de ensino: Pública ou Privada."); return; }
+                      if (patch.cpf && !cpfValido(patch.cpf)) { toast.error("O CPF sugerido é inválido. Corrija antes de aplicar."); return; }
+                      for (const tel of [campos.telefone, campos.telefone2]) if (tel && tel.replace(/\D/g, "").length !== 11) { toast.error("Revise o celular com DDD e 11 dígitos."); return; }
+                      if (patch.data_nascimento && !/^\d{4}-\d{2}-\d{2}$/.test(patch.data_nascimento)) { toast.error("Revise a data no formato AAAA-MM-DD."); return; }
+                      setForm((atual) => ({ ...atual, ...patch }));
+                      toast.success("Dados aplicados ao formulário. Revise antes de salvar.");
+                    }} /> : null}
                   </div>
                 ))}
               </div>

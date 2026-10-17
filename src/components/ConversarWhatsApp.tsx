@@ -1,3 +1,4 @@
+import { RascunhoWhatsApp } from "./RascunhoWhatsApp";
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { linkWhatsApp } from "@/lib/whatsapp";
@@ -14,10 +15,10 @@ export function ConversarWhatsApp({ telefone }: { telefone: string | null | unde
     );
   }
   return (
-    <Button asChild variant="outline" size="sm">
+    <span className="inline-flex flex-wrap items-center gap-2"><Button asChild variant="outline" size="sm">
       <a href={href} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()}>
         <MessageCircle /> Conversar no WhatsApp
       </a>
-    </Button>
+    </Button><RascunhoWhatsApp telefone={telefone}/></span>
   );
 }

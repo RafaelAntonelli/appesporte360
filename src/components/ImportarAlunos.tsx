@@ -1,3 +1,5 @@
+import { MapeamentoIA } from "@/components/AiRevisao";
+import { COLUNAS_IMPORTACAO } from "@/lib/ai/contracts";
 import { useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { FileSpreadsheet, Download, Upload, AlertTriangle } from "lucide-react";
@@ -26,27 +28,7 @@ type Turma = {
 type Matricula = { aluno_id: string; turma_id: string; status: string; modalidade?: string | null };
 type AlunoExistente = { id: string; nome: string; cpf: string | null; telefone: string | null };
 
-const COLUNAS = [
-  "Nome",
-  "Sexo",
-  "Idade",
-  "Nascimento",
-  "CPF",
-  "RG",
-  "Celular",
-  "Celular 2",
-  "E-mail",
-  "Responsável",
-  "Rede de ensino",
-  "Escola",
-  "PCD",
-  "Atestado",
-  "Data do atestado",
-  "Modalidade",
-  "Turma",
-  "Foto",
-  "Observações",
-] as const;
+const COLUNAS = COLUNAS_IMPORTACAO;
 
 // Aceita cabeçalhos fora do modelo (acentos, maiúsculas e apelidos comuns)
 const ALIASES: Record<string, string[]> = {
@@ -179,6 +161,9 @@ export function ImportarAlunos({
   const [arquivo, setArquivo] = useState<string>("");
   const [modo, setModo] = useState<"criar" | "atualizar">("atualizar");
   const [importando, setImportando] = useState(false);
+  const [cabecalhosIA, setCabecalhosIA] = useState<string[]>([]);
+  const [mapaIA, setMapaIA] = useState<Record<string, string> | null>(null);
+  const [mapeamentoPendente, setMapeamentoPendente] = useState(false);
   const imagensRef = useRef<Map<number, Blob>>(new Map());
   const baixar = useServerFn(baixarImagem);
 
@@ -208,9 +193,9 @@ export function ImportarAlunos({
     return mapa;
   }
 
-  function analisar(linhas: Linha[], modoAtual: "criar" | "atualizar"): Analise[] {
+  function analisar(linhas: Linha[], modoAtual: "criar" | "atualizar", mapaRevisado: Record<string, string> | null = mapaIA): Analise[] {
     const primeira = linhas[0];
-    const mapa = primeira ? mapearColunas(primeira) : {};
+    const mapa = mapaRevisado ?? (primeira ? mapearColunas(primeira) : {});
     const ocupacao = new Map<string, number>();
     for (const m of matriculas) {
       if (m.status === "ativa") ocupacao.set(m.turma_id, (ocupacao.get(m.turma_id) ?? 0) + 1);
@@ -388,6 +373,9 @@ export function ImportarAlunos({
   async function selecionar(file: File | null) {
     if (!file) return;
     setArquivo(file.name);
+    setMapaIA(null);
+    setMapeamentoPendente(false);
+    setCabecalhosIA([]);
     const buf = await file.arrayBuffer();
     imagensRef.current = /\.xlsx$/i.test(file.name) ? extrairImagensPlanilha(buf) : new Map();
     const wb = XLSX.read(buf, { type: "array" });
@@ -398,7 +386,8 @@ export function ImportarAlunos({
     const dados = XLSX.utils.sheet_to_json<Linha>(ws, { defval: "" });
     if (!dados.length) return toast.error("Nenhuma linha encontrada na planilha.");
     aplicarLinks(ws, dados);
-    const resultado = analisar(dados, modo);
+    setCabecalhosIA(Object.keys(dados[0] ?? {}));
+    const resultado = analisar(dados, modo, null);
     setAnalises(resultado);
     const invalidas = resultado.filter((a) => a.erros.length).length;
     if (invalidas) toast.warning(`${invalidas} linha(s) com problema. Revise antes de confirmar.`);
@@ -431,6 +420,7 @@ export function ImportarAlunos({
 
   function trocarModo(novo: "criar" | "atualizar") {
     setModo(novo);
+    setMapeamentoPendente(false);
     if (analises.length) setAnalises(analisar(analises.map((a) => a.original), novo));
   }
 
@@ -458,6 +448,7 @@ export function ImportarAlunos({
   }
 
   async function importar() {
+    if (mapeamentoPendente) return toast.error("Confirme ou cancele o mapeamento antes de importar.");
     const validas = analises.filter((a) => !a.erros.length);
     if (!validas.length) {
       toast.error("Nenhuma linha válida para importar.");
@@ -627,6 +618,7 @@ export function ImportarAlunos({
             {arquivo ? <p className="text-xs text-muted-foreground">{arquivo}</p> : null}
           </div>
 
+          {cabecalhosIA.length ? <MapeamentoIA cabecalhos={cabecalhosIA} atualizar={modo === "atualizar"} aoPendencia={setMapeamentoPendente} aoConfirmar={(mapa) => { setMapaIA(mapa); setAnalises(analisar(analises.map(a => a.original), modo, mapa)); toast.success("Mapeamento aplicado. Revise as linhas antes de importar."); }} /> : null}
           {analises.length ? (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -686,7 +678,7 @@ export function ImportarAlunos({
                 </table>
               </div>
 
-              <Button disabled={importando || !validas.length} onClick={() => void importar()}>
+              <Button disabled={importando || mapeamentoPendente || !validas.length} onClick={() => void importar()}>
                 <Upload className="size-4" /> {importando ? "Importando..." : `Importar ${validas.length} linha(s) válida(s)`}
               </Button>
             </div>
