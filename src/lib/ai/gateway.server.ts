@@ -60,14 +60,12 @@ export async function chamarIA<T>(
         const bloquear = response.status === 402 || response.status === 403;
         if (bloquear) {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { error } = await supabaseAdmin
-            .from("ia_acesso")
-            .upsert({
-              id: true,
-              bloqueado: true,
-              motivo: mensagem,
-              atualizado_em: new Date().toISOString(),
-            });
+          const { error } = await supabaseAdmin.from("ia_acesso").upsert({
+            id: true,
+            bloqueado: true,
+            motivo: mensagem,
+            atualizado_em: new Date().toISOString(),
+          });
           if (error)
             throw new FalhaIA(
               "Acesso negado à IA; não foi possível registrar a pausa. Contate um administrador.",
@@ -119,7 +117,9 @@ export function resultadoErro(error: unknown) {
       ? error
       : new FalhaIA(
           error instanceof Error ? error.message : "Não foi possível concluir a solicitação.",
-          400,
+          error && typeof error === "object" && "status" in error && error.status === 403
+            ? 403
+            : 400,
         );
   setResponseStatus(falha.status);
   return {

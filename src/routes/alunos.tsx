@@ -22,6 +22,7 @@ import { linksArquivosFn } from "@/lib/links-arquivos.functions";
 
 
 import { AppShell } from "@/components/AppShell";
+import { idadeValida } from "@/lib/ai/relatorio";
 import { LerFicha } from "@/components/AiRevisao";
 import { ImportarAlunos } from "@/components/ImportarAlunos";
 import { ConversarWhatsApp } from "@/components/ConversarWhatsApp";
@@ -58,10 +59,10 @@ export const Route = createFileRoute("/alunos")({
   component: AlunosPage,
   head: () => ({
     meta: [
-      { title: "Alunos e matrículas | Arena Aquática" },
+      { title: "Alunos e matrículas | Esporte 360" },
       { name: "description", content: "Cadastre alunos, faça matrículas em turmas e gere o QR Code de presença." },
-      { property: "og:title", content: "Alunos e matrículas | Arena Aquática" },
-      { property: "og:description", content: "Cadastro de alunos e matrículas da Arena Aquática." },
+      { property: "og:title", content: "Alunos e matrículas | Esporte 360" },
+      { property: "og:description", content: "Cadastro de alunos, documentos e matrículas do Esporte 360." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -1771,7 +1772,7 @@ function AlunosPage() {
                       if (patch.rede_ensino && !["Pública", "Privada"].includes(patch.rede_ensino)) { toast.error("Revise a rede de ensino: Pública ou Privada."); return; }
                       if (patch.cpf && !cpfValido(patch.cpf)) { toast.error("O CPF sugerido é inválido. Corrija antes de aplicar."); return; }
                       for (const tel of [campos.telefone, campos.telefone2]) if (tel && tel.replace(/\D/g, "").length !== 11) { toast.error("Revise o celular com DDD e 11 dígitos."); return; }
-                      if (patch.data_nascimento && !/^\d{4}-\d{2}-\d{2}$/.test(patch.data_nascimento)) { toast.error("Revise a data no formato AAAA-MM-DD."); return; }
+                      if (patch.data_nascimento && idadeValida({ data_nascimento: patch.data_nascimento, idade: null }, new Date().toISOString().slice(0, 10)) === null) { toast.error("Revise a data no formato AAAA-MM-DD."); return; }
                       setForm((atual) => ({ ...atual, ...patch }));
                       toast.success("Dados aplicados ao formulário. Revise antes de salvar.");
                     }} /> : null}

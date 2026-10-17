@@ -9,8 +9,6 @@ import {
   mapaSchema,
   mensagemSchema,
 } from "./ai/contracts";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
 import {
   calcularRelatorio,
   catalogoRelatorio,
@@ -18,16 +16,7 @@ import {
   lerTodasPaginas,
 } from "./ai/relatorio";
 
-export async function exigirPermissaoIA(
-  db: SupabaseClient<Database>,
-  id: string,
-  chaves: string[],
-) {
-  for (const chave of chaves) {
-    const { data, error } = await db.rpc("pode", { _user_id: id, _permissao: chave });
-    if (error || !data) throw new Error("Você não tem permissão para esta ação de IA.");
-  }
-}
+import { exigirPermissaoIA } from "./ai/permissao";
 export const lerFichaIA = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -43,7 +32,7 @@ export const lerFichaIA = createServerFn({ method: "POST" })
     const { chamarIA, resultadoErro, verificarAcessoIA } = await import("./ai/gateway.server");
     try {
       await exigirPermissaoIA(context.supabase, context.userId, [
-        data.edicao ? "editar_alunos" : "cadastrar_alunos",
+        data.edicao || data.alunoId ? "editar_alunos" : "cadastrar_alunos",
       ]);
       await verificarAcessoIA(context.supabase);
       let imagem = data.imagem;
@@ -221,7 +210,7 @@ export const perguntarRelatorioIA = createServerFn({ method: "POST" })
         };
       const resposta = await chamarIA(
         mensagemSchema,
-        "Redija em português um relatório SOMENTE com os resultados agregados fornecidos. Nunca estime, recalcule ou invente valores. Use tabelas Markdown legíveis, percentuais com denominador e filtros utilizados. Informe alunos sem idade válida. Exiba somente as métricas solicitadas, total e sem idade válida. Explique contagem única por grupo e possíveis grupos sobrepostos. Não inclua dados individuais.",
+        "Redija em português um relatório SOMENTE com os resultados agregados fornecidos. Nunca estime, recalcule ou invente valores. Use tabelas Markdown legíveis, percentuais com denominador e filtros utilizados. Arredonde a apresentação de médias e percentuais a duas casas decimais. Informe alunos sem idade válida. Exiba somente as métricas solicitadas, total e sem idade válida. Explique contagem única por grupo e possíveis grupos sobrepostos. Não inclua dados individuais.",
         [{ role: "user", content: JSON.stringify({ plano, agregados }) }],
         run,
       );
@@ -240,14 +229,12 @@ export const retomarAcessoIA = createServerFn({ method: "POST" })
         _role: "admin",
       });
       if (error || !data) throw new Error("Somente um administrador pode retomar a IA.");
-      const { error: e } = await context.supabase
-        .from("ia_acesso")
-        .upsert({
-          id: true,
-          bloqueado: false,
-          motivo: null,
-          atualizado_em: new Date().toISOString(),
-        });
+      const { error: e } = await context.supabase.from("ia_acesso").upsert({
+        id: true,
+        bloqueado: false,
+        motivo: null,
+        atualizado_em: new Date().toISOString(),
+      });
       if (e) throw new Error("Não foi possível retomar a IA.");
       return { ok: true as const, resultado: true };
     } catch (e) {
