@@ -448,7 +448,7 @@ export function ImportarAlunos({
   }
 
   async function importar() {
-    if (mapeamentoPendente) return toast.error("Confirme ou cancele o mapeamento antes de importar.");
+    if (mapeamentoPendente) { toast.error("Confirme ou cancele o mapeamento antes de importar."); return; }
     const validas = analises.filter((a) => !a.erros.length);
     if (!validas.length) {
       toast.error("Nenhuma linha válida para importar.");
