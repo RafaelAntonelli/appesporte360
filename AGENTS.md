@@ -20,3 +20,6 @@
 - Teacher permissions are enforced in RLS via public.pode(uid, chave) reading permissoes_professor (admins always pass); UI gating in src/lib/permissoes.ts mirrors it — why: hiding buttons alone is not security.
 - Records keep the registrar's name in *_por_nome columns filled by trigger, and user FKs use ON DELETE SET NULL — why: removed accounts must not erase who registered.
 - Use DOCUMENTOS_PLANILHA as the shared document catalog in enrollment forms and profiles, and keep backup document destinations aligned — why: every attachment must remain visible and exportable.
+- Keep AI gateway code server-only behind authenticated permission checks, durable denial state and explicit administrator resumption — why: UI controls cannot protect credentials or authorization.
+- Use the shared AI report calculator with keyset pagination and same-active-enrollment dimension matching; deduplicate students per group — why: multiple enrollments must not distort totals or mix unrelated class attributes.
+- Keep AI proposals separate from persisted records and invalidate upload proposals when their source changes — why: every assisted write requires human review and existing validation.

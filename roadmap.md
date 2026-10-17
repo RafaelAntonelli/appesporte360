@@ -9,4 +9,10 @@
 - [ ] Publicar a correção e confirmar a abertura no site público; depende da publicação pelo usuário.
 - [x] Permitir pesquisar escolas e adicionar escola fora da lista no formulário de matrícula.
 - [x] Adicionar foto da Ficha no formulário, perfil e planilha exportada; teste de Excel aprovado.
-- [ ] Conferir upload e exportação da Ficha pela tela; depende de uma sessão autenticada na prévia.
+- [ ] Conferir leitura e exportação da Ficha real pela tela; não há nenhuma Ficha anexada na base atual. Leitura sintética, revisão e troca de anexo validadas sem salvar cadastro; link na planilha validado em teste.
+- [x] Integrar IA autenticada com permissões, bloqueio persistente e revisão humana.
+- [x] Ler o anexo Ficha e revisar os campos sugeridos sem salvar matrícula; JPG, PNG e WebP até 8 MB. PDFs permanecem anexados, mas o modelo disponível não aceita PDF.
+- [x] Calcular relatórios de IA com paginação, filtros cruzados e alunos únicos por grupo; média real de 50 ativos conferida em 11,44 anos e comparação por modalidade/turno validada.
+- [x] Gerar rascunhos editáveis de WhatsApp sem dados pessoais ou envio automático; texto revisado presente no link.
+- [x] Sugerir mapeamento de cabeçalhos na importação mantendo validações; sugestão e correção manual confirmadas sem importar.
+- [x] Validar as quatro chamadas reais, cálculos, revisão e proteção; 23 testes aprovados e quatro acessos diretos sem autenticação recusados.

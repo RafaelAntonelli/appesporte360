@@ -22,6 +22,8 @@ import { linksArquivosFn } from "@/lib/links-arquivos.functions";
 
 
 import { AppShell } from "@/components/AppShell";
+import { idadeValida } from "@/lib/ai/relatorio";
+import { LerFicha } from "@/components/AiRevisao";
 import { ImportarAlunos } from "@/components/ImportarAlunos";
 import { ConversarWhatsApp } from "@/components/ConversarWhatsApp";
 import { SelecionarEscola } from "@/components/SelecionarEscola";
@@ -57,10 +59,10 @@ export const Route = createFileRoute("/alunos")({
   component: AlunosPage,
   head: () => ({
     meta: [
-      { title: "Alunos e matrículas | Arena Aquática" },
+      { title: "Alunos e matrículas | Esporte 360" },
       { name: "description", content: "Cadastre alunos, faça matrículas em turmas e gere o QR Code de presença." },
-      { property: "og:title", content: "Alunos e matrículas | Arena Aquática" },
-      { property: "og:description", content: "Cadastro de alunos e matrículas da Arena Aquática." },
+      { property: "og:title", content: "Alunos e matrículas | Esporte 360" },
+      { property: "og:description", content: "Cadastro de alunos, documentos e matrículas do Esporte 360." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -1761,6 +1763,19 @@ function AlunosPage() {
                         <Trash2 className="size-4" />
                       </Button>
                     </div>
+                    {d.campo === "doc_ficha_path" ? <LerFicha arquivo={docs.doc_ficha_path} alunoId={editando?.id ?? null} caminho={editando?.doc_ficha_path ?? null} edicao={!!editando} aoAplicar={(campos) => {
+                      const patch = { ...campos };
+                      if (patch.cpf) patch.cpf = formatarCPF(patch.cpf);
+                      if (patch.telefone) patch.telefone = formatarCelular(patch.telefone);
+                      if (patch.telefone2) patch.telefone2 = formatarCelular(patch.telefone2);
+                      if (patch.sexo && !["Masculino", "Feminino"].includes(patch.sexo)) { toast.error("Revise o sexo: Masculino ou Feminino."); return; }
+                      if (patch.rede_ensino && !["Pública", "Privada"].includes(patch.rede_ensino)) { toast.error("Revise a rede de ensino: Pública ou Privada."); return; }
+                      if (patch.cpf && !cpfValido(patch.cpf)) { toast.error("O CPF sugerido é inválido. Corrija antes de aplicar."); return; }
+                      for (const tel of [campos.telefone, campos.telefone2]) if (tel && tel.replace(/\D/g, "").length !== 11) { toast.error("Revise o celular com DDD e 11 dígitos."); return; }
+                      if (patch.data_nascimento && idadeValida({ data_nascimento: patch.data_nascimento, idade: null }, new Date().toISOString().slice(0, 10)) === null) { toast.error("Revise a data no formato AAAA-MM-DD."); return; }
+                      setForm((atual) => ({ ...atual, ...patch }));
+                      toast.success("Dados aplicados ao formulário. Revise antes de salvar.");
+                    }} /> : null}
                   </div>
                 ))}
               </div>

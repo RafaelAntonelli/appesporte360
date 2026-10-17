@@ -1,3 +1,4 @@
+import { AssistenteRelatorios } from "@/components/AssistenteRelatorios";
 import { usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -46,13 +47,13 @@ export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
   head: () => ({
     meta: [
-      { title: "Relatórios e backup | Arena Aquática" },
+      { title: "Relatórios | Esporte 360" },
       {
         name: "description",
         content: "Acompanhe atestados vencendo, exporte planilhas e crachás e faça o backup no Google Drive.",
       },
-      { property: "og:title", content: "Relatórios e backup | Arena Aquática" },
-      { property: "og:description", content: "Atestados a vencer, exportações e backup da Arena Aquática." },
+      { property: "og:title", content: "Relatórios | Esporte 360" },
+      { property: "og:description", content: "Indicadores, status de turmas, atestados e análises do Esporte 360." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -659,6 +660,7 @@ function RelatoriosPage() {
           <TabsTrigger value="exportacoes">Exportações</TabsTrigger>
         </TabsList>
         <TabsContent value="indicadores">
+            <AssistenteRelatorios />
       <Card className="mb-6">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-3">
           <CardTitle className="flex items-center gap-2 font-display text-base">
