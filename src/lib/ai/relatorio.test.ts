@@ -1,21 +1,141 @@
 import { describe, expect, it } from "vitest";
-import { calcularRelatorio, idadeValida, lerTodasPaginas, validarPlano, catalogoRelatorio, type AlunoAgregado } from "./relatorio";
+import {
+  calcularRelatorio,
+  idadeValida,
+  lerTodasPaginas,
+  validarPlano,
+  catalogoRelatorio,
+  type AlunoAgregado,
+} from "./relatorio";
 import type { PlanoRelatorio } from "./contracts";
-const hoje="2026-10-17";
-const a:AlunoAgregado={id:"a",ativo:true,sexo:"Feminino",faixa_etaria:null,data_nascimento:"2000-10-18",idade:99,pcd:false,rede_ensino:"Pública",escola:"Escola A"};
-const b:AlunoAgregado={...a,id:"b",data_nascimento:null,idade:null};
-const turmas=[{id:"t1",modalidade:"Vôlei",horario:"08:00",dias_semana:["Ter","Qui"]},{id:"t2",modalidade:"Boxe",horario:"19:00",dias_semana:["Qua","Sex"]}];
-const matriculas=[{id:"m1",aluno_id:"a",turma_id:"t1",modalidade:"Vôlei",status:"ativa"},{id:"m2",aluno_id:"a",turma_id:"t2",modalidade:"Boxe",status:"ativa"},{id:"m3",aluno_id:"b",turma_id:"t1",modalidade:"Vôlei",status:"ativa"}];
-const plano:PlanoRelatorio={respondivel:true,limitacao:null,filtros:[],grupos:[],idadeMin:null,idadeMax:null,metricas:["total","media","mediana"]};
-describe("regras dos relatórios de IA",()=>{
- it("conta aluno com duas matrículas uma única vez no total",()=>{expect(calcularRelatorio([a,b],matriculas,turmas,plano,hoje).resumo.total).toBe(2);});
- it("conta aluno uma única vez dentro de cada grupo",()=>{const r=calcularRelatorio([a], [...matriculas,{...matriculas[0],id:"duplicada",aluno_id:"a",turma_id:"t1",modalidade:"Vôlei",status:"ativa"}],turmas,{...plano,grupos:["modalidade"]},hoje);expect(r.grupos.map(g=>g.total)).toEqual([1,1]);});
- it("filtros de modalidade e turno devem corresponder à mesma matrícula ativa",()=>{const r=calcularRelatorio([a],matriculas,turmas,{...plano,filtros:[{campo:"modalidade",valores:["Vôlei"]},{campo:"turno",valores:["Noturno"]}]},hoje);expect(r.resumo.total).toBe(0);});
- it("ignora matrículas não ativas ao cruzar horários e dias",()=>{expect(calcularRelatorio([a],matriculas.map(m=>({...m,status:"inativa"})),turmas,{...plano,filtros:[{campo:"dias",valores:["Terça e Quinta"]}]},hoje).resumo.total).toBe(0);});
- it("nascimento válido prevalece sobre idade informada",()=>{expect(idadeValida(a,hoje)).toBe(25);});
- it("idade inválida não participa da média mas permanece no total",()=>{const r=calcularRelatorio([a,b],matriculas,turmas,plano,hoje);expect(r.resumo).toMatchObject({total:2,semIdadeValida:1,media:25,mediana:25,minima:25,maxima:25});});
- it("datas impossíveis não viram idade válida",()=>{expect(idadeValida({...a,data_nascimento:"2026-02-30"},hoje)).toBeNull();});
- it("filtra idades de 18 a 59 anos inclusive",()=>{const r=calcularRelatorio([a,b],matriculas,turmas,{...plano,idadeMin:18,idadeMax:59,filtros:[{campo:"dias",valores:["Terça e Quinta"]}]},hoje);expect(r.resumo.total).toBe(1);});
- it("rejeita opção que não existe no catálogo autorizado",()=>{expect(()=>validarPlano({...plano,filtros:[{campo:"modalidade",valores:["Natação"]}]},catalogoRelatorio([a],matriculas,turmas,hoje))).toThrow("Não existe");});
- it("pagina até o fim mesmo com páginas menores que o limite",async()=>{const base=Array.from({length:1205},(_,i)=>({id:String(i).padStart(5,"0")}));const r=await lerTodasPaginas(async apos=>base.filter(x=>!apos||x.id>apos).slice(0,200));expect(r).toHaveLength(1205);expect(r.at(-1)?.id).toBe("01204");});
+const hoje = "2026-10-17";
+const a: AlunoAgregado = {
+  id: "a",
+  ativo: true,
+  sexo: "Feminino",
+  faixa_etaria: null,
+  data_nascimento: "2000-10-18",
+  idade: 99,
+  pcd: false,
+  rede_ensino: "Pública",
+  escola: "Escola A",
+};
+const b: AlunoAgregado = { ...a, id: "b", data_nascimento: null, idade: null };
+const turmas = [
+  { id: "t1", modalidade: "Vôlei", horario: "08:00", dias_semana: ["Ter", "Qui"] },
+  { id: "t2", modalidade: "Boxe", horario: "19:00", dias_semana: ["Qua", "Sex"] },
+];
+const matriculas = [
+  { id: "m1", aluno_id: "a", turma_id: "t1", modalidade: "Vôlei", status: "ativa" },
+  { id: "m2", aluno_id: "a", turma_id: "t2", modalidade: "Boxe", status: "ativa" },
+  { id: "m3", aluno_id: "b", turma_id: "t1", modalidade: "Vôlei", status: "ativa" },
+];
+const plano: PlanoRelatorio = {
+  respondivel: true,
+  limitacao: null,
+  filtros: [],
+  grupos: [],
+  idadeMin: null,
+  idadeMax: null,
+  metricas: ["total", "media", "mediana"],
+};
+describe("regras dos relatórios de IA", () => {
+  it("conta aluno com duas matrículas uma única vez no total", () => {
+    expect(calcularRelatorio([a, b], matriculas, turmas, plano, hoje).resumo.total).toBe(2);
+  });
+  it("conta aluno uma única vez dentro de cada grupo", () => {
+    const r = calcularRelatorio(
+      [a],
+      [
+        ...matriculas,
+        {
+          ...matriculas[0],
+          id: "duplicada",
+          aluno_id: "a",
+          turma_id: "t1",
+          modalidade: "Vôlei",
+          status: "ativa",
+        },
+      ],
+      turmas,
+      { ...plano, grupos: ["modalidade"] },
+      hoje,
+    );
+    expect(r.grupos.map((g) => g.total)).toEqual([1, 1]);
+  });
+  it("filtros de modalidade e turno devem corresponder à mesma matrícula ativa", () => {
+    const r = calcularRelatorio(
+      [a],
+      matriculas,
+      turmas,
+      {
+        ...plano,
+        filtros: [
+          { campo: "modalidade", valores: ["Vôlei"] },
+          { campo: "turno", valores: ["Noturno"] },
+        ],
+      },
+      hoje,
+    );
+    expect(r.resumo.total).toBe(0);
+  });
+  it("ignora matrículas não ativas ao cruzar horários e dias", () => {
+    expect(
+      calcularRelatorio(
+        [a],
+        matriculas.map((m) => ({ ...m, status: "inativa" })),
+        turmas,
+        { ...plano, filtros: [{ campo: "dias", valores: ["Terça e Quinta"] }] },
+        hoje,
+      ).resumo.total,
+    ).toBe(0);
+  });
+  it("nascimento válido prevalece sobre idade informada", () => {
+    expect(idadeValida(a, hoje)).toBe(25);
+  });
+  it("idade inválida não participa da média mas permanece no total", () => {
+    const r = calcularRelatorio([a, b], matriculas, turmas, plano, hoje);
+    expect(r.resumo).toMatchObject({
+      total: 2,
+      semIdadeValida: 1,
+      media: 25,
+      mediana: 25,
+      minima: 25,
+      maxima: 25,
+    });
+  });
+  it("datas impossíveis não viram idade válida", () => {
+    expect(idadeValida({ ...a, data_nascimento: "2026-02-30" }, hoje)).toBeNull();
+  });
+  it("filtra idades de 18 a 59 anos inclusive", () => {
+    const r = calcularRelatorio(
+      [a, b],
+      matriculas,
+      turmas,
+      {
+        ...plano,
+        idadeMin: 18,
+        idadeMax: 59,
+        filtros: [{ campo: "dias", valores: ["Terça e Quinta"] }],
+      },
+      hoje,
+    );
+    expect(r.resumo.total).toBe(1);
+  });
+  it("rejeita opção que não existe no catálogo autorizado", () => {
+    expect(() =>
+      validarPlano(
+        { ...plano, filtros: [{ campo: "modalidade", valores: ["Natação"] }] },
+        catalogoRelatorio([a], matriculas, turmas, hoje),
+      ),
+    ).toThrow("Não existe");
+  });
+  it("pagina até o fim mesmo com páginas menores que o limite", async () => {
+    const base = Array.from({ length: 1205 }, (_, i) => ({ id: String(i).padStart(5, "0") }));
+    const r = await lerTodasPaginas(async (apos) =>
+      base.filter((x) => !apos || x.id > apos).slice(0, 200),
+    );
+    expect(r).toHaveLength(1205);
+    expect(r.at(-1)?.id).toBe("01204");
+  });
 });

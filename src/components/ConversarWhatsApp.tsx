@@ -15,10 +15,18 @@ export function ConversarWhatsApp({ telefone }: { telefone: string | null | unde
     );
   }
   return (
-    <span className="inline-flex flex-wrap items-center gap-2"><Button asChild variant="outline" size="sm">
-      <a href={href} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()}>
-        <MessageCircle /> Conversar no WhatsApp
-      </a>
-    </Button><RascunhoWhatsApp telefone={telefone}/></span>
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <Button asChild variant="outline" size="sm">
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <MessageCircle /> Conversar no WhatsApp
+        </a>
+      </Button>
+      <RascunhoWhatsApp telefone={telefone} />
+    </span>
   );
 }
