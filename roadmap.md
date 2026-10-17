@@ -10,3 +10,9 @@
 - [x] Permitir pesquisar escolas e adicionar escola fora da lista no formulário de matrícula.
 - [x] Adicionar foto da Ficha no formulário, perfil e planilha exportada; teste de Excel aprovado.
 - [ ] Conferir upload e exportação da Ficha pela tela; depende de uma sessão autenticada na prévia.
+- [ ] Integrar IA autenticada com permissões, bloqueio persistente e revisão humana.
+- [ ] Ler o anexo Ficha e revisar os campos sugeridos sem salvar matrícula.
+- [ ] Calcular relatórios de IA com paginação, filtros cruzados e alunos únicos por grupo.
+- [ ] Gerar rascunhos editáveis de WhatsApp sem dados pessoais ou envio automático.
+- [ ] Sugerir mapeamento de cabeçalhos na importação mantendo validações.
+- [ ] Validar chamadas reais, cálculos, revisão e proteção de permissões.

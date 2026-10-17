@@ -64,6 +64,13 @@
       "when": 1792192833769,
       "tag": "0008_adicionar_foto_ficha_aluno",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792197544978,
+      "tag": "0009_estado_acesso_ia",
+      "breakpoints": true
     }
   ]
 }

@@ -361,6 +361,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_acesso: {
+        Row: {
+          atualizado_em: string
+          bloqueado: boolean
+          id: boolean
+          motivo: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          bloqueado?: boolean
+          id?: boolean
+          motivo?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          bloqueado?: boolean
+          id?: boolean
+          motivo?: string | null
+        }
+        Relationships: []
+      }
       licencas_medicas: {
         Row: {
           aluno_id: string
