@@ -32,3 +32,12 @@
 - [x] Verificação final com aluno de teste e limpeza dos dados de teste.
 
 - [x] Equipe: aba Permissões dos professores só abre com a senha do administrador (vale 15 min, bloqueia ao sair da aba); gravação sem senha recusada pelo banco.
+
+## Atualização de arquitetura e backup (pedido de 20/10)
+- [x] Fila offline em ordem exata (ID único, horário UTC, envio um a um, para no primeiro erro, opção de descartar).
+- [x] Links de fotos e documentos sempre temporários; validade configurável em Backup → Links e privacidade (padrão 24 h, máximo 24 h).
+- [x] Avisos sempre guardados na central da Área do Aluno, com aviso claro em aparelhos sem notificações.
+- [x] Fotos, documentos e fichas reduzidas e comprimidas no aparelho antes do envio e da leitura por IA.
+- [x] Planilha do backup sem links, com todos os dados e o código de matrícula.
+- [x] Arquivos no Drive com nome CODIGO_TIPO.extensão; arquivos antigos renomeados no backup de 20/10.
+- [x] Restauração pelo Drive (planilha + arquivos) ligando cada arquivo ao aluno pelo código; testada com aluno temporário.

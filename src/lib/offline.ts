@@ -9,20 +9,29 @@ const DB_VERSAO = 1;
 const STORE_FILA = "fila";
 const STORE_CACHE = "cache";
 
-export type OperacaoFila =
-  | { id: string; criado_em: number; tipo: "aluno_novo"; aluno: Record<string, unknown>; foto?: Blob | null; fotoNome?: string | null }
-  | { id: string; criado_em: number; tipo: "aluno_update"; aluno_id: string; dados: Record<string, unknown>; foto?: Blob | null; fotoNome?: string | null }
+/** Dados de controle de cada operação: ID único, horário UTC e posição na fila. */
+type MetaFila = {
+  id: string;
+  /** Milissegundos desde 1970 (UTC). */
+  criado_em: number;
+  /** Mesmo horário em texto ISO 8601 (UTC). */
+  criado_em_utc?: string;
+  /** Posição estritamente crescente: define a ordem exata de envio. */
+  sequencia?: number;
+  tentativas?: number;
+  ultimo_erro?: string | null;
+};
+
+export type OperacaoFila = MetaFila & (
+  | { tipo: "aluno_novo"; aluno: Record<string, unknown>; foto?: Blob | null; fotoNome?: string | null }
+  | { tipo: "aluno_update"; aluno_id: string; dados: Record<string, unknown>; foto?: Blob | null; fotoNome?: string | null }
   | {
-      id: string;
-      criado_em: number;
       tipo: "matriculas_sync";
       aluno_id: string;
       escolhas: { turma_id: string; modalidade: string }[];
       registrado_por?: string | null;
     }
   | {
-      id: string;
-      criado_em: number;
       tipo: "presenca";
       aluno_id: string;
       turma_id: string | null;
@@ -31,7 +40,8 @@ export type OperacaoFila =
       metodo: string;
       observacoes: string | null;
       horario: string;
-    };
+    }
+);
 
 function suportado() {
   return typeof indexedDB !== "undefined";
@@ -95,24 +105,68 @@ function notificar() {
   ouvintes.forEach((f) => f());
 }
 
+/** Ordem de envio: posição na fila; registros antigos (sem posição) usam o horário. */
+export function ordemFila(a: Pick<MetaFila, "criado_em" | "sequencia">, b: Pick<MetaFila, "criado_em" | "sequencia">) {
+  const sa = a.sequencia ?? a.criado_em * 1000;
+  const sb = b.sequencia ?? b.criado_em * 1000;
+  return sa - sb || a.criado_em - b.criado_em;
+}
+
+/** Próxima posição: sempre maior que a última, mesmo se o relógio do aparelho voltar. */
+export function proximaSequencia(agora: number, ultima: number) {
+  return Math.max(agora * 1000, ultima + 1);
+}
+
 export async function listarFila(): Promise<OperacaoFila[]> {
   if (!suportado()) return [];
   try {
     const itens = await comStore<OperacaoFila[]>(STORE_FILA, "readonly", (s) => s.getAll());
-    return (itens ?? []).sort((a, b) => a.criado_em - b.criado_em);
+    return (itens ?? []).sort(ordemFila);
   } catch {
     return [];
   }
 }
 
-type SemMeta<T> = T extends unknown ? Omit<T, "id" | "criado_em"> & { id?: string } : never;
+type CamposControle = "id" | "criado_em" | "criado_em_utc" | "sequencia" | "tentativas" | "ultimo_erro";
+type SemMeta<T> = T extends unknown ? Omit<T, CamposControle> & { id?: string } : never;
+
+let ultimaSequencia = 0;
 
 export async function enfileirar(op: SemMeta<OperacaoFila>): Promise<string> {
   const id = op.id ?? crypto.randomUUID();
-  const registro = { ...op, id, criado_em: Date.now() } as OperacaoFila;
+  const agora = Date.now();
+  const fila = await listarFila();
+  const ultimaNaFila = fila.reduce((m, o) => Math.max(m, o.sequencia ?? o.criado_em * 1000), 0);
+  ultimaSequencia = proximaSequencia(agora, Math.max(ultimaSequencia, ultimaNaFila));
+  const registro = {
+    ...op,
+    id,
+    criado_em: agora,
+    criado_em_utc: new Date(agora).toISOString(),
+    sequencia: ultimaSequencia,
+    tentativas: 0,
+    ultimo_erro: null,
+  } as OperacaoFila;
   await comStore(STORE_FILA, "readwrite", (s) => s.put(registro));
   notificar();
   return id;
+}
+
+async function marcarErro(op: OperacaoFila, erro: unknown) {
+  const mensagem =
+    erro instanceof Error ? erro.message : typeof erro === "object" && erro && "message" in erro ? String((erro as { message: unknown }).message) : "Erro ao enviar";
+  const atualizado = { ...op, tentativas: (op.tentativas ?? 0) + 1, ultimo_erro: mensagem.slice(0, 200) } as OperacaoFila;
+  try {
+    await comStore(STORE_FILA, "readwrite", (s) => s.put(atualizado));
+  } catch {
+    /* ignora */
+  }
+  return atualizado;
+}
+
+/** Remove da fila um registro que não pode ser enviado (decisão da pessoa, com confirmação). */
+export async function descartarDaFila(id: string) {
+  await remover(id);
 }
 
 async function remover(id: string) {
@@ -196,13 +250,22 @@ async function executar(op: OperacaoFila) {
   }
 }
 
-export type ResultadoSync = { enviados: number; falhas: number };
+export type ResultadoSync = {
+  enviados: number;
+  falhas: number;
+  /** Registro que falhou e segura os seguintes (para manter a ordem exata). */
+  bloqueado: OperacaoFila | null;
+};
 
+/**
+ * Envia a fila na ordem exata em que as ações foram feitas, uma de cada vez.
+ * Se uma falhar, o envio para ali: as seguintes esperam, para nunca serem gravadas fora de ordem.
+ */
 export async function sincronizar(): Promise<ResultadoSync> {
-  if (sincronizando || !estaOnline()) return { enviados: 0, falhas: 0 };
+  if (sincronizando || !estaOnline()) return { enviados: 0, falhas: 0, bloqueado: null };
   sincronizando = true;
   let enviados = 0;
-  let falhas = 0;
+  let bloqueado: OperacaoFila | null = null;
   try {
     const fila = await listarFila();
     for (const op of fila) {
@@ -210,12 +273,14 @@ export async function sincronizar(): Promise<ResultadoSync> {
         await executar(op);
         await remover(op.id);
         enviados++;
-      } catch {
-        falhas++;
+      } catch (err) {
+        bloqueado = await marcarErro(op, err);
+        notificar();
+        break;
       }
     }
   } finally {
     sincronizando = false;
   }
-  return { enviados, falhas };
+  return { enviados, falhas: bloqueado ? 1 : 0, bloqueado };
 }

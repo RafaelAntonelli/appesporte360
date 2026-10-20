@@ -33,6 +33,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RestaurarDrive } from "@/components/RestaurarDrive";
+import { ValidadeLinks } from "@/components/ValidadeLinks";
 
 function duracao(inicio: string, fim: string | null) {
   if (!fim) return "—";
@@ -435,6 +437,8 @@ function BackupPage() {
           <TabsTrigger value="backup">Backup e histórico</TabsTrigger>
           <TabsTrigger value="agenda">Agendamento</TabsTrigger>
           <TabsTrigger value="destino">Destino no Drive</TabsTrigger>
+          <TabsTrigger value="restaurar">Restauração</TabsTrigger>
+          <TabsTrigger value="links">Links e privacidade</TabsTrigger>
         </TabsList>
         <TabsContent value="backup">
       <Card className="max-w-2xl">
@@ -445,8 +449,9 @@ function BackupPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            O backup envia a planilha de alunos do dia e todas as fotos e documentos para as pastas configuradas no
-            Google Drive. Ele também roda sozinho no dia e horário definidos abaixo.
+            O backup envia a planilha de alunos do dia (com todos os dados e o código de matrícula) e todas as fotos e
+            documentos para as pastas configuradas no Google Drive. Cada arquivo recebe o nome no padrão
+            CÓDIGO_TIPO.extensão, como A7B92K1_foto.jpg. Ele também roda sozinho no dia e horário definidos.
           </p>
           <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
             <p>
@@ -741,6 +746,12 @@ function BackupPage() {
           ))}
         </CardContent>
       </Card>
+        </TabsContent>
+        <TabsContent value="restaurar">
+          <RestaurarDrive />
+        </TabsContent>
+        <TabsContent value="links">
+          <ValidadeLinks />
         </TabsContent>
       </Tabs>
     </AppShell>

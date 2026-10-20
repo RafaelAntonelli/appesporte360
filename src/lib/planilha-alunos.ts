@@ -37,6 +37,8 @@ export type AlunoPlanilha = {
   escola?: string | null;
   pcd?: boolean | null;
   pcd_condicoes?: string[] | null;
+  pcd_descricao?: string | null;
+  motivo_inativacao?: string | null;
   faixa_etaria?: string | null;
   atestado_entregue?: boolean | null;
   atestado_data?: string | null;
@@ -65,11 +67,26 @@ export type OpcoesPlanilha = {
   /** Progresso do processamento das linhas. */
   aoProgredir?: ((feitos: number, total: number) => void) | undefined;
   /**
-   * Links dos arquivos no Google Drive (onde ficam os backups).
-   * Devolve um mapa com a chave de `chaveLinkDrive(alunoId, campo)`.
+   * Links assinados e temporários dos arquivos.
+   * Devolve um mapa com a chave de `chaveLinkDrive(alunoId, campo)` (opcionalmente com a validade).
    */
-  linksDrive?: (() => Promise<Record<string, string>>) | undefined;
+  linksDrive?: (() => Promise<Record<string, string> | LinksTemporarios>) | undefined;
+  /** Inclui as colunas de links dos arquivos (padrão: sim). O backup no Drive não usa links. */
+  incluirLinks?: boolean | undefined;
 };
+
+export type LinksTemporarios = { links: Record<string, string>; validoAte: string | null };
+
+type ConstrutorWorkbook = new () => import("exceljs").Workbook;
+
+/** Carrega o gerador de Excel no navegador e no servidor (formatos de módulo diferentes). */
+export async function carregarExcel(): Promise<ConstrutorWorkbook> {
+  type ModuloExcel = { Workbook?: ConstrutorWorkbook; default?: ModuloExcel };
+  const modulo = (await import("exceljs")) as unknown as ModuloExcel;
+  const Workbook = modulo.Workbook ?? modulo.default?.Workbook ?? modulo.default?.default?.Workbook;
+  if (!Workbook) throw new Error("Não foi possível iniciar o gerador da planilha.");
+  return Workbook;
+}
 
 
 /** Erro lançado quando o usuário cancela a exportação. */
@@ -98,23 +115,22 @@ function larguraTexto(texto: string) {
 
 /** Monta a planilha de alunos em ordem crescente de idade, com links dos arquivos no Drive. */
 export async function montarPlanilhaAlunos(opcoes: OpcoesPlanilha): Promise<ArrayBuffer> {
-  type ConstrutorWorkbook = new () => import("exceljs").Workbook;
-  type ModuloExcel = { Workbook?: ConstrutorWorkbook; default?: ModuloExcel };
-  const modulo = (await import("exceljs")) as unknown as ModuloExcel;
-  const Workbook = modulo.Workbook ?? modulo.default?.Workbook ?? modulo.default?.default?.Workbook;
-  if (!Workbook) throw new Error("Não foi possível iniciar o gerador da planilha.");
+  const Workbook = await carregarExcel();
   const wb = new Workbook();
   const ws = wb.addWorksheet("Alunos");
 
   const colunasBase = [
     "Matrícula", "Nome", "Sexo", "Idade", "Faixa etária", "Nascimento", "CPF", "RG", "Celular", "Celular 2", "E-mail",
-    "Responsável", "Rede de ensino", "Escola", "PCD", "Condições PCD", "Atestado entregue",
-    "Data do atestado", "Modalidade", "Turma", "Horário", "Turno", "Situação", "Observações",
+    "Responsável", "Rede de ensino", "Escola", "PCD", "Condições PCD", "Descrição PCD", "Atestado entregue",
+    "Data do atestado", "Modalidade", "Turma", "Horário", "Turno", "Situação", "Motivo da inativação", "Observações",
   ];
-  const arquivos = [
-    { campo: "foto_path", rotulo: "Foto do aluno" },
-    ...DOCUMENTOS_PLANILHA.map((d) => ({ campo: d.campo as string, rotulo: d.rotulo })),
-  ];
+  const incluirLinks = opcoes.incluirLinks !== false;
+  const arquivos = incluirLinks
+    ? [
+        { campo: "foto_path", rotulo: "Foto do aluno" },
+        ...DOCUMENTOS_PLANILHA.map((d) => ({ campo: d.campo as string, rotulo: d.rotulo })),
+      ]
+    : [];
   const cabecalho = [...colunasBase, ...arquivos.map((a) => `Link - ${a.rotulo}`)];
   ws.addRow(cabecalho);
   ws.getRow(1).font = { bold: true };
@@ -129,9 +145,16 @@ export async function montarPlanilhaAlunos(opcoes: OpcoesPlanilha): Promise<Arra
   });
 
   let links: Record<string, string> = {};
-  if (opcoes.linksDrive) {
+  let validoAte: string | null = null;
+  if (incluirLinks && opcoes.linksDrive) {
     try {
-      links = await opcoes.linksDrive();
+      const r = await opcoes.linksDrive();
+      if (r && typeof r === "object" && "links" in r && typeof r.links === "object") {
+        links = (r as LinksTemporarios).links;
+        validoAte = (r as LinksTemporarios).validoAte;
+      } else {
+        links = r as Record<string, string>;
+      }
     } catch {
       links = {};
     }
@@ -163,6 +186,7 @@ export async function montarPlanilhaAlunos(opcoes: OpcoesPlanilha): Promise<Arra
         a.escola ?? "",
         a.pcd ? "Sim" : "Não",
         (a.pcd_condicoes ?? []).join(" | "),
+        a.pcd_descricao ?? "",
         a.atestado_entregue ? "Sim" : "Não",
         a.atestado_data ?? "",
         opcoes.modalidadeDoAluno(a.id),
@@ -170,6 +194,7 @@ export async function montarPlanilhaAlunos(opcoes: OpcoesPlanilha): Promise<Arra
         t?.horario ?? "",
         turnoDoHorario(t?.horario),
         a.ativo === false ? "Inativo" : "Ativo",
+        a.ativo === false ? (a.motivo_inativacao ?? "") : "",
         a.observacoes ?? "",
         ...arquivos.map(() => ""),
       ] as (string | number)[],
@@ -200,7 +225,7 @@ export async function montarPlanilhaAlunos(opcoes: OpcoesPlanilha): Promise<Arra
   }
   opcoes.aoProgredir?.(linhas.length, linhas.length);
 
-  const colunasLargas = new Set(["Observações", "Condições PCD", "E-mail", "Escola", "Responsável"]);
+  const colunasLargas = new Set(["Observações", "Condições PCD", "Descrição PCD", "Motivo da inativação", "E-mail", "Escola", "Responsável"]);
   const colunasFixas = new Set(["Sexo", "Idade", "PCD", "Atestado entregue"]);
 
   cabecalho.forEach((titulo, i) => {
@@ -242,5 +267,13 @@ export async function montarPlanilhaAlunos(opcoes: OpcoesPlanilha): Promise<Arra
   });
 
   ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cabecalho.length } };
+
+  if (incluirLinks && validoAte) {
+    const info = wb.addWorksheet("Sobre os links");
+    info.getColumn(1).width = 90;
+    info.addRow(["Os links de fotos e documentos são temporários e protegidos (LGPD)."]);
+    info.addRow([`Válidos até ${new Date(validoAte).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })} (horário de Brasília).`]);
+    info.addRow(["Depois disso, exporte a planilha novamente para gerar novos links."]);
+  }
   return (await wb.xlsx.writeBuffer()) as ArrayBuffer;
 }

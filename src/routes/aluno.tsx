@@ -20,7 +20,8 @@ import {
 } from "@/lib/aluno.functions";
 import { FOTO_TIPOS, validarEmail, validarFoto, validarTelefone } from "@/lib/aluno-acesso";
 import { consentimentoLocal, salvarConsentimentoLocal, tokenLocal } from "@/lib/aluno-local";
-import { obterTokenNotificacao } from "@/lib/push-aluno";
+import { notificacoesSuportadas, obterTokenNotificacao } from "@/lib/push-aluno";
+import { otimizarImagem } from "@/lib/imagem";
 import { formatarCelular } from "@/lib/formatacao";
 import { gerarCrachaPreviewImagem, gerarCrachasPdfFielAoPreview, type DadosCracha } from "@/lib/cracha";
 import { Button } from "@/components/ui/button";
@@ -85,6 +86,8 @@ function AreaAluno() {
   const [perfilAberto, setPerfilAberto] = useState(false);
   const [consentAberto, setConsentAberto] = useState(false);
   const [ativando, setAtivando] = useState(false);
+  const [semPush, setSemPush] = useState(false);
+  useEffect(() => setSemPush(!notificacoesSuportadas()), []);
   const conhecidos = useRef<Set<string> | null>(null);
   const salvarAposConsentir = useRef(false);
 
@@ -113,9 +116,18 @@ function AreaAluno() {
       if ((e.data as { tipo?: string } | null)?.tipo === "aviso-aluno") void carregar(true);
     };
     navigator.serviceWorker?.addEventListener("message", aoMensagem);
+    // Ao voltar para o app (ou a internet voltar), busca os avisos na hora: a central interna
+    // garante a entrega mesmo em aparelhos sem notificações do navegador.
+    const aoVoltar = () => {
+      if (document.visibilityState === "visible") void carregar(true);
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("online", aoVoltar);
     return () => {
       clearInterval(t);
       navigator.serviceWorker?.removeEventListener("message", aoMensagem);
+      document.removeEventListener("visibilitychange", aoVoltar);
+      window.removeEventListener("online", aoVoltar);
     };
   }, []);
 
@@ -330,13 +342,17 @@ function AreaAluno() {
                   <Bell className="size-4" /> Receba os avisos no celular
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {dados.aparelho.notificacoesAtivas
-                    ? "As notificações estão ativas neste celular."
-                    : "Ative para receber os avisos da administração e lembretes antes das suas aulas."}
+                  {semPush
+                    ? "Este aparelho ou navegador não recebe notificações. Fique tranquilo: todos os avisos continuam chegando aqui, nesta central, sempre que você abrir o app."
+                    : dados.aparelho.notificacoesAtivas
+                      ? "As notificações estão ativas neste celular. Os avisos também ficam guardados aqui."
+                      : "Ative para receber os avisos da administração e lembretes antes das suas aulas. Mesmo sem ativar, os avisos ficam guardados aqui."}
                 </p>
-                <Button size="sm" variant={dados.aparelho.notificacoesAtivas ? "outline" : "default"} disabled={ativando} onClick={() => void ativarNotificacoes()}>
-                  {ativando ? "Ativando…" : dados.aparelho.notificacoesAtivas ? "Ativar novamente" : "Ativar notificações"}
-                </Button>
+                {semPush ? null : (
+                  <Button size="sm" variant={dados.aparelho.notificacoesAtivas ? "outline" : "default"} disabled={ativando} onClick={() => void ativarNotificacoes()}>
+                    {ativando ? "Ativando…" : dados.aparelho.notificacoesAtivas ? "Ativar novamente" : "Ativar notificações"}
+                  </Button>
+                )}
                 {dados.aparelho.notificacoesAtivas ? (
                   <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
                     <Label htmlFor="lembretes-aula" className="space-y-0.5 font-normal">
@@ -531,8 +547,10 @@ function PerfilDoAluno({ aberto, aoFechar, dados, aoSalvar }: { aberto: boolean;
     }
   }
 
-  async function enviarFoto(arquivo: File | undefined) {
-    if (!arquivo) return;
+  async function enviarFoto(bruto: File | undefined) {
+    if (!bruto) return;
+    // Reduz e comprime no próprio celular antes de enviar.
+    const arquivo = await otimizarImagem(bruto);
     const erro = validarFoto(arquivo.size, arquivo.type);
     if (erro) return void toast.error(erro);
     setEnviandoFoto(true);
