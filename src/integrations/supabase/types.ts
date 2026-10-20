@@ -14,6 +14,140 @@ export type Database = {
   }
   public: {
     Tables: {
+      aluno_aparelhos: {
+        Row: {
+          aluno_id: string
+          codigo_final: string | null
+          codigo_hash: string | null
+          consentimento_em: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          liberado_ate: string | null
+          liberado_em: string | null
+          liberado_por: string | null
+          liberado_por_nome: string | null
+          login_salvo: boolean
+          pedido_em: string
+          pedido_expira_em: string
+          sessao_ate: string | null
+          status: string
+          token_hash: string
+          ultimo_acesso: string | null
+        }
+        Insert: {
+          aluno_id: string
+          codigo_final?: string | null
+          codigo_hash?: string | null
+          consentimento_em?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          liberado_ate?: string | null
+          liberado_em?: string | null
+          liberado_por?: string | null
+          liberado_por_nome?: string | null
+          login_salvo?: boolean
+          pedido_em?: string
+          pedido_expira_em?: string
+          sessao_ate?: string | null
+          status?: string
+          token_hash: string
+          ultimo_acesso?: string | null
+        }
+        Update: {
+          aluno_id?: string
+          codigo_final?: string | null
+          codigo_hash?: string | null
+          consentimento_em?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          liberado_ate?: string | null
+          liberado_em?: string | null
+          liberado_por?: string | null
+          liberado_por_nome?: string | null
+          login_salvo?: boolean
+          pedido_em?: string
+          pedido_expira_em?: string
+          sessao_ate?: string | null
+          status?: string
+          token_hash?: string
+          ultimo_acesso?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aluno_aparelhos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aluno_push_tokens: {
+        Row: {
+          aluno_id: string
+          aparelho_id: string
+          created_at: string
+          id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          aluno_id: string
+          aparelho_id: string
+          created_at?: string
+          id?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          aluno_id?: string
+          aparelho_id?: string
+          created_at?: string
+          id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aluno_push_tokens_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aluno_push_tokens_aparelho_id_fkey"
+            columns: ["aparelho_id"]
+            isOneToOne: false
+            referencedRelation: "aluno_aparelhos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aluno_tentativas_acesso: {
+        Row: {
+          aparelho_hash: string
+          created_at: string
+          id: number
+          rede_hash: string
+        }
+        Insert: {
+          aparelho_hash: string
+          created_at?: string
+          id?: number
+          rede_hash: string
+        }
+        Update: {
+          aparelho_hash?: string
+          created_at?: string
+          id?: number
+          rede_hash?: string
+        }
+        Relationships: []
+      }
       alunos: {
         Row: {
           atestado_data: string | null
@@ -156,6 +290,80 @@ export type Database = {
             columns: ["aluno_id"]
             isOneToOne: false
             referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avisos: {
+        Row: {
+          aluno_id: string | null
+          created_at: string
+          enviado_por: string | null
+          enviado_por_nome: string | null
+          id: string
+          mensagem: string
+          notificados: number
+          titulo: string
+        }
+        Insert: {
+          aluno_id?: string | null
+          created_at?: string
+          enviado_por?: string | null
+          enviado_por_nome?: string | null
+          id?: string
+          mensagem: string
+          notificados?: number
+          titulo: string
+        }
+        Update: {
+          aluno_id?: string | null
+          created_at?: string
+          enviado_por?: string | null
+          enviado_por_nome?: string | null
+          id?: string
+          mensagem?: string
+          notificados?: number
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avisos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avisos_leituras: {
+        Row: {
+          aluno_id: string
+          aviso_id: string
+          lido_em: string
+        }
+        Insert: {
+          aluno_id: string
+          aviso_id: string
+          lido_em?: string
+        }
+        Update: {
+          aluno_id?: string
+          aviso_id?: string
+          lido_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avisos_leituras_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "avisos_leituras_aviso_id_fkey"
+            columns: ["aviso_id"]
+            isOneToOne: false
+            referencedRelation: "avisos"
             referencedColumns: ["id"]
           },
         ]
@@ -686,6 +894,7 @@ export type Database = {
         Args: { _ativo: boolean; _dia: number; _hora: number; _minuto: number }
         Returns: undefined
       }
+      buscar_pedido_aparelho: { Args: { _codigo: string }; Returns: string }
       calc_faixa_etaria: {
         Args: { _idade: number; _nascimento: string }
         Returns: string
@@ -701,8 +910,18 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      liberar_aparelho_aluno: { Args: { _id: string }; Returns: undefined }
+      localizar_aluno_acesso: {
+        Args: { _identificador: string; _nascimento: string }
+        Returns: {
+          ativo: boolean
+          id: string
+        }[]
+      }
       nome_usuario: { Args: { _id: string }; Returns: string }
       pode: { Args: { _permissao: string; _user_id: string }; Returns: boolean }
+      recusar_aparelho_aluno: { Args: { _id: string }; Returns: undefined }
+      revogar_aparelho_aluno: { Args: { _id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "professor"

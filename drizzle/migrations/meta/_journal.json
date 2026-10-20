@@ -71,6 +71,13 @@
       "when": 1792197544978,
       "tag": "0009_estado_acesso_ia",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792501117029,
+      "tag": "0010_area_do_aluno_e_avisos",
+      "breakpoints": true
     }
   ]
 }
