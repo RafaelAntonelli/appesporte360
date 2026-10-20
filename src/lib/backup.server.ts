@@ -8,9 +8,10 @@ import {
   limparNomeSubpasta,
 } from "@/lib/configuracoes-chaves";
 import { montarPlanilhaAlunos, type AlunoPlanilha } from "@/lib/planilha-alunos";
+import { nomeArquivoDrive, prefixoArquivoDrive, tipoArquivoDrive, tipoConteudoArquivo } from "@/lib/arquivos-drive";
 
-const GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
-const MIME_PASTA = "application/vnd.google-apps.folder";
+export const GATEWAY = "https://connector-gateway.lovable.dev/google_drive";
+export const MIME_PASTA = "application/vnd.google-apps.folder";
 
 /** Pasta padrão do Drive para as planilhas de exportação. */
 export const PASTA_PLANILHAS = "1xCkat_TA0nT_zOW2yzw0myflN8jBO65n";
@@ -65,7 +66,7 @@ export async function pastasDrive(): Promise<PastasDrive> {
   }
 }
 
-function cabecalhosDrive() {
+export function cabecalhosDrive() {
   const lovable = process.env["LOVABLE_API_KEY"];
   const conexao = process.env["GOOGLE_DRIVE_API_KEY"];
   if (!lovable || !conexao) {
@@ -77,13 +78,13 @@ function cabecalhosDrive() {
   };
 }
 
-class ErroDrive extends Error {
+export class ErroDrive extends Error {
   constructor(public status: number, mensagem: string) {
     super(mensagem);
   }
 }
 
-async function erroDrive(resp: Response) {
+export async function erroDrive(resp: Response) {
   const corpo = await resp.text();
   console.error(`[backup] Google Drive [${resp.status}]: ${corpo}`);
   return new ErroDrive(resp.status, `Google Drive respondeu ${resp.status}: ${corpo}`);
@@ -107,7 +108,7 @@ export function motivoFalha(err: unknown) {
 }
 
 const TENTATIVAS = 3;
-async function comTentativas<T>(fn: () => Promise<T>): Promise<T> {
+export async function comTentativas<T>(fn: () => Promise<T>): Promise<T> {
   let ultimo: unknown;
   for (let i = 0; i < TENTATIVAS; i++) {
     try {
@@ -202,16 +203,16 @@ export async function validarPastasDrive(): Promise<ChecagemPasta[]> {
 
 // ------------------------------------------------------------------ arquivos
 
-type ArquivoDrive = { id: string; name: string };
+export type ArquivoDrive = { id: string; name: string; mimeType?: string | undefined; modifiedTime?: string | undefined; size?: string | undefined };
 
 /** Lista todos os arquivos de uma pasta de uma vez (evita uma busca por arquivo). */
-async function listarPasta(pasta: string): Promise<ArquivoDrive[]> {
+export async function listarPasta(pasta: string): Promise<ArquivoDrive[]> {
   const arquivos: ArquivoDrive[] = [];
   let pageToken: string | undefined;
   do {
     const q = `'${pasta}' in parents and trashed = false`;
     const url =
-      `${GATEWAY}/drive/v3/files?q=${encodeURIComponent(q)}&fields=nextPageToken,files(id,name)&pageSize=1000` +
+      `${GATEWAY}/drive/v3/files?q=${encodeURIComponent(q)}&fields=nextPageToken,files(id,name,mimeType,modifiedTime,size)&pageSize=1000` +
       (pageToken ? `&pageToken=${pageToken}` : "");
     const resp = await fetch(url, { headers: cabecalhosDrive() });
     if (!resp.ok) throw await erroDrive(resp);
@@ -223,7 +224,7 @@ async function listarPasta(pasta: string): Promise<ArquivoDrive[]> {
 }
 
 /** Localiza (ou cria) uma subpasta pelo nome dentro de uma pasta do Drive. */
-async function garantirSubpasta(nome: string, pai: string) {
+export async function garantirSubpasta(nome: string, pai: string) {
   const q = `name = '${nome.replace(/'/g, "\\'")}' and mimeType = '${MIME_PASTA}' and '${pai}' in parents and trashed = false`;
   const resp = await fetch(`${GATEWAY}/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id)&pageSize=1`, {
     headers: cabecalhosDrive(),
@@ -252,6 +253,8 @@ export async function enviarParaDrive(opcoes: {
   tipo: string;
   /** Marcador único do aluno + tipo de arquivo, usado para achar versões antigas. */
   marcador?: string | undefined;
+  /** Marcador do padrão de nome anterior, para renomear arquivos antigos em vez de duplicar. */
+  marcadorAntigo?: string | undefined;
   /** Arquivos já existentes na pasta (evita uma busca por arquivo). */
   existentes?: ArquivoDrive[] | undefined;
 }) {
@@ -259,7 +262,8 @@ export async function enviarParaDrive(opcoes: {
   const lista = opcoes.existentes ?? (await listarPasta(opcoes.pasta));
   const porNome = lista.find((f) => f.name === nome);
   const porMarcador = opcoes.marcador ? lista.find((f) => f.name.includes(opcoes.marcador!)) : undefined;
-  const existente = porNome ?? porMarcador;
+  const porMarcadorAntigo = opcoes.marcadorAntigo ? lista.find((f) => f.name.includes(opcoes.marcadorAntigo!)) : undefined;
+  const existente = porNome ?? porMarcador ?? porMarcadorAntigo;
 
   let fileId = existente?.id ?? null;
   if (!fileId) {
@@ -272,7 +276,7 @@ export async function enviarParaDrive(opcoes: {
     fileId = ((await resp.json()) as { id: string }).id;
     lista.push({ id: fileId, name: nome });
   } else if (existente && existente.name !== nome) {
-    // O nome do aluno mudou: renomeia o arquivo antigo em vez de duplicar.
+    // Versão anterior com outro nome (outra extensão ou padrão antigo): renomeia em vez de duplicar.
     const rename = await fetch(`${GATEWAY}/drive/v3/files/${fileId}?fields=id`, {
       method: "PATCH",
       headers: { ...cabecalhosDrive(), "Content-Type": "application/json" },
@@ -306,19 +310,13 @@ export type ArquivoBackup = {
   nome: string;
   /** ID da pasta de destino (já resolvida, incluindo subpastas de documentos). */
   pasta: string;
-  /** Marcador único (aluno + tipo) para substituir a versão anterior. */
+  /** Marcador único (código de matrícula + tipo) para substituir a versão anterior. */
   marcador: string;
+  /** Marcador do padrão de nome anterior (id do aluno + tipo). */
+  marcadorAntigo?: string | undefined;
 };
 /** Índice de arquivos já existentes, por ID de pasta. */
 export type ExistentesBackup = Record<string, ArquivoDrive[]>;
-
-function tipoPorExtensao(caminho: string) {
-  const ext = (caminho.split(".").pop() ?? "").toLowerCase();
-  if (ext === "png") return "image/png";
-  if (ext === "pdf") return "application/pdf";
-  if (ext === "webp") return "image/webp";
-  return "image/jpeg";
-}
 
 async function baixarArquivoStorage(caminho: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -326,44 +324,7 @@ async function baixarArquivoStorage(caminho: string) {
   return data ? await data.arrayBuffer() : null;
 }
 
-/**
- * Monta o mapa de links dos arquivos que já estão no Drive.
- * Chave: 8 primeiros caracteres do id do aluno + tipo (ex.: "a1b2c3d4|foto").
- */
-export async function linksArquivosDrive(): Promise<Record<string, string>> {
-  const pastas = await pastasDrive();
-  const alvos = new Set<string>([pastas.fotos, pastas.documentos]);
-  for (const tipo of TIPOS_DOCUMENTO) {
-    const sub = pastas.subpastas[tipo.campo];
-    if (sub) {
-      try {
-        alvos.add(await garantirSubpasta(sub, pastas.documentos));
-      } catch {
-        /* subpasta indisponível: ignora */
-      }
-    }
-  }
-  const mapa: Record<string, string> = {};
-  const listagens = await Promise.all(
-    Array.from(alvos).map(async (p) => {
-      try {
-        return await listarPasta(p);
-      } catch {
-        return [] as ArquivoDrive[];
-      }
-    }),
-  );
-  for (const arquivos of listagens) {
-    for (const arquivo of arquivos) {
-      const m = arquivo.name.match(/\[([0-9a-zA-Z-]{8})-([a-z]+)\]/);
-      if (!m?.[1] || !m[2]) continue;
-      mapa[`${m[1]}|${m[2]}`] = `https://drive.google.com/file/d/${arquivo.id}/view`;
-    }
-  }
-  return mapa;
-}
-
-/** Gera a planilha (com os links do Drive) e envia para a pasta de planilhas. */
+/** Gera a planilha (dados cadastrais + código de matrícula, sem links) e envia para a pasta de planilhas. */
 export async function gerarPlanilhaBackup(): Promise<{ nome: string; id: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const [{ data: alunos, error: erroAlunos }, { data: turmas }, { data: matriculas }] = await Promise.all([
@@ -380,13 +341,13 @@ export async function gerarPlanilhaBackup(): Promise<{ nome: string; id: string 
     return m ? (turmas ?? []).find((t) => t.id === m.turma_id) : undefined;
   };
 
-  // A planilha não embute imagens: cada foto/documento vira um link direto
-  // do próprio sistema, que abre sem precisar solicitar acesso.
+  // Sem links: os arquivos ficam no Drive com o nome CODIGO_TIPO.ext,
+  // e é o código de matrícula que liga cada arquivo ao aluno na restauração.
   const buffer = await montarPlanilhaAlunos({
     alunos: lista,
     turmaDoAluno,
     modalidadeDoAluno: (id) => matriculaDoAluno(id)?.modalidade ?? turmaDoAluno(id)?.modalidade ?? "",
-    linksDrive: (await import("@/lib/links-arquivos.server")).linksArquivosStorage,
+    incluirLinks: false,
   });
 
   const pastas = await pastasDrive();
@@ -431,28 +392,22 @@ export async function prepararBackup(): Promise<{
 
   const arquivos: ArquivoBackup[] = [];
   for (const aluno of lista) {
-    const registro = aluno as AlunoPlanilha & { foto_path?: string | null };
+    const registro = aluno as AlunoPlanilha & Record<string, unknown>;
+    const codigo = String(aluno.codigo ?? "").trim().toUpperCase();
+    if (!codigo) continue;
     const curto = aluno.id.slice(0, 8);
-    if (registro.foto_path) {
-      const ext = registro.foto_path.split(".").pop() ?? "jpg";
-      const marcador = `[${curto}-foto]`;
-      arquivos.push({
-        caminho: registro.foto_path,
-        nome: `${aluno.nome} - Foto ${marcador}.${ext}`,
-        pasta: pastas.fotos,
-        marcador,
-      });
-    }
-    for (const tipo of TIPOS_DOCUMENTO) {
-      const caminho = (aluno as Record<string, unknown>)[tipo.campo] as string | null | undefined;
+    const campos = ["foto_path", ...TIPOS_DOCUMENTO.map((t) => t.campo as string)];
+    for (const campo of campos) {
+      const caminho = registro[campo] as string | null | undefined;
       if (!caminho) continue;
-      const ext = caminho.split(".").pop() ?? "jpg";
-      const marcador = `[${curto}-${tipo.campo.replace(/^doc_|_path$/g, "")}]`;
+      const tipoAntigo = campo === "foto_path" ? "foto" : campo.replace(/^doc_|_path$/g, "");
+      if (!tipoArquivoDrive(campo)) continue;
       arquivos.push({
         caminho,
-        nome: `${aluno.nome} - ${tipo.rotulo} ${marcador}.${ext}`,
-        pasta: pastaPorTipo[tipo.campo] ?? pastas.documentos,
-        marcador,
+        nome: nomeArquivoDrive(codigo, campo, caminho),
+        pasta: campo === "foto_path" ? pastas.fotos : (pastaPorTipo[campo] ?? pastas.documentos),
+        marcador: prefixoArquivoDrive(codigo, campo),
+        marcadorAntigo: `[${curto}-${tipoAntigo}]`,
       });
     }
   }
@@ -495,8 +450,9 @@ export async function enviarLoteBackup(
             nome: arquivo.nome,
             pasta: arquivo.pasta,
             conteudo,
-            tipo: tipoPorExtensao(arquivo.caminho),
+            tipo: tipoConteudoArquivo(arquivo.caminho),
             marcador: arquivo.marcador,
+            marcadorAntigo: arquivo.marcadorAntigo,
             existentes: indices[arquivo.pasta],
           }),
         );
@@ -516,7 +472,6 @@ export async function enviarLoteBackup(
 export async function executarBackupCompleto(): Promise<Resultado> {
   const { arquivos, existentes } = await prepararBackup();
   const { enviados, falhas } = await enviarLoteBackup(arquivos, existentes);
-  // A planilha é gerada depois do envio para que os links apontem para os arquivos já no Drive.
   const planilha = await gerarPlanilhaBackup();
   return { planilha: planilha.nome, planilhaId: planilha.id, imagens: enviados, total: arquivos.length, falhas };
 }
