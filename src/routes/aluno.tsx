@@ -7,6 +7,7 @@ import {
   atualizarContatoAlunoFn,
   configNotificacoesAlunoFn,
   enviarFotoAlunoFn,
+  lembretesAulaAlunoFn,
   marcarAvisoLidoFn,
   meusDadosAlunoFn,
   preferenciasAcessoAlunoFn,
@@ -27,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -75,6 +77,8 @@ function AreaAluno() {
   const lidoFn = useServerFn(marcarAvisoLidoFn);
   const configFn = useServerFn(configNotificacoesAlunoFn);
   const registrarPushFn = useServerFn(registrarNotificacoesAlunoFn);
+  const lembretesFn = useServerFn(lembretesAulaAlunoFn);
+  const [salvandoLembrete, setSalvandoLembrete] = useState(false);
   const [dados, setDados] = useState<DadosAreaAluno | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState("dia");
@@ -178,6 +182,20 @@ function AreaAluno() {
       toast.error(e instanceof Error ? e.message : "Não foi possível ativar as notificações.");
     } finally {
       setAtivando(false);
+    }
+  }
+
+  async function alterarLembretes(ativo: boolean) {
+    setSalvandoLembrete(true);
+    setDados((d) => (d ? { ...d, aparelho: { ...d.aparelho, lembretesAula: ativo } } : d));
+    try {
+      await lembretesFn({ data: { token: tokenLocal(), ativo } });
+      toast.success(ativo ? "Lembretes das aulas ligados." : "Lembretes das aulas desligados.");
+    } catch {
+      setDados((d) => (d ? { ...d, aparelho: { ...d.aparelho, lembretesAula: !ativo } } : d));
+      toast.error("Não foi possível salvar a preferência.");
+    } finally {
+      setSalvandoLembrete(false);
     }
   }
 
@@ -314,11 +332,25 @@ function AreaAluno() {
                 <p className="text-xs text-muted-foreground">
                   {dados.aparelho.notificacoesAtivas
                     ? "As notificações estão ativas neste celular."
-                    : "Ative para receber uma notificação sempre que a administração enviar um aviso."}
+                    : "Ative para receber os avisos da administração e lembretes antes das suas aulas."}
                 </p>
                 <Button size="sm" variant={dados.aparelho.notificacoesAtivas ? "outline" : "default"} disabled={ativando} onClick={() => void ativarNotificacoes()}>
                   {ativando ? "Ativando…" : dados.aparelho.notificacoesAtivas ? "Ativar novamente" : "Ativar notificações"}
                 </Button>
+                {dados.aparelho.notificacoesAtivas ? (
+                  <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
+                    <Label htmlFor="lembretes-aula" className="space-y-0.5 font-normal">
+                      <span className="block text-sm font-medium text-foreground">Lembretes das aulas</span>
+                      <span className="block text-xs text-muted-foreground">Aviso 30 e 15 minutos antes de cada aula.</span>
+                    </Label>
+                    <Switch
+                      id="lembretes-aula"
+                      checked={dados.aparelho.lembretesAula}
+                      disabled={salvandoLembrete}
+                      onCheckedChange={(v) => void alterarLembretes(v)}
+                    />
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
 
