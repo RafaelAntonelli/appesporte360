@@ -82,6 +82,7 @@ function AreaAluno() {
   const [consentAberto, setConsentAberto] = useState(false);
   const [ativando, setAtivando] = useState(false);
   const conhecidos = useRef<Set<string> | null>(null);
+  const salvarAposConsentir = useRef(false);
 
   async function carregar(silencioso = false) {
     try {
