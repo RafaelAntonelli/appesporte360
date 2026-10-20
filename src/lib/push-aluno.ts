@@ -1,7 +1,6 @@
 /** Ativa as notificações no celular (Firebase Cloud Messaging). Chamar só a partir de um clique. */
 export type ConfigFirebaseWeb = {
   apiKey: string;
-  authDomain?: string;
   projectId: string;
   messagingSenderId: string;
   appId: string;
@@ -14,6 +13,7 @@ export function notificacoesSuportadas() {
 
 export async function obterTokenNotificacao(config: ConfigFirebaseWeb) {
   if (!notificacoesSuportadas()) throw new Error("Este navegador não permite notificações. No Android, use o Chrome.");
+  if (window.top !== window.self) throw new Error("Abra o app em uma aba própria (ou no site publicado) para ativar as notificações.");
   const permissao = await Notification.requestPermission();
   if (permissao !== "granted") throw new Error("As notificações foram bloqueadas. Libere nas configurações do navegador.");
   const registro = (await navigator.serviceWorker.getRegistration("/")) ?? (await navigator.serviceWorker.register("/sw.js"));

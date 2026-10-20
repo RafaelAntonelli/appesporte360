@@ -24,7 +24,8 @@
 - [x] Etapa 4: área do aluno com Meu dia, Crachá e Avisos.
 - [x] Etapa 5: perfil do aluno com edição de contatos e foto.
 - [x] Etapa 6: tela Avisos (só administradores), avisos na área do aluno e envio pelo Firebase prontos.
-- [ ] Notificações no celular: aguardando as credenciais do Firebase deste app (FIREBASE_WEB_CONFIG e FIREBASE_SERVICE_ACCOUNT).
+- [x] Notificações no celular: conexão do Firebase ligada e envio de teste aceito.
+- [ ] Confirmar o recebimento num celular Android real; depende de um aluno ativar as notificações no site publicado.
 - [ ] Lembretes 30 e 15 minutos antes da aula (opcional): depende das notificações no celular estarem ativas.
 - [x] Etapa 7: menu rolável, Sair no topo do celular, fila de espera recolhida no Painel.
 - [x] Verificação final com aluno de teste e limpeza dos dados de teste.
