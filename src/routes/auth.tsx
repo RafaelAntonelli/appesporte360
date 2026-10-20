@@ -211,7 +211,9 @@ function AuthPage() {
             ) : (
               <>
                 <CardTitle className="font-display text-2xl">Bem-vindo(a) ao {NOME_APP}</CardTitle>
-                <CardDescription>Entre para gerenciar alunos, turmas e presenças.</CardDescription>
+                <CardDescription>
+                  {aba === "aluno" ? "Aluno: entre com CPF ou matrícula e data de nascimento." : "Entre para gerenciar alunos, turmas e presenças."}
+                </CardDescription>
               </>
             )}
           </CardHeader>
