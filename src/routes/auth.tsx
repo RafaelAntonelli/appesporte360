@@ -6,10 +6,13 @@ import loginImagem from "@/assets/login-esporte-360.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 
 import { useAuth } from "@/lib/auth";
+import { tokenLocal } from "@/lib/aluno-local";
+import { AcessoAluno } from "@/components/AcessoAluno";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const NOME_APP = "Esporte 360";
 
@@ -79,6 +82,12 @@ function AuthPage() {
   const [redefinindo, setRedefinindo] = useState(false);
   const [novaSenha, setNovaSenha] = useState("");
   const [online, setOnline] = useState(true);
+  const [aba, setAba] = useState<"equipe" | "aluno">("equipe");
+
+  useEffect(() => {
+    const pedeAluno = new URLSearchParams(window.location.search).get("aba") === "aluno";
+    if (pedeAluno || tokenLocal()) setAba("aluno");
+  }, []);
 
   useEffect(() => {
     setOnline(navigator.onLine);
