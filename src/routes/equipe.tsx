@@ -1,13 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Search, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BookOpen, Lock, LockOpen, Search, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import type { AppRole } from "@/lib/auth";
 import { listarEquipeFn, removerContaPendenteFn, type MembroEquipe } from "@/lib/equipe.functions";
+import { bloquearPermissoesFn, desbloquearPermissoesFn } from "@/lib/permissoes-acesso.functions";
 import { PERMISSOES } from "@/lib/permissoes";
+import { Label } from "@/components/ui/label";
 import { AppShell } from "@/components/AppShell";
 import { AcessosAlunos } from "@/components/AcessosAlunos";
 import { Button } from "@/components/ui/button";
@@ -74,6 +76,13 @@ function EquipePage() {
   const [vinculos, setVinculos] = useState<{ user_id: string; turma_id: string }[]>([]);
   const [turmasDe, setTurmasDe] = useState<MembroEquipe | null>(null);
   const [selecao, setSelecao] = useState<Set<string>>(new Set());
+  const desbloquear = useServerFn(desbloquearPermissoesFn);
+  const bloquearFn = useServerFn(bloquearPermissoesFn);
+  const [aba, setAba] = useState("equipe");
+  const [senha, setSenha] = useState("");
+  const [erroSenha, setErroSenha] = useState<string | null>(null);
+  const [conferindo, setConferindo] = useState(false);
+  const [liberadoAte, setLiberadoAte] = useState<string | null>(null);
 
   async function carregar() {
     setCarregando(true);
@@ -123,14 +132,54 @@ function EquipePage() {
     }
   }
 
+  async function confirmarSenha() {
+    setConferindo(true);
+    setErroSenha(null);
+    try {
+      const r = await desbloquear({ data: { senha } });
+      setLiberadoAte(r.validoAte);
+      setSenha("");
+    } catch (e) {
+      setErroSenha(e instanceof Error ? e.message : "Não foi possível confirmar a senha.");
+    } finally {
+      setConferindo(false);
+    }
+  }
+
+  async function bloquear(silencioso = false) {
+    setLiberadoAte(null);
+    setSenha("");
+    await bloquearFn().catch(() => undefined);
+    if (!silencioso) toast.success("Permissões bloqueadas.");
+  }
+
+  // Bloqueia sozinho quando o tempo termina e ao sair da tela.
+  useEffect(() => {
+    if (!liberadoAte) return;
+    const t = window.setTimeout(() => {
+      setLiberadoAte(null);
+      toast.info("O tempo terminou. Digite a senha novamente para alterar as permissões.");
+    }, Math.max(0, new Date(liberadoAte).getTime() - Date.now()));
+    return () => window.clearTimeout(t);
+  }, [liberadoAte]);
+
+  const bloquearRef = useRef(bloquearFn);
+  bloquearRef.current = bloquearFn;
+  useEffect(() => () => void bloquearRef.current().catch(() => undefined), []);
+
   async function alternarPermissao(chave: string, ativo: boolean) {
+    if (!liberadoAte || new Date(liberadoAte).getTime() <= Date.now()) {
+      setLiberadoAte(null);
+      return void toast.error("Digite a senha de administrador para alterar as permissões.");
+    }
     setPermissoes((p) => ({ ...p, [chave]: ativo }));
     const { error } = await supabase
       .from("permissoes_professor")
       .upsert({ chave, ativo, updated_at: new Date().toISOString() });
     if (error) {
       setPermissoes((p) => ({ ...p, [chave]: !ativo }));
-      toast.error("Não foi possível salvar a permissão.");
+      toast.error("Não foi possível salvar a permissão. Confirme a senha novamente.");
+      setLiberadoAte(null);
     } else toast.success(ativo ? "Permissão ligada" : "Permissão desligada");
   }
 
@@ -251,7 +300,13 @@ function EquipePage() {
           </CardContent>
         </Card>
       ) : (
-        <Tabs defaultValue="equipe">
+        <Tabs
+          value={aba}
+          onValueChange={(v) => {
+            if (aba === "permissoes" && v !== "permissoes" && liberadoAte) void bloquear(true);
+            setAba(v);
+          }}
+        >
           <TabsList className="h-auto flex-wrap">
             <TabsTrigger value="equipe">Equipe</TabsTrigger>
             <TabsTrigger value="permissoes">Permissões dos professores</TabsTrigger>
@@ -282,22 +337,77 @@ function EquipePage() {
           </TabsContent>
 
           <TabsContent value="permissoes">
-            <Card>
-              <CardContent className="divide-y divide-border p-0">
-                {PERMISSOES.map((p) => (
-                  <label key={p.chave} className="flex cursor-pointer items-center justify-between gap-4 p-4">
-                    <div>
-                      <p className="font-medium text-foreground">{p.rotulo}</p>
-                      <p className="text-xs text-muted-foreground">{p.descricao}</p>
+            {!liberadoAte ? (
+              <Card className="max-w-md">
+                <CardContent className="p-6">
+                  <form
+                    className="space-y-4"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void confirmarSenha();
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Lock className="mt-0.5 size-5 text-primary" />
+                      <div>
+                        <p className="font-medium text-foreground">Área protegida</p>
+                        <p className="text-sm text-muted-foreground">
+                          Digite a sua senha de administrador para ver e alterar as permissões dos professores.
+                        </p>
+                      </div>
                     </div>
-                    <Switch checked={permissoes[p.chave] === true} onCheckedChange={(v) => void alternarPermissao(p.chave, v)} />
-                  </label>
-                ))}
-                <p className="p-4 text-xs text-muted-foreground">
-                  Excluir alunos, Backup e Equipe são sempre exclusivos dos administradores.
-                </p>
-              </CardContent>
-            </Card>
+                    <div className="space-y-2">
+                      <Label htmlFor="senha-permissoes">Senha do administrador</Label>
+                      <Input
+                        id="senha-permissoes"
+                        type="password"
+                        autoComplete="current-password"
+                        value={senha}
+                        onChange={(e) => {
+                          setSenha(e.target.value);
+                          setErroSenha(null);
+                        }}
+                        aria-invalid={!!erroSenha}
+                      />
+                      {erroSenha ? (
+                        <p role="alert" className="text-sm text-destructive">
+                          {erroSenha}
+                        </p>
+                      ) : null}
+                    </div>
+                    <Button type="submit" disabled={!senha || conferindo}>
+                      {conferindo ? "Conferindo…" : "Liberar acesso"}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="divide-y divide-border p-0">
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                    <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <LockOpen className="size-4 text-primary" /> Liberado até{" "}
+                      {new Date(liberadoAte).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                    <Button size="sm" variant="outline" onClick={() => void bloquear()}>
+                      <Lock className="mr-1 size-4" /> Bloquear agora
+                    </Button>
+                  </div>
+                  {PERMISSOES.map((p) => (
+                    <label key={p.chave} className="flex cursor-pointer items-center justify-between gap-4 p-4">
+                      <div>
+                        <p className="font-medium text-foreground">{p.rotulo}</p>
+                        <p className="text-xs text-muted-foreground">{p.descricao}</p>
+                      </div>
+                      <Switch checked={permissoes[p.chave] === true} onCheckedChange={(v) => void alternarPermissao(p.chave, v)} />
+                    </label>
+                  ))}
+                  <p className="p-4 text-xs text-muted-foreground">
+                    Excluir alunos, Backup e Equipe são sempre exclusivos dos administradores.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       )}

@@ -18,6 +18,7 @@
 - Medical leave lives in licencas_medicas (one active per student) with shared rules in src/lib/licenca.ts; enrollments stay active during leave so the seat stays reserved.
 - Backup runs (manual and automatic) are recorded in backup_historico with per-file failures so failed files can be resent alone; Drive uploads retry transient errors (429/5xx/network) up to 3 times before failing.
 - Teacher permissions are enforced in RLS via public.pode(uid, chave) reading permissoes_professor (admins always pass); UI gating in src/lib/permissoes.ts mirrors it — why: hiding buttons alone is not security.
+- Changing teacher permissions requires a recent admin password re-check: desbloquearPermissoesFn verifies the password server-side and writes a short-lived row in desbloqueios_permissoes that the permissoes_professor write policies require — why: an unattended admin session must not be enough to change permissions.
 - Records keep the registrar's name in *_por_nome columns filled by trigger, and user FKs use ON DELETE SET NULL — why: removed accounts must not erase who registered.
 - Use DOCUMENTOS_PLANILHA as the shared document catalog in enrollment forms and profiles, and keep backup document destinations aligned — why: every attachment must remain visible and exportable.
 - Keep AI gateway code server-only behind authenticated permission checks, durable denial state and explicit administrator resumption — why: UI controls cannot protect credentials or authorization.

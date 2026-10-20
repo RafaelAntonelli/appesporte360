@@ -30,3 +30,5 @@
 - [ ] Confirmar a chegada de um lembrete num celular real; depende de um aluno com notificações ativas no site publicado.
 - [x] Etapa 7: menu rolável, Sair no topo do celular, fila de espera recolhida no Painel.
 - [x] Verificação final com aluno de teste e limpeza dos dados de teste.
+
+- [x] Equipe: aba Permissões dos professores só abre com a senha do administrador (vale 15 min, bloqueia ao sair da aba); gravação sem senha recusada pelo banco.
