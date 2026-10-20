@@ -31,7 +31,7 @@ export function configWebFirebase(): ConfigWebFirebase | null {
     if (!c.apiKey || !c.projectId || !c.messagingSenderId || !c.appId || !c.vapidKey) return null;
     return {
       apiKey: c.apiKey,
-      authDomain: c.authDomain,
+      ...(c.authDomain ? { authDomain: c.authDomain } : {}),
       projectId: c.projectId,
       messagingSenderId: c.messagingSenderId,
       appId: c.appId,
