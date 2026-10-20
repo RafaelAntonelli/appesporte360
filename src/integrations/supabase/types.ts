@@ -23,6 +23,7 @@ export type Database = {
           created_at: string
           descricao: string | null
           id: string
+          lembretes_aula: boolean
           liberado_ate: string | null
           liberado_em: string | null
           liberado_por: string | null
@@ -43,6 +44,7 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           id?: string
+          lembretes_aula?: boolean
           liberado_ate?: string | null
           liberado_em?: string | null
           liberado_por?: string | null
@@ -63,6 +65,7 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           id?: string
+          lembretes_aula?: boolean
           liberado_ate?: string | null
           liberado_em?: string | null
           liberado_por?: string | null
@@ -589,6 +592,44 @@ export type Database = {
           motivo?: string | null
         }
         Relationships: []
+      }
+      lembretes_aula_enviados: {
+        Row: {
+          antecedencia: number
+          celulares: number
+          created_at: string
+          data: string
+          enviados: number
+          id: string
+          turma_id: string
+        }
+        Insert: {
+          antecedencia: number
+          celulares?: number
+          created_at?: string
+          data: string
+          enviados?: number
+          id?: string
+          turma_id: string
+        }
+        Update: {
+          antecedencia?: number
+          celulares?: number
+          created_at?: string
+          data?: string
+          enviados?: number
+          id?: string
+          turma_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lembretes_aula_enviados_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       licencas_medicas: {
         Row: {
