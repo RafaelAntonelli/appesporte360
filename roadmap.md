@@ -16,3 +16,13 @@
 - [x] Gerar rascunhos editáveis de WhatsApp sem dados pessoais ou envio automático; texto revisado presente no link.
 - [x] Sugerir mapeamento de cabeçalhos na importação mantendo validações; sugestão e correção manual confirmadas sem importar.
 - [x] Validar as quatro chamadas reais, cálculos, revisão e proteção; 23 testes aprovados e quatro acessos diretos sem autenticação recusados.
+
+## Área do aluno (pedido de 20/10)
+- [ ] Etapa 1: aba Aluno no login (CPF ou matrícula + nascimento), limites de tentativas e aviso de inativo.
+- [ ] Etapa 2: liberação presencial do aparelho por QR Code; seção Acessos dos alunos na Equipe.
+- [ ] Etapa 3: consentimento e Salvar login neste aparelho.
+- [ ] Etapa 4: área do aluno com Meu dia, Crachá e Avisos.
+- [ ] Etapa 5: perfil do aluno com edição de contatos e foto.
+- [ ] Etapa 6: tela Avisos (só administradores) e notificações no celular; depende das credenciais do Firebase.
+- [ ] Etapa 7: menu rolável, Sair no topo do celular, fila de espera recolhida no Painel.
+- [ ] Verificação final com aluno de teste e limpeza dos dados de teste.
