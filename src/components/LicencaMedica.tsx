@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { otimizarImagem } from "@/lib/imagem";
 import { dataISO, formatarDataCurta, licencaTerminada, somarDias, type LicencaMedica } from "@/lib/licenca";
 
-async function enviarArquivo(alunoId: string, prefixo: string, arquivo: File) {
+async function enviarArquivo(alunoId: string, prefixo: string, bruto: File) {
+  const arquivo = await otimizarImagem(bruto);
   const ext = arquivo.name.split(".").pop() ?? "jpg";
   const path = `${alunoId}/licenca-${prefixo}-${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from("fotos-alunos").upload(path, arquivo, { upsert: true });

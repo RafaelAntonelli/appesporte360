@@ -8,6 +8,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { baixarImagem } from "@/lib/fotos.functions";
 import { extrairImagensPlanilha } from "@/lib/planilha-imagens";
+import { otimizarImagem } from "@/lib/imagem";
 import { capitalizarNome, formatarCelular, formatarCPF, apenasDigitos, cpfValido } from "@/lib/formatacao";
 import { MODALIDADES, MODALIDADE_PADRAO, normalizarModalidade } from "@/lib/modalidades";
 import { Button } from "@/components/ui/button";
@@ -516,6 +517,7 @@ export function ImportarAlunos({
             for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
             blob = new Blob([bytes], { type: img.contentType });
           }
+          blob = await otimizarImagem(blob, { nome: "foto.jpg" });
           const ext = (blob.type.split("/")[1] ?? "jpg").replace("jpeg", "jpg");
           const caminho = `${alunoId}/${Date.now()}.${ext}`;
           const up = await supabase.storage.from("fotos-alunos").upload(caminho, blob, {

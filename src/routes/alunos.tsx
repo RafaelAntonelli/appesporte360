@@ -19,6 +19,7 @@ import { usePrazoAvisoAtestado } from "@/lib/configuracoes";
 import { useAuth } from "@/lib/auth";
 import { montarPlanilhaAlunos, ExportacaoCancelada, DOCUMENTOS_PLANILHA, type AlunoPlanilha } from "@/lib/planilha-alunos";
 import { linksArquivosFn } from "@/lib/links-arquivos.functions";
+import { otimizarImagem } from "@/lib/imagem";
 
 
 import { AppShell } from "@/components/AppShell";
@@ -1684,9 +1685,11 @@ function AlunosPage() {
                       type="file"
                       accept="image/*"
                       onChange={(e) => {
-                        const f = e.target.files?.[0] ?? null;
-                        setFoto(f);
-                        setFotoPreview(f ? URL.createObjectURL(f) : null);
+                        const bruto = e.target.files?.[0] ?? null;
+                        void (bruto ? otimizarImagem(bruto) : Promise.resolve(null)).then((f) => {
+                          setFoto(f);
+                          setFotoPreview(f ? URL.createObjectURL(f) : null);
+                        });
                       }}
                     />
                     <input
@@ -1696,9 +1699,11 @@ function AlunosPage() {
                       accept="image/*"
                       capture="environment"
                       onChange={(e) => {
-                        const f = e.target.files?.[0] ?? null;
-                        setFoto(f);
-                        setFotoPreview(f ? URL.createObjectURL(f) : null);
+                        const bruto = e.target.files?.[0] ?? null;
+                        void (bruto ? otimizarImagem(bruto) : Promise.resolve(null)).then((f) => {
+                          setFoto(f);
+                          setFotoPreview(f ? URL.createObjectURL(f) : null);
+                        });
                       }}
                     />
                     <Button
@@ -1749,7 +1754,12 @@ function AlunosPage() {
                         type="file"
                         accept="image/*,application/pdf"
                         aria-invalid={d.campo === "doc_atestado_path" && (atestadoAnexadoSemConfirmacao || atestadoAnexadoSemData)}
-                        onChange={(e) => setDocs((s) => ({ ...s, [d.campo]: e.target.files?.[0] ?? null }))}
+                        onChange={(e) => {
+                          const bruto = e.target.files?.[0] ?? null;
+                          void (bruto ? otimizarImagem(bruto) : Promise.resolve(null)).then((f) =>
+                            setDocs((s) => ({ ...s, [d.campo]: f })),
+                          );
+                        }}
                       />
                       <Button
                         type="button"

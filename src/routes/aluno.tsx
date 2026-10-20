@@ -20,7 +20,8 @@ import {
 } from "@/lib/aluno.functions";
 import { FOTO_TIPOS, validarEmail, validarFoto, validarTelefone } from "@/lib/aluno-acesso";
 import { consentimentoLocal, salvarConsentimentoLocal, tokenLocal } from "@/lib/aluno-local";
-import { obterTokenNotificacao } from "@/lib/push-aluno";
+import { notificacoesSuportadas, obterTokenNotificacao } from "@/lib/push-aluno";
+import { otimizarImagem } from "@/lib/imagem";
 import { formatarCelular } from "@/lib/formatacao";
 import { gerarCrachaPreviewImagem, gerarCrachasPdfFielAoPreview, type DadosCracha } from "@/lib/cracha";
 import { Button } from "@/components/ui/button";
@@ -531,8 +532,10 @@ function PerfilDoAluno({ aberto, aoFechar, dados, aoSalvar }: { aberto: boolean;
     }
   }
 
-  async function enviarFoto(arquivo: File | undefined) {
-    if (!arquivo) return;
+  async function enviarFoto(bruto: File | undefined) {
+    if (!bruto) return;
+    // Reduz e comprime no próprio celular antes de enviar.
+    const arquivo = await otimizarImagem(bruto);
     const erro = validarFoto(arquivo.size, arquivo.type);
     if (erro) return void toast.error(erro);
     setEnviandoFoto(true);
