@@ -154,7 +154,7 @@ export type DadosAreaAluno = {
   turmas: TurmaDoAluno[];
   atestado: { situacao: SituacaoAtestado; venceEm: string | null };
   avisos: AvisoDoAluno[];
-  aparelho: { loginSalvo: boolean; consentimento: boolean; liberadoAte: string | null; notificacoesAtivas: boolean };
+  aparelho: { loginSalvo: boolean; consentimento: boolean; liberadoAte: string | null; notificacoesAtivas: boolean; lembretesAula: boolean };
 };
 
 async function sessaoOuErro(token?: string | null) {
@@ -239,6 +239,7 @@ export const meusDadosAlunoFn = createServerFn({ method: "POST" })
         consentimento: !!aparelho.consentimento_em,
         liberadoAte: aparelho.liberado_ate,
         notificacoesAtivas: (pushCount ?? 0) > 0,
+        lembretesAula: aparelho.lembretes_aula !== false,
       },
     };
   });
@@ -357,5 +358,15 @@ export const registrarNotificacoesAlunoFn = createServerFn({ method: "POST" })
       .from("aluno_push_tokens")
       .upsert({ token: data.fcmToken, aparelho_id: aparelho.id, aluno_id: alunoId, updated_at: new Date().toISOString() }, { onConflict: "token" });
     if (error) throw new Error("Não foi possível ativar as notificações.");
+    return { ok: true };
+  });
+
+/** Liga ou desliga os lembretes de aula neste aparelho. */
+export const lembretesAulaAlunoFn = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ token: tokenOpcional, ativo: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    const { db, aparelho } = await sessaoOuErro(data.token);
+    const { error } = await db.from("aluno_aparelhos").update({ lembretes_aula: data.ativo }).eq("id", aparelho.id);
+    if (error) throw new Error("Não foi possível salvar a preferência.");
     return { ok: true };
   });

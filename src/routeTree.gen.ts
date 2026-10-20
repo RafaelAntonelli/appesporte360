@@ -20,6 +20,7 @@ import { Route as PresencaRouteImport } from './routes/presenca'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as TurmasRouteImport } from './routes/turmas'
 import { Route as ApiPublicBackupSemanalRouteImport } from './routes/api/public/backup-semanal'
+import { Route as ApiPublicJobsLembretesAulaRouteImport } from './routes/api/public/jobs/lembretes-aula'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -76,6 +77,12 @@ const ApiPublicBackupSemanalRoute = ApiPublicBackupSemanalRouteImport.update({
   path: '/api/public/backup-semanal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicJobsLembretesAulaRoute =
+  ApiPublicJobsLembretesAulaRouteImport.update({
+    id: '/api/public/jobs/lembretes-aula',
+    path: '/api/public/jobs/lembretes-aula',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof RelatoriosRoute
   '/turmas': typeof TurmasRoute
   '/api/public/backup-semanal': typeof ApiPublicBackupSemanalRoute
+  '/api/public/jobs/lembretes-aula': typeof ApiPublicJobsLembretesAulaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -102,6 +110,7 @@ export interface FileRoutesByTo {
   '/relatorios': typeof RelatoriosRoute
   '/turmas': typeof TurmasRoute
   '/api/public/backup-semanal': typeof ApiPublicBackupSemanalRoute
+  '/api/public/jobs/lembretes-aula': typeof ApiPublicJobsLembretesAulaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +125,7 @@ export interface FileRoutesById {
   '/relatorios': typeof RelatoriosRoute
   '/turmas': typeof TurmasRoute
   '/api/public/backup-semanal': typeof ApiPublicBackupSemanalRoute
+  '/api/public/jobs/lembretes-aula': typeof ApiPublicJobsLembretesAulaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/turmas'
     | '/api/public/backup-semanal'
+    | '/api/public/jobs/lembretes-aula'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/turmas'
     | '/api/public/backup-semanal'
+    | '/api/public/jobs/lembretes-aula'
   id:
     | '__root__'
     | '/'
@@ -157,6 +169,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/turmas'
     | '/api/public/backup-semanal'
+    | '/api/public/jobs/lembretes-aula'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -171,6 +184,7 @@ export interface RootRouteChildren {
   RelatoriosRoute: typeof RelatoriosRoute
   TurmasRoute: typeof TurmasRoute
   ApiPublicBackupSemanalRoute: typeof ApiPublicBackupSemanalRoute
+  ApiPublicJobsLembretesAulaRoute: typeof ApiPublicJobsLembretesAulaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -252,6 +266,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBackupSemanalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/jobs/lembretes-aula': {
+      id: '/api/public/jobs/lembretes-aula'
+      path: '/api/public/jobs/lembretes-aula'
+      fullPath: '/api/public/jobs/lembretes-aula'
+      preLoaderRoute: typeof ApiPublicJobsLembretesAulaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -267,6 +288,7 @@ const rootRouteChildren: RootRouteChildren = {
   RelatoriosRoute: RelatoriosRoute,
   TurmasRoute: TurmasRoute,
   ApiPublicBackupSemanalRoute: ApiPublicBackupSemanalRoute,
+  ApiPublicJobsLembretesAulaRoute: ApiPublicJobsLembretesAulaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

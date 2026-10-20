@@ -26,6 +26,7 @@
 - [x] Etapa 6: tela Avisos (só administradores), avisos na área do aluno e envio pelo Firebase prontos.
 - [x] Notificações no celular: conexão do Firebase ligada e envio de teste aceito.
 - [ ] Confirmar o recebimento num celular Android real; depende de um aluno ativar as notificações no site publicado.
-- [ ] Lembretes 30 e 15 minutos antes da aula (opcional): depende das notificações no celular estarem ativas.
+- [x] Lembretes 30 e 15 minutos antes da aula: agendador a cada 5 min, sem repetição, aluno pode desligar; alunos em licença não recebem.
+- [ ] Confirmar a chegada de um lembrete num celular real; depende de um aluno com notificações ativas no site publicado.
 - [x] Etapa 7: menu rolável, Sair no topo do celular, fila de espera recolhida no Painel.
 - [x] Verificação final com aluno de teste e limpeza dos dados de teste.
