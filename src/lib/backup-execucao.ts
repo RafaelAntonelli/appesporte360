@@ -10,7 +10,7 @@ import {
 
 const LOTE = 8;
 
-export type FalhaBackup = { caminho: string; nome: string; pasta: string; marcador: string; motivo: string };
+export type FalhaBackup = { caminho: string; nome: string; pasta: string; marcador: string; marcadorAntigo?: string | undefined; motivo: string };
 
 export type ProgressoBackup = {
   etapa: string;
@@ -111,7 +111,7 @@ export async function executarBackupGlobal(): Promise<void> {
     }
 
     atualizar({
-      progresso: { etapa: "Gerando a planilha com os links…", enviados: total, total, falhas: falhas.length, restante: null },
+      progresso: { etapa: "Gerando a planilha de alunos…", enviados: total, total, falhas: falhas.length, restante: null },
     });
     const { planilha, planilhaId } = await gerarPlanilhaBackupFn({ data: undefined });
 

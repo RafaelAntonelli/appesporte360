@@ -35,7 +35,7 @@ export const prepararBackupFn = createServerFn({ method: "POST" })
     }
   });
 
-/** Gera a planilha final (com os links do Drive) e envia para a pasta de planilhas. */
+/** Gera a planilha final (dados cadastrais e código de matrícula, sem links) e envia para a pasta de planilhas. */
 export const gerarPlanilhaBackupFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -45,25 +45,12 @@ export const gerarPlanilhaBackupFn = createServerFn({ method: "POST" })
     return { planilha: p.nome, planilhaId: p.id };
   });
 
-/** Links dos arquivos (fotos e documentos) já enviados ao Google Drive. */
-export const linksArquivosDriveFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async () => {
-    const { linksArquivosDrive } = await import("@/lib/backup.server");
-    try {
-      return await linksArquivosDrive();
-    } catch (err) {
-      console.error("[backup] não foi possível listar os links do Drive", err);
-      return {} as Record<string, string>;
-    }
-  });
-
-
 const falhaSchema = z.object({
   caminho: z.string(),
   nome: z.string(),
   pasta: z.string(),
   marcador: z.string(),
+  marcadorAntigo: z.string().optional(),
   motivo: z.string(),
 });
 
@@ -115,6 +102,7 @@ const loteSchema = z.object({
       nome: z.string(),
       pasta: z.string(),
       marcador: z.string(),
+      marcadorAntigo: z.string().optional(),
     }),
   ),
   existentes: z.record(z.string(), z.array(z.object({ id: z.string(), name: z.string() }))).optional(),
@@ -242,3 +230,49 @@ export const salvarAgendamentoFn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+
+// ---------------------------------------------------------------- restauração
+
+/** Planilhas de backup disponíveis na pasta de planilhas do Drive. */
+export const listarPlanilhasBackupFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await garantirAdmin(context);
+    const { listarPlanilhasBackup } = await import("@/lib/restauracao.server");
+    return await listarPlanilhasBackup();
+  });
+
+/** Recria os alunos da planilha (opcional) e lista os arquivos do Drive a vincular pelo código de matrícula. */
+export const prepararRestauracaoFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z.object({ planilhaId: z.string().regex(/^[A-Za-z0-9_-]{10,}$/).nullable(), substituir: z.boolean() }).parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    await garantirAdmin(context);
+    try {
+      const { prepararRestauracao } = await import("@/lib/restauracao.server");
+      return { ok: true as const, ...(await prepararRestauracao(data)) };
+    } catch (err) {
+      const erro = err instanceof Error ? err.message : "Falha ao preparar a restauração.";
+      console.error("[restauração] preparar falhou:", erro);
+      return { ok: false as const, erro };
+    }
+  });
+
+/** Restaura um lote de arquivos do Drive (usado para mostrar o progresso na tela). */
+export const restaurarLoteFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        tarefas: z.array(z.object({ fileId: z.string().regex(/^[A-Za-z0-9_-]{10,}$/), nome: z.string().max(200) })).max(10),
+        substituir: z.boolean(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    await garantirAdmin(context);
+    const { restaurarLote } = await import("@/lib/restauracao.server");
+    return await restaurarLote(data.tarefas, data.substituir);
+  });
