@@ -96,7 +96,7 @@ function AreaAluno() {
       if (!silencioso && !d.aparelho.consentimento && consentimentoLocal() === null) setConsentAberto(true);
     } catch {
       const s = await statusFn({ data: { token: tokenLocal() } }).catch(() => null);
-      if (!s?.sessaoAtiva) return void navigate({ to: "/auth", search: { aba: "aluno" } as never });
+      if (!s?.sessaoAtiva) return void navigate({ href: "/auth?aba=aluno" });
       if (!silencioso) setErro("Não foi possível carregar seus dados. Verifique a internet e tente novamente.");
     }
   }
@@ -139,7 +139,7 @@ function AreaAluno() {
 
   async function sair() {
     await sairFn({ data: { token: tokenLocal() } }).catch(() => undefined);
-    navigate({ to: "/auth", search: { aba: "aluno" } as never, replace: true });
+    navigate({ href: "/auth?aba=aluno", replace: true });
   }
 
   async function marcarLidos(ids: string[]) {
