@@ -5,10 +5,14 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 export const linksArquivosFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: ehEquipe } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
-    const { data: podeVer } = await context.supabase.rpc("pode", { uid: context.userId, chave: "ver_relatorios" } as never);
-    const { data: podeEditar } = await context.supabase.rpc("pode", { uid: context.userId, chave: "editar_alunos" } as never);
-    if (!ehEquipe && !podeVer && !podeEditar) return { links: {} as Record<string, string>, validoAte: null };
+    // Só quem pode ver ou editar alunos recebe links (o administrador sempre pode).
+    const permitido = await Promise.all(
+      ["ver_relatorios", "editar_alunos", "cadastrar_alunos"].map(async (chave) => {
+        const { data } = await context.supabase.rpc("pode", { _user_id: context.userId, _permissao: chave });
+        return data === true;
+      }),
+    );
+    if (!permitido.some(Boolean)) return { links: {} as Record<string, string>, validoAte: null };
     const { linksArquivosStorage } = await import("@/lib/links-arquivos.server");
     try {
       return await linksArquivosStorage();
