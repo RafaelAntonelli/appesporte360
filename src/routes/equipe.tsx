@@ -9,6 +9,7 @@ import type { AppRole } from "@/lib/auth";
 import { listarEquipeFn, removerContaPendenteFn, type MembroEquipe } from "@/lib/equipe.functions";
 import { PERMISSOES } from "@/lib/permissoes";
 import { AppShell } from "@/components/AppShell";
+import { AcessosAlunos } from "@/components/AcessosAlunos";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -251,10 +252,15 @@ function EquipePage() {
         </Card>
       ) : (
         <Tabs defaultValue="equipe">
-          <TabsList>
+          <TabsList className="h-auto flex-wrap">
             <TabsTrigger value="equipe">Equipe</TabsTrigger>
             <TabsTrigger value="permissoes">Permissões dos professores</TabsTrigger>
+            <TabsTrigger value="alunos">Acessos dos alunos</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="alunos">
+            <AcessosAlunos />
+          </TabsContent>
 
           <TabsContent value="equipe" className="space-y-6">
             <div className="relative max-w-md">

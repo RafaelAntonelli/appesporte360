@@ -10,8 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AlunoRouteImport } from './routes/aluno'
 import { Route as AlunosRouteImport } from './routes/alunos'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AvisosRouteImport } from './routes/avisos'
 import { Route as BackupRouteImport } from './routes/backup'
 import { Route as EquipeRouteImport } from './routes/equipe'
 import { Route as PresencaRouteImport } from './routes/presenca'
@@ -24,6 +26,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AlunoRoute = AlunoRouteImport.update({
+  id: '/aluno',
+  path: '/aluno',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AlunosRoute = AlunosRouteImport.update({
   id: '/alunos',
   path: '/alunos',
@@ -32,6 +39,11 @@ const AlunosRoute = AlunosRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AvisosRoute = AvisosRouteImport.update({
+  id: '/avisos',
+  path: '/avisos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BackupRoute = BackupRouteImport.update({
@@ -67,8 +79,10 @@ const ApiPublicBackupSemanalRoute = ApiPublicBackupSemanalRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/aluno': typeof AlunoRoute
   '/alunos': typeof AlunosRoute
   '/auth': typeof AuthRoute
+  '/avisos': typeof AvisosRoute
   '/backup': typeof BackupRoute
   '/equipe': typeof EquipeRoute
   '/presenca': typeof PresencaRoute
@@ -78,8 +92,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/aluno': typeof AlunoRoute
   '/alunos': typeof AlunosRoute
   '/auth': typeof AuthRoute
+  '/avisos': typeof AvisosRoute
   '/backup': typeof BackupRoute
   '/equipe': typeof EquipeRoute
   '/presenca': typeof PresencaRoute
@@ -90,8 +106,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/aluno': typeof AlunoRoute
   '/alunos': typeof AlunosRoute
   '/auth': typeof AuthRoute
+  '/avisos': typeof AvisosRoute
   '/backup': typeof BackupRoute
   '/equipe': typeof EquipeRoute
   '/presenca': typeof PresencaRoute
@@ -103,8 +121,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/aluno'
     | '/alunos'
     | '/auth'
+    | '/avisos'
     | '/backup'
     | '/equipe'
     | '/presenca'
@@ -114,8 +134,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/aluno'
     | '/alunos'
     | '/auth'
+    | '/avisos'
     | '/backup'
     | '/equipe'
     | '/presenca'
@@ -125,8 +147,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/aluno'
     | '/alunos'
     | '/auth'
+    | '/avisos'
     | '/backup'
     | '/equipe'
     | '/presenca'
@@ -137,8 +161,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AlunoRoute: typeof AlunoRoute
   AlunosRoute: typeof AlunosRoute
   AuthRoute: typeof AuthRoute
+  AvisosRoute: typeof AvisosRoute
   BackupRoute: typeof BackupRoute
   EquipeRoute: typeof EquipeRoute
   PresencaRoute: typeof PresencaRoute
@@ -156,6 +182,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/aluno': {
+      id: '/aluno'
+      path: '/aluno'
+      fullPath: '/aluno'
+      preLoaderRoute: typeof AlunoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/alunos': {
       id: '/alunos'
       path: '/alunos'
@@ -168,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/avisos': {
+      id: '/avisos'
+      path: '/avisos'
+      fullPath: '/avisos'
+      preLoaderRoute: typeof AvisosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/backup': {
@@ -217,8 +257,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AlunoRoute: AlunoRoute,
   AlunosRoute: AlunosRoute,
   AuthRoute: AuthRoute,
+  AvisosRoute: AvisosRoute,
   BackupRoute: BackupRoute,
   EquipeRoute: EquipeRoute,
   PresencaRoute: PresencaRoute,

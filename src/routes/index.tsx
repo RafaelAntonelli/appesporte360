@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Users, CalendarDays, Plus, Trash2, Search, Stethoscope } from "lucide-react";
+import { Users, CalendarDays, Plus, Trash2, Search, Stethoscope, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CONDICOES_PCD } from "@/lib/pcd";
@@ -62,6 +62,7 @@ function Painel() {
   const [aulas, setAulas] = useState<{ id: string; nome: string; horario: string | null; capacidade: number; ocupacao: number }[]>([]);
   const [licencas, setLicencas] = useState<{ id: string; aluno_id: string; nome: string; data_retorno: string; vencida: boolean }[]>([]);
   const [fila, setFila] = useState<Fila[]>([]);
+  const [mostrarFila, setMostrarFila] = useState(false);
   const filaVazia: {
     nome: string;
     telefone: string;
@@ -309,7 +310,16 @@ function Painel() {
       </Card>
 
       <Card className="mt-6 border-border/70">
-        <CardHeader><CardTitle className="font-display text-lg">Fila de espera</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+          <CardTitle className="font-display text-lg">
+            Fila de espera <span className="text-sm font-normal text-muted-foreground">({fila.length})</span>
+          </CardTitle>
+          <Button variant="outline" size="sm" aria-expanded={mostrarFila} onClick={() => setMostrarFila((v) => !v)}>
+            {mostrarFila ? <EyeOff className="mr-1 size-4" /> : <Eye className="mr-1 size-4" />}
+            {mostrarFila ? "Esconder" : "Mostrar"}
+          </Button>
+        </CardHeader>
+        {mostrarFila ? (
         <CardContent className="space-y-4">
           <form onSubmit={adicionarFila} className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -411,6 +421,7 @@ function Painel() {
             {!fila.length && <p className="py-6 text-center text-sm text-muted-foreground">Nenhum aluno na fila de espera.</p>}
           </div>
         </CardContent>
+        ) : null}
       </Card>
     </AppShell>
   );
