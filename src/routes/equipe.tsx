@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Lock, LockOpen, Search, ShieldCheck, Trash2, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -163,7 +163,9 @@ function EquipePage() {
     return () => window.clearTimeout(t);
   }, [liberadoAte]);
 
-  useEffect(() => () => void bloquearFn().catch(() => undefined), [bloquearFn]);
+  const bloquearRef = useRef(bloquearFn);
+  bloquearRef.current = bloquearFn;
+  useEffect(() => () => void bloquearRef.current().catch(() => undefined), []);
 
   async function alternarPermissao(chave: string, ativo: boolean) {
     if (!liberadoAte || new Date(liberadoAte).getTime() <= Date.now()) {
