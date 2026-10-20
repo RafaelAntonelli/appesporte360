@@ -52,11 +52,11 @@ export function agoraEmBrasilia(agora: Date) {
       .formatToParts(agora)
       .map((p) => [p.type, p.value]),
   );
-  const indice = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(partes.weekday ?? "");
+  const indice = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(partes["weekday"] ?? "");
   return {
-    data: `${partes.year}-${partes.month}-${partes.day}`,
+    data: `${partes["year"]}-${partes["month"]}-${partes["day"]}`,
     dia: DIAS[indice] ?? "dom",
-    minutos: Number(partes.hour) * 60 + Number(partes.minute),
+    minutos: Number(partes["hour"]) * 60 + Number(partes["minute"]),
   };
 }
 

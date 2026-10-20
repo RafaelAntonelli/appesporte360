@@ -14,16 +14,16 @@ describe("lembretes de aula", () => {
   it("envia o lembrete de 30 minutos antes", () => {
     const r = lembretesDevidos([turma], { dia: "ter", minutos: 15 * 60 + 30 });
     expect(r).toHaveLength(1);
-    expect(r[0].antecedencia).toBe(30);
+    expect(r[0]?.antecedencia).toBe(30);
   });
 
   it("envia o lembrete de 15 minutos antes", () => {
     const r = lembretesDevidos([turma], { dia: "ter", minutos: 15 * 60 + 45 });
-    expect(r[0].antecedencia).toBe(15);
+    expect(r[0]?.antecedencia).toBe(15);
   });
 
   it("não envia fora das janelas, em outro dia ou para turma inativa", () => {
-    expect(lembretesDevidos([turma], { dia: "ter", minutos: 15 * 60 + 38 })).toHaveLength(0);
+    expect(lembretesDevidos([turma], { dia: "ter", minutos: 15 * 60 + 42 })).toHaveLength(0);
     expect(lembretesDevidos([turma], { dia: "ter", minutos: 15 * 60 })).toHaveLength(0);
     expect(lembretesDevidos([turma], { dia: "qua", minutos: 15 * 60 + 30 })).toHaveLength(0);
     expect(lembretesDevidos([{ ...turma, ativa: false }], { dia: "ter", minutos: 15 * 60 + 30 })).toHaveLength(0);

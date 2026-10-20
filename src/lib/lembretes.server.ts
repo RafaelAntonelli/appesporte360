@@ -49,7 +49,7 @@ export async function enviarLembretesDeAula(agora = new Date()) {
     const { titulo, mensagem } = textoLembrete(l);
     const r = await enviarPush(tokens, { titulo, mensagem, avisoId: `lembrete-${l.turma.id}-${hoje.data}` });
     if (r.invalidos.length) await db.from("aluno_push_tokens").delete().in("token", r.invalidos);
-    await db.from("lembretes_aula_enviados").update({ celulares: tokens.length, enviados: r.enviados }).eq("id", reservado[0].id);
+    await db.from("lembretes_aula_enviados").update({ celulares: tokens.length, enviados: r.enviados }).eq("id", reservado[0]!.id);
     resultado.push({ turma: l.turma.id, antecedencia: l.antecedencia, celulares: tokens.length, enviados: r.enviados });
   }
   return { data: hoje.data, lembretes: resultado };
