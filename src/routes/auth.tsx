@@ -264,6 +264,15 @@ function AuthPage() {
                 </Button>
               </form>
             ) : (
+              <Tabs value={aba} onValueChange={(v) => setAba(v as "equipe" | "aluno")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="equipe">Equipe</TabsTrigger>
+                  <TabsTrigger value="aluno">Aluno</TabsTrigger>
+                </TabsList>
+                <TabsContent value="aluno" className="pt-2">
+                  <AcessoAluno bloqueado={!online} />
+                </TabsContent>
+                <TabsContent value="equipe" className="pt-2">
               <form onSubmit={entrar} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">E-mail</Label>
@@ -292,6 +301,8 @@ function AuthPage() {
                   </button>
                 </p>
               </form>
+                </TabsContent>
+              </Tabs>
             )}
           </CardContent>
         </Card>
