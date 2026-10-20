@@ -225,7 +225,7 @@ export async function montarPlanilhaAlunos(opcoes: OpcoesPlanilha): Promise<Arra
   }
   opcoes.aoProgredir?.(linhas.length, linhas.length);
 
-  const colunasLargas = new Set(["Observações", "Condições PCD", "E-mail", "Escola", "Responsável"]);
+  const colunasLargas = new Set(["Observações", "Condições PCD", "Descrição PCD", "Motivo da inativação", "E-mail", "Escola", "Responsável"]);
   const colunasFixas = new Set(["Sexo", "Idade", "PCD", "Atestado entregue"]);
 
   cabecalho.forEach((titulo, i) => {
