@@ -117,21 +117,34 @@ function AreaAluno() {
   async function responderConsentimento(aceito: boolean) {
     salvarConsentimentoLocal(aceito ? "sim" : "nao");
     setConsentAberto(false);
+    const salvarJunto = aceito && salvarAposConsentir.current;
+    salvarAposConsentir.current = false;
     try {
-      await preferenciasFn({ data: { token: tokenLocal(), consentimento: aceito } });
-      toast.success(aceito ? "Pronto! Você pode salvar o login neste aparelho." : "Tudo bem. Seus dados de acesso não ficarão salvos.");
-      void carregar(true);
+      await preferenciasFn({ data: { token: tokenLocal(), consentimento: aceito, ...(salvarJunto ? { salvarLogin: true } : {}) } });
+      setDados((d) =>
+        d ? { ...d, aparelho: { ...d.aparelho, consentimento: aceito, loginSalvo: salvarJunto ? true : aceito ? d.aparelho.loginSalvo : false } } : d,
+      );
+      toast.success(
+        salvarJunto
+          ? "Login salvo neste aparelho. Na próxima vez, você entra direto."
+          : aceito
+            ? "Pronto! Você pode salvar o login neste aparelho."
+            : "Tudo bem. Seus dados de acesso não ficarão salvos.",
+      );
     } catch {
       toast.error("Não foi possível registrar sua resposta.");
     }
   }
 
   async function salvarLogin() {
-    if (!dados?.aparelho.consentimento) return setConsentAberto(true);
+    if (!dados?.aparelho.consentimento) {
+      salvarAposConsentir.current = true;
+      return setConsentAberto(true);
+    }
     try {
       await preferenciasFn({ data: { token: tokenLocal(), salvarLogin: true } });
+      setDados((d) => (d ? { ...d, aparelho: { ...d.aparelho, loginSalvo: true } } : d));
       toast.success("Login salvo neste aparelho. Na próxima vez, você entra direto.");
-      void carregar(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível salvar o login.");
     }
