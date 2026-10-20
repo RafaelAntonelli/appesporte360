@@ -482,6 +482,24 @@ export type Database = {
         }
         Relationships: []
       }
+      desbloqueios_permissoes: {
+        Row: {
+          created_at: string
+          user_id: string
+          valido_ate: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+          valido_ate: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+          valido_ate?: string
+        }
+        Relationships: []
+      }
       fila_espera: {
         Row: {
           created_at: string
@@ -960,6 +978,7 @@ export type Database = {
         }[]
       }
       nome_usuario: { Args: { _id: string }; Returns: string }
+      permissoes_desbloqueadas: { Args: { _user_id: string }; Returns: boolean }
       pode: { Args: { _permissao: string; _user_id: string }; Returns: boolean }
       recusar_aparelho_aluno: { Args: { _id: string }; Returns: undefined }
       revogar_aparelho_aluno: { Args: { _id: string }; Returns: undefined }

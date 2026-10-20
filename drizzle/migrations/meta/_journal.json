@@ -85,6 +85,13 @@
       "when": 1792503032320,
       "tag": "0011_lembretes_de_aula",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792503284858,
+      "tag": "0012_senha_para_permissoes_professores",
+      "breakpoints": true
     }
   ]
 }
