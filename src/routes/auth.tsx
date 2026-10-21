@@ -11,7 +11,8 @@ import { AcessoAluno } from "@/components/AcessoAluno";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const NOME_APP = "Esporte 360";
@@ -65,6 +66,36 @@ function CampoSenha({ id, value, onChange, minLength }: { id: string; value: str
   );
 }
 
+/** "Lembrar meu e-mail": guarda só o e-mail no aparelho, nunca a senha. */
+const CHAVE_EMAIL = "esporte360_email_lembrado";
+
+function emailLembrado() {
+  try {
+    return localStorage.getItem(CHAVE_EMAIL) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function guardarEmail(valor: string | null) {
+  try {
+    if (valor) localStorage.setItem(CHAVE_EMAIL, valor.trim());
+    else localStorage.removeItem(CHAVE_EMAIL);
+  } catch {
+    /* aparelho sem armazenamento */
+  }
+}
+
+/** Ondas decorativas do topo e do painel visual. */
+function Ondas({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 1440 200" preserveAspectRatio="none" className={className}>
+      <path className="fill-sidebar-primary/15" d="M0,120 C180,60 360,180 540,130 C720,80 900,20 1080,70 C1260,120 1350,150 1440,110 L1440,200 L0,200 Z" />
+      <path className="fill-primary/25" d="M0,150 C200,110 400,190 640,150 C880,110 1080,90 1260,130 C1350,150 1400,160 1440,150 L1440,200 L0,200 Z" />
+    </svg>
+  );
+}
+
 function Logo({ className }: { className?: string }) {
   return <img src="/icons/icon-192x192.png" alt={NOME_APP} className={`rounded-xl object-cover ${className ?? ""}`} />;
 }
@@ -83,6 +114,15 @@ function AuthPage() {
   const [novaSenha, setNovaSenha] = useState("");
   const [online, setOnline] = useState(true);
   const [aba, setAba] = useState<"equipe" | "aluno">("equipe");
+  const [lembrarEmail, setLembrarEmail] = useState(false);
+
+  useEffect(() => {
+    const salvo = emailLembrado();
+    if (salvo) {
+      setEmail(salvo);
+      setLembrarEmail(true);
+    }
+  }, []);
 
   useEffect(() => {
     const pedeAluno = new URLSearchParams(window.location.search).get("aba") === "aluno";
@@ -143,6 +183,7 @@ function AuthPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
       if (error) return void toast.error(traduzirErro(error));
+      guardarEmail(lembrarEmail ? email : null);
       navigate({ to: "/" });
     } catch (err) {
       toast.error(traduzirErro(err));
@@ -178,46 +219,66 @@ function AuthPage() {
   }
 
   const bloqueado = busy || !online;
+  const titulo = redefinindo
+    ? "Criar nova senha"
+    : recuperando
+      ? "Recuperar senha"
+      : modo === "criar"
+        ? "Cadastro da equipe"
+        : "Acesse sua conta";
+  const descricao = redefinindo
+    ? "Defina uma nova senha para a sua conta."
+    : recuperando
+      ? "Enviaremos um link para o seu e-mail."
+      : modo === "criar"
+        ? "Crie sua conta. Um administrador precisará liberar seu acesso."
+        : aba === "aluno"
+          ? "Aluno: entre com CPF ou matrícula e data de nascimento."
+          : "Entre para gerenciar alunos, turmas e presenças.";
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-2">
-      <div className="relative hidden flex-col justify-between overflow-hidden p-12 text-primary-foreground lg:flex">
-        <img src={loginImagem.url} alt="Programa Esporte 360" className="absolute inset-0 h-full w-full object-cover object-center" />
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/40 via-transparent to-primary/60" />
+    <div className="min-h-screen bg-background lg:grid lg:grid-cols-[1.1fr_1fr]">
+      {/* Painel visual ao lado do formulário (computador) */}
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-navy p-12 text-sidebar-foreground lg:flex">
+        <img src={loginImagem.url} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover object-center opacity-30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-sidebar via-sidebar/70 to-sidebar/30" />
+        <Ondas className="absolute inset-x-0 bottom-0 h-48 w-full" />
         <div className="relative z-10 flex items-center gap-3">
-          <Logo className="size-10" />
+          <Logo className="size-11" />
           <span className="font-display text-xl font-semibold">{NOME_APP}</span>
         </div>
-        <div className="relative z-10">
-          <p className="font-display text-lg font-semibold">Acesso exclusivo da equipe</p>
+        <div className="relative z-10 max-w-md pb-16">
+          <p className="font-display text-3xl font-semibold leading-tight">Esporte que transforma, gestão que acompanha.</p>
+          <p className="mt-3 text-sm text-sidebar-foreground/70">Matrículas, turmas e presença do Programa Esporte 360 em um só lugar.</p>
         </div>
       </div>
 
-      {/* Faixa da imagem no celular */}
-      <div className="relative h-48 overflow-hidden lg:hidden">
-        <img src={loginImagem.url} alt="Programa Esporte 360" className="absolute inset-0 h-full w-full object-cover object-center" />
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/30 via-transparent to-background" />
+      {/* Topo azul-marinho com ondas (celular) */}
+      <div className="relative overflow-hidden bg-navy px-6 pb-20 pt-[calc(2.5rem+env(safe-area-inset-top))] text-center text-sidebar-foreground lg:hidden">
+        <Ondas className="absolute inset-x-0 bottom-6 h-24 w-full opacity-80" />
+        <div className="relative z-10 flex flex-col items-center gap-3">
+          <Logo className="size-16 shadow-pool" />
+          <p className="text-sm font-medium text-sidebar-foreground/70">{NOME_APP}</p>
+          <h1 className="font-display text-2xl font-semibold">{titulo}</h1>
+        </div>
+        <svg aria-hidden viewBox="0 0 1440 120" preserveAspectRatio="none" className="absolute inset-x-0 -bottom-px h-12 w-full">
+          <path className="fill-background" d="M0,64 C240,120 480,8 720,40 C960,72 1200,120 1440,56 L1440,120 L0,120 Z" />
+        </svg>
       </div>
 
-      <div className="relative z-10 -mt-16 flex items-start justify-center p-4 lg:mt-0 lg:items-center lg:p-6">
-        <Card className="w-full max-w-md border-border/70 shadow-pool">
-          <CardHeader>
-            <Logo className="mb-2 size-14" />
-            {modo === "criar" && !redefinindo && !recuperando ? (
-              <>
-                <CardTitle className="font-display text-2xl">Cadastro da equipe</CardTitle>
-                <CardDescription>Crie sua conta. Um administrador precisará liberar seu acesso.</CardDescription>
-              </>
-            ) : (
-              <>
-                <CardTitle className="font-display text-2xl">Bem-vindo(a) ao {NOME_APP}</CardTitle>
-                <CardDescription>
-                  {aba === "aluno" ? "Aluno: entre com CPF ou matrícula e data de nascimento." : "Entre para gerenciar alunos, turmas e presenças."}
-                </CardDescription>
-              </>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <div className="relative z-10 -mt-4 flex items-start justify-center px-4 pb-10 lg:mt-0 lg:items-center lg:p-10">
+        <div className="w-full max-w-md">
+          <div className="mb-6 hidden lg:block">
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">{titulo}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>
+          </div>
+        <Card className="w-full border-border/70 shadow-pool">
+          {modo !== "entrar" || redefinindo || recuperando ? (
+            <CardHeader className="pb-4 lg:hidden">
+              <CardDescription>{descricao}</CardDescription>
+            </CardHeader>
+          ) : null}
+          <CardContent className={modo === "entrar" && !redefinindo && !recuperando ? "space-y-4 pt-6" : "space-y-4 lg:pt-6"}>
             {!online ? (
               <div role="alert" className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                 <WifiOff className="mt-0.5 size-4 shrink-0" />
@@ -293,7 +354,11 @@ function AuthPage() {
                   <Label htmlFor="senha">Senha</Label>
                   <CampoSenha id="senha" value={senha} onChange={setSenha} />
                 </div>
-                <Button type="submit" className="w-full" disabled={bloqueado}>Entrar</Button>
+                <label htmlFor="lembrar-email" className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                  <Checkbox id="lembrar-email" checked={lembrarEmail} onCheckedChange={(v) => setLembrarEmail(v === true)} />
+                  Lembrar meu e-mail
+                </label>
+                <Button type="submit" className="h-11 w-full text-base" disabled={bloqueado}>Entrar</Button>
                 <Button
                   type="button"
                   variant="link"
@@ -317,6 +382,7 @@ function AuthPage() {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );

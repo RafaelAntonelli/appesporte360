@@ -1,7 +1,7 @@
 import { ordenarTurmasDoProfessor, usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Camera, CameraOff, Check, Search, X, FileCheck, CalendarIcon, SlidersHorizontal } from "lucide-react";
+import { Camera, CameraOff, Search, CalendarIcon, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -36,6 +36,10 @@ import { enfileirar, estaOnline, lerCache, salvarCache } from "@/lib/offline";
 import { correspondeBusca, relevanciaBusca } from "@/lib/formatacao";
 import { useGruposDias } from "@/lib/dias";
 import { MODALIDADES } from "@/lib/modalidades";
+import { BotoesChamada, MarcarTodosPresentes, ProgressoChamada } from "@/components/Chamada";
+import { EtiquetaSituacao } from "@/components/EtiquetaSituacao";
+import { situacaoDoAluno } from "@/lib/situacao";
+import { resumoChamada } from "@/lib/chamada";
 
 
 
@@ -54,7 +58,16 @@ export const Route = createFileRoute("/presenca")({
 });
 
 type Turma = { id: string; nome: string; horario: string | null; modalidade: string; dias_semana: string[] | null };
-type Aluno = { id: string; nome: string; codigo: string; foto_path: string | null; data_nascimento: string | null; idade: number | null };
+type Aluno = {
+  id: string;
+  nome: string;
+  codigo: string;
+  foto_path: string | null;
+  data_nascimento: string | null;
+  idade: number | null;
+  atestado_entregue?: boolean | null;
+  atestado_data?: string | null;
+};
 
 /** Iniciais do aluno (primeira e última letra do nome) para quando não há foto. */
 function iniciais(nome: string) {
@@ -120,7 +133,7 @@ function PresencaPage() {
       }
       const [t, a, m] = await Promise.all([
         supabase.from("turmas").select("id,nome,horario,modalidade,dias_semana").order("nome"),
-        supabase.from("alunos").select("id,nome,codigo,foto_path,data_nascimento,idade").eq("ativo", true).order("nome"),
+        supabase.from("alunos").select("id,nome,codigo,foto_path,data_nascimento,idade,atestado_entregue,atestado_data").eq("ativo", true).order("nome"),
         supabase.from("matriculas").select("aluno_id,turma_id").eq("status", "ativa"),
       ]);
       const lic = await supabase.from("licencas_medicas").select("*").eq("status", "ativa");
@@ -291,6 +304,38 @@ function PresencaPage() {
     void carregarPresencasDoDia();
   }
 
+  /** Marca como presentes só os alunos da turma ainda sem registro (quem está em licença fica de fora). */
+  async function marcarTodosPresentes(ids: string[]) {
+    if (!turmaId || !ids.length) return;
+    const agoraIso = new Date().toISOString();
+    if (!estaOnline()) {
+      for (const id of ids) {
+        await enfileirar({ tipo: "presenca", aluno_id: id, turma_id: turmaId, data: hoje, status: "presente", metodo: "manual", observacoes: null, horario: agoraIso });
+      }
+      setStatusPorAluno((s) => ({ ...s, ...Object.fromEntries(ids.map((id) => [`${id}:${turmaId}`, "presente" as StatusPresenca])) }));
+      toast.success(`${ids.length} aluno(s) marcados como presentes (salvo offline)`);
+      return;
+    }
+    // Confere de novo no servidor para nunca sobrescrever um registro já lançado.
+    const { data: existentes, error: erroConsulta } = await supabase
+      .from("presencas")
+      .select("aluno_id")
+      .eq("data", hoje)
+      .eq("turma_id", turmaId)
+      .in("aluno_id", ids);
+    if (erroConsulta) return void toast.error(erroConsulta.message);
+    const jaTem = new Set((existentes ?? []).map((r) => String(r.aluno_id)));
+    const novos = ids.filter((id) => !jaTem.has(id));
+    if (novos.length) {
+      const { error } = await supabase.from("presencas").insert(
+        novos.map((id) => ({ aluno_id: id, turma_id: turmaId, data: hoje, metodo: "manual", status: "presente", observacoes: null })),
+      );
+      if (error) return void toast.error(error.message);
+    }
+    toast.success(`${novos.length} aluno(s) marcados como presentes`);
+    void carregarPresencasDoDia();
+  }
+
   function onScan(texto: string) {
     const agora = Date.now();
     
@@ -375,9 +420,15 @@ function PresencaPage() {
     },
   );
 
+  const licencaDoAluno = (id: string) => licencas.find((l) => l.aluno_id === id && licencaVigente(l, hoje));
+  const idsDaTurma = turmaId
+    ? alunos.filter((a) => matriculas.some((m) => m.aluno_id === a.id && m.turma_id === turmaId)).map((a) => a.id)
+    : [];
+  const chamada = resumoChamada(idsDaTurma, (id) => Boolean(statusPorAluno[`${id}:${turmaId}`]), (id) => Boolean(licencaDoAluno(id)));
+
   return (
     <AppShell title="Presença" subtitle={`Registros de ${data.toLocaleDateString("pt-BR")}`}>
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 [&>*]:min-w-0">
         <div className="space-y-2">
 
           <Label>Data do registro</Label>
@@ -516,7 +567,7 @@ function PresencaPage() {
       </div>
 
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.75fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.75fr)]">
         <Tabs defaultValue="qr">
           <TabsList>
             <TabsTrigger value="qr">QR Code</TabsTrigger>
@@ -548,6 +599,20 @@ function PresencaPage() {
           <TabsContent value="lista" className="pt-4">
             <Card className="border-border/70">
               <CardContent className="space-y-3 pt-6">
+                {turmaId ? (
+                  <div className="space-y-3 rounded-xl border border-border/70 bg-secondary/40 p-3">
+                    <ProgressoChamada marcados={chamada.marcados} total={chamada.total} />
+                    <MarcarTodosPresentes
+                      pendentes={chamada.pendentes.length}
+                      emLicenca={chamada.emLicenca}
+                      onConfirmar={() => marcarTodosPresentes(chamada.pendentes)}
+                    />
+                  </div>
+                ) : (
+                  <p className="rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+                    Escolha a turma da aula para ver o progresso da chamada e marcar todos de uma vez.
+                  </p>
+                )}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input className="pl-9" placeholder="Buscar por matrícula ou nome..." value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -562,12 +627,14 @@ function PresencaPage() {
                   />
                   <p className="text-xs text-muted-foreground">O texto é salvo no histórico do aluno junto com o registro.</p>
                 </div>
-                <div className="max-h-[38rem] space-y-2 overflow-y-auto pr-1">
+                <div className="@container max-h-[38rem] space-y-2 overflow-y-auto pr-1">
                   {filtrados.map((a) => {
                     const atual = statusPorAluno[`${a.id}:${turmaId}`];
+                    const lic = licencaDoAluno(a.id);
+                    const situacao = situacaoDoAluno({ ativo: true, atestado_entregue: a.atestado_entregue, atestado_data: a.atestado_data }, Boolean(lic));
                     return (
-                      <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/70 px-4 py-3">
-                        <div className="flex min-w-40 flex-1 items-center gap-3">
+                      <div key={a.id} className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card px-3 py-3 @2xl:flex-row @2xl:items-center @2xl:justify-between @2xl:px-4">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
                           {fotos[a.id] ? (
                             <img
                               src={fotos[a.id]}
@@ -580,43 +647,16 @@ function PresencaPage() {
                               {iniciais(a.nome)}
                             </span>
                           )}
-                          <div className="min-w-0">
-                            <button type="button" className="text-left font-medium hover:underline" title="Abrir perfil do aluno" onClick={() => setPerfilAlunoId(a.id)}>{a.nome}</button>
-                             <p className="font-mono text-xs text-muted-foreground">Matrícula {a.codigo}</p>
-                            {(() => {
-                              const lic = licencas.find((l) => l.aluno_id === a.id && licencaVigente(l, hoje));
-                              return lic ? (
-                                <span className="mt-0.5 inline-block rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-                                  Licença até {formatarDataCurta(lic.data_retorno)}
-                                </span>
-                              ) : null;
-                            })()}
-                            {atual ? <p className="text-xs text-muted-foreground">{rotuloStatus[atual]}</p> : null}
+                          <div className="min-w-0 space-y-0.5">
+                            <button type="button" className="block max-w-full break-words text-left font-medium leading-snug hover:underline" title="Abrir perfil do aluno" onClick={() => setPerfilAlunoId(a.id)}>{a.nome}</button>
+                            <p className="font-mono text-xs text-muted-foreground">Matrícula {a.codigo}</p>
+                            <EtiquetaSituacao situacao={situacao} texto={lic ? `Licença até ${formatarDataCurta(lic.data_retorno)}` : undefined} />
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant={atual === "presente" ? "default" : "outline"}
-                            onClick={() => void (atual === "presente" ? removerRegistro(a) : registrar(a, "manual", "presente"))}
-                          >
-                            <Check className="size-4" /> Presença
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={atual === "falta" ? "destructive" : "outline"}
-                            onClick={() => void (atual === "falta" ? removerRegistro(a) : registrar(a, "manual", "falta"))}
-                          >
-                            <X className="size-4" /> Falta
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={atual === "falta_justificada" ? "secondary" : "outline"}
-                            onClick={() => void (atual === "falta_justificada" ? removerRegistro(a) : registrar(a, "manual", "falta_justificada"))}
-                          >
-                            <FileCheck className="size-4" /> Justificada
-                          </Button>
-                        </div>
+                        <BotoesChamada
+                          atual={atual}
+                          onEscolher={(status) => void (atual === status ? removerRegistro(a) : registrar(a, "manual", status))}
+                        />
                       </div>
                     );
                   })}

@@ -41,3 +41,14 @@
 - [x] Planilha do backup sem links, com todos os dados e o código de matrícula.
 - [x] Arquivos no Drive com nome CODIGO_TIPO.extensão; arquivos antigos renomeados no backup de 20/10.
 - [x] Restauração pelo Drive (planilha + arquivos) ligando cada arquivo ao aluno pelo código; testada com aluno temporário.
+
+## Novo visual (pedido de 20/10)
+- [x] Cópia do visual anterior guardada para poder voltar atrás.
+- [x] Etapa 1: cores azul-marinho/azul/ciano, fontes Sora e Manrope, botões em degradê, modo escuro salvo no aparelho sem piscar.
+- [x] Etapa 2: etiqueta única de situação (Ativo verde, Licença amarelo, Atestado vencido vermelho, Inativo cinza) em Alunos, Turmas e Presença.
+- [x] Etapa 3: menu lateral com Modo escuro e Sair; no celular, topo azul-marinho, 4 botões + "Mais".
+- [x] Etapa 4: login com topo em ondas, abas Equipe/Aluno, "Lembrar meu e-mail" (só o e-mail).
+- [x] Etapa 5: Alunos com tabela de títulos fixos, cartões no celular, chips de situação, "Mais filtros" e menu "⋯".
+- [x] Etapa 6: chamada com botões grandes, barra "X de Y marcados" e "Marcar todos como presentes" em Presença e Turmas.
+- [x] Etapa 7: conferido no computador e no celular (360 px), claro e escuro, sem tela mais larga que o celular.
+- [ ] Conferir com uma conta de professor que os itens bloqueados continuam ocultos; depende de uma conta de professor para teste.

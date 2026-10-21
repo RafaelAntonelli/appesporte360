@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, Search, Pencil, Image as ImageIcon, AlertTriangle, Bell, Trash2, UserX, UserCheck, Download, Camera, Upload, IdCard, FileDown, FileSpreadsheet, ChevronDown, ChevronUp, FileWarning, Stethoscope } from "lucide-react";
+import { Plus, Search, Pencil, Image as ImageIcon, AlertTriangle, Bell, Trash2, UserX, UserCheck, Download, Camera, Upload, IdCard, FileDown, FileSpreadsheet, ChevronDown, ChevronUp, FileWarning, Stethoscope, MoreHorizontal, SlidersHorizontal, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -29,7 +29,10 @@ import { ImportarAlunos } from "@/components/ImportarAlunos";
 import { ConversarWhatsApp } from "@/components/ConversarWhatsApp";
 import { SelecionarEscola } from "@/components/SelecionarEscola";
 import { LicencaMedicaSecao } from "@/components/LicencaMedica";
-import { dataISO, formatarDataCurta, ignorarNoAlertaFaltas, licencaTerminada, type LicencaMedica } from "@/lib/licenca";
+import { dataISO, formatarDataCurta, ignorarNoAlertaFaltas, licencaTerminada, licencaVigente, type LicencaMedica } from "@/lib/licenca";
+import { EtiquetaSituacao } from "@/components/EtiquetaSituacao";
+import { situacaoDoAluno } from "@/lib/situacao";
+import { usePermissoes } from "@/lib/permissoes";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -183,8 +186,10 @@ function AlunosPage() {
   const [filtroDias, setFiltroDias] = useState("todos");
   const [filtroTurno, setFiltroTurno] = useState("todos");
   const [filtroNotificacao, setFiltroNotificacao] = useState<
-    "todos" | "ativos" | "inativos" | "sem_atestado" | "atestado_vencido" | "atestado_vencer" | "excesso_faltas"
+    "todos" | "ativos" | "em_licenca" | "inativos" | "sem_atestado" | "atestado_vencido" | "atestado_vencer" | "excesso_faltas"
   >("todos");
+  const [maisFiltros, setMaisFiltros] = useState(false);
+  const { pode } = usePermissoes();
   const [mostrarNotificacoes, setMostrarNotificacoes] = useState(false);
   const [notificacoesAbertas, setNotificacoesAbertas] = useState<Record<string, boolean>>({
     inativos: true,
@@ -196,7 +201,7 @@ function AlunosPage() {
   const { valor: prazoAviso } = usePrazoAvisoAtestado();
   const [gerandoCrachas, setGerandoCrachas] = useState(false);
   const [mostrarGuias, setMostrarGuias] = useState(false);
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [nomesUsuarios, setNomesUsuarios] = useState<Record<string, string>>({});
 
   const [idadeMin, setIdadeMin] = useState("");
@@ -943,9 +948,14 @@ function AlunosPage() {
   }
 
 
+  const hojeLicenca = dataISO();
+  const licencaAtual = (id: string) => licencas.find((l) => l.aluno_id === id && licencaVigente(l, hojeLicenca));
+  const situacaoAluno = (a: Aluno) => situacaoDoAluno(a, Boolean(licencaAtual(a.id)));
+
   const filtrados = alunos
     .filter((a) => {
       if (!correspondeBusca(a, busca)) return false;
+      if (filtroNotificacao === "em_licenca" && !(a.ativo && licencaAtual(a.id))) return false;
       if (filtroNotificacao === "ativos" && !a.ativo) return false;
       if (filtroNotificacao === "inativos" && a.ativo) return false;
       if (filtroNotificacao === "sem_atestado" && !(a.ativo && !a.atestado_entregue)) return false;
@@ -1056,12 +1066,12 @@ function AlunosPage() {
       {semAtestado.length ? (
         <Card
           className={cn(
-            "mb-6 border-amber-500/40 bg-amber-500/5 transition-shadow hover:opacity-90",
+            "mb-6 border-warning/50 bg-warning/10 transition-shadow hover:opacity-90",
           )}
         >
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="flex items-center gap-2 font-medium text-amber-600">
+              <p className="flex items-center gap-2 font-medium text-warning-strong">
                 <FileWarning className="size-4" /> Notificações · {semAtestado.length} aluno(s) sem atestado médico
               </p>
               <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["sem_atestado"] ? "Esconder alunos sem atestado" : "Mostrar alunos sem atestado"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("sem_atestado"); }}>
@@ -1133,12 +1143,12 @@ function AlunosPage() {
       {proximosVencimento.length ? (
         <Card
           className={cn(
-            "mb-6 border-orange-500/40 bg-orange-500/5 transition-shadow hover:opacity-90",
+            "mb-6 border-destructive/30 bg-destructive/5 transition-shadow hover:opacity-90",
           )}
         >
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="flex items-center gap-2 font-medium text-orange-600">
+              <p className="flex items-center gap-2 font-medium text-destructive-strong">
                 <Bell className="size-4" /> Notificações · {proximosVencimento.length} atestado(s) vencendo em até {prazoAviso} dias
               </p>
               <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["atestado_vencer"] ? "Esconder atestados a vencer" : "Mostrar atestados a vencer"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("atestado_vencer"); }}>
@@ -1170,10 +1180,10 @@ function AlunosPage() {
         </Card>
       ) : null}
       {licencasTerminadas.length ? (
-        <Card className="mb-6 border-amber-500/40 bg-amber-500/5">
+        <Card className="mb-6 border-warning/50 bg-warning/10">
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="flex items-center gap-2 font-medium text-amber-600">
+              <p className="flex items-center gap-2 font-medium text-warning-strong">
                 <Bell className="size-4" /> Notificações · {licencasTerminadas.length} licença(s) médica(s)
               </p>
               <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["licencas"] ? "Esconder licenças médicas" : "Mostrar licenças médicas"} onClick={() => alternarNotificacao("licencas")}>
@@ -1203,12 +1213,12 @@ function AlunosPage() {
       {excessoFaltas.length ? (
         <Card
           className={cn(
-            "mb-6 border-amber-500/40 bg-amber-500/5 transition-shadow hover:opacity-90",
+            "mb-6 border-warning/50 bg-warning/10 transition-shadow hover:opacity-90",
           )}
         >
           <CardContent className="space-y-2 py-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="flex items-center gap-2 font-medium text-amber-600">
+              <p className="flex items-center gap-2 font-medium text-warning-strong">
                 <AlertTriangle className="size-4" /> Notificações · {excessoFaltas.length} aluno(s) com 5 faltas ou mais
               </p>
               <Button variant="ghost" size="icon" aria-label={notificacoesAbertas["excesso_faltas"] ? "Esconder alunos com excesso de faltas" : "Mostrar alunos com excesso de faltas"} onClick={(e) => { e.stopPropagation(); alternarNotificacao("excesso_faltas"); }}>
@@ -1239,28 +1249,18 @@ function AlunosPage() {
       ) : null}
         </>
       ) : null}
-      {filtroNotificacao !== "todos" && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2 text-sm">
-          <span className="text-muted-foreground">Filtro ativo:</span>
-          <Badge variant="secondary">
-            {filtroNotificacao === "ativos" && "Ativos"}
-            {filtroNotificacao === "inativos" && "Inativos"}
-            {filtroNotificacao === "sem_atestado" && "Sem atestado médico"}
-            {filtroNotificacao === "atestado_vencido" && "Atestado vencido"}
-            {filtroNotificacao === "atestado_vencer" && "Atestado a vencer"}
-            {filtroNotificacao === "excesso_faltas" && "Excesso de faltas"}
-          </Badge>
-          <Button variant="ghost" size="sm" className="ml-auto h-auto px-2 py-1 text-xs" onClick={() => setFiltroNotificacao("todos")}>
-            Limpar
-          </Button>
+      <div className="mb-3 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+        <div className="relative md:min-w-[18rem] md:flex-1">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Buscar por matrícula, nome, responsável, CPF, RG ou telefone..." value={busca} onChange={(e) => setBusca(e.target.value)} />
         </div>
-      )}
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="hidden w-56 shrink-0 md:block">
         <Select value={filtroNotificacao} onValueChange={(v) => setFiltroNotificacao(v as typeof filtroNotificacao)}>
-          <SelectTrigger><SelectValue placeholder="Situação" /></SelectTrigger>
+          <SelectTrigger aria-label="Situação"><SelectValue placeholder="Situação" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todas as situações</SelectItem>
             <SelectItem value="ativos">Ativos</SelectItem>
+            <SelectItem value="em_licenca">Em licença médica</SelectItem>
             <SelectItem value="inativos">Inativos</SelectItem>
             <SelectItem value="sem_atestado">Sem atestado médico</SelectItem>
             <SelectItem value="atestado_vencido">Atestado vencido</SelectItem>
@@ -1268,90 +1268,34 @@ function AlunosPage() {
             <SelectItem value="excesso_faltas">Excesso de faltas</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filtroPcd} onValueChange={setFiltroPcd}>
-          <SelectTrigger><SelectValue placeholder="Filtrar PCD" /></SelectTrigger>
-          <SelectContent className="max-h-80">
-            <SelectItem value="todos">Todos os alunos</SelectItem>
-            <SelectItem value="com">Somente PCD</SelectItem>
-            <SelectItem value="sem">Sem PCD</SelectItem>
-            <SelectGroup>
-              <SelectLabel>Categoria PCD</SelectLabel>
-              {CONDICOES_PCD.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        <Select value={filtroModalidade} onValueChange={setFiltroModalidade}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todas">Todas as modalidades</SelectItem>
-            {MODALIDADES.map((modalidade) => (
-              <SelectItem key={modalidade} value={modalidade}>{modalidade}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filtroHorario} onValueChange={setFiltroHorario}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent className="max-h-80">
-            <SelectItem value="todos">Todos os horários</SelectItem>
-            {listaHorarios.map((h) => (
-              <SelectItem key={h} value={h}>{h}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filtroDias} onValueChange={setFiltroDias}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent className="max-h-80">
-            <SelectItem value="todos">Todos os dias</SelectItem>
-            {listaGrupos.map((g) => (
-              <SelectItem key={g.id} value={g.label}>{g.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filtroSexo} onValueChange={setFiltroSexo}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os sexos</SelectItem>
-            <SelectItem value="Masculino">Masculino</SelectItem>
-            <SelectItem value="Feminino">Feminino</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filtroTurno} onValueChange={setFiltroTurno}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os turnos</SelectItem>
-            {TURNOS.map((t) => (
-              <SelectItem key={t} value={t}>{t}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2">
-          <Input className="w-24" type="number" min={0} placeholder="Idade mín." value={idadeMin} onChange={(e) => setIdadeMin(e.target.value)} />
-          <span className="text-sm text-muted-foreground">a</span>
-          <Input className="w-24" type="number" min={0} placeholder="Idade máx." value={idadeMax} onChange={(e) => setIdadeMax(e.target.value)} />
         </div>
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-9" placeholder="Buscar por matrícula, nome, responsável, CPF, RG ou telefone..." value={busca} onChange={(e) => setBusca(e.target.value)} />
-        </div>
+        <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={() => setMaisFiltros((v) => !v)} aria-expanded={maisFiltros}>
+          <SlidersHorizontal className="size-4" /> Mais filtros
+          {[filtroPcd !== "todos", filtroModalidade !== "todas", filtroHorario !== "todos", filtroDias !== "todos", filtroSexo !== "todos", filtroTurno !== "todos", Boolean(idadeMin), Boolean(idadeMax)].filter(Boolean).length ? (
+            <span className="rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">{[filtroPcd !== "todos", filtroModalidade !== "todas", filtroHorario !== "todos", filtroDias !== "todos", filtroSexo !== "todos", filtroTurno !== "todos", Boolean(idadeMin), Boolean(idadeMax)].filter(Boolean).length}</span>
+          ) : null}
+          {maisFiltros ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        </Button>
 
 
+        {pode("cadastrar_alunos") ? (
         <ImportarAlunos
           turmas={turmas}
           matriculas={matriculas}
           alunos={alunos as unknown as { id: string; nome: string; cpf: string | null; telefone: string | null }[]}
           onImportado={() => void carregar()}
         />
+        ) : null}
 
         <Dialog open={aberto} onOpenChange={setAberto}>
+          {pode("cadastrar_alunos") ? (
           <DialogTrigger asChild>
             <Button onClick={abrirNovo}>
               <Plus className="size-4" /> Nova matrícula
             </Button>
           </DialogTrigger>
+          ) : null}
           <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="font-display">{editando ? "Editar aluno" : "Nova matrícula"}</DialogTitle>
@@ -1800,7 +1744,105 @@ function AlunosPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {/* Celular: botões pequenos de situação para filtrar rápido */}
+      <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 md:hidden" role="group" aria-label="Filtrar por situação">
+        {([
+          ["todos", "Todos"],
+          ["ativos", "Ativos"],
+          ["em_licenca", "Em licença"],
+          ["atestado_vencido", "Atestado vencido"],
+          ["inativos", "Inativos"],
+          ["sem_atestado", "Sem atestado"],
+          ["atestado_vencer", "A vencer"],
+          ["excesso_faltas", "Faltas"],
+        ] as const).map(([valor, rotulo]) => (
+          <button
+            key={valor}
+            type="button"
+            aria-pressed={filtroNotificacao === valor}
+            onClick={() => setFiltroNotificacao(valor)}
+            className={cn(
+              "shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+              filtroNotificacao === valor
+                ? "border-transparent bg-gradiente"
+                : "border-border bg-card text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </div>
+
+      {maisFiltros ? (
+        <div className="mb-4 grid gap-3 rounded-xl border border-border/70 bg-card p-3 shadow-suave sm:grid-cols-2 lg:grid-cols-4">
+        <Select value={filtroPcd} onValueChange={setFiltroPcd}>
+          <SelectTrigger><SelectValue placeholder="Filtrar PCD" /></SelectTrigger>
+          <SelectContent className="max-h-80">
+            <SelectItem value="todos">Todos os alunos</SelectItem>
+            <SelectItem value="com">Somente PCD</SelectItem>
+            <SelectItem value="sem">Sem PCD</SelectItem>
+            <SelectGroup>
+              <SelectLabel>Categoria PCD</SelectLabel>
+              {CONDICOES_PCD.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+        <Select value={filtroModalidade} onValueChange={setFiltroModalidade}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas as modalidades</SelectItem>
+            {MODALIDADES.map((modalidade) => (
+              <SelectItem key={modalidade} value={modalidade}>{modalidade}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filtroHorario} onValueChange={setFiltroHorario}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent className="max-h-80">
+            <SelectItem value="todos">Todos os horários</SelectItem>
+            {listaHorarios.map((h) => (
+              <SelectItem key={h} value={h}>{h}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filtroDias} onValueChange={setFiltroDias}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent className="max-h-80">
+            <SelectItem value="todos">Todos os dias</SelectItem>
+            {listaGrupos.map((g) => (
+              <SelectItem key={g.id} value={g.label}>{g.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filtroSexo} onValueChange={setFiltroSexo}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os sexos</SelectItem>
+            <SelectItem value="Masculino">Masculino</SelectItem>
+            <SelectItem value="Feminino">Feminino</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filtroTurno} onValueChange={setFiltroTurno}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos os turnos</SelectItem>
+            {TURNOS.map((t) => (
+              <SelectItem key={t} value={t}>{t}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-2 sm:col-span-2 lg:col-span-1">
+          <Input className="w-full" type="number" min={0} placeholder="Idade mín." value={idadeMin} onChange={(e) => setIdadeMin(e.target.value)} />
+          <span className="text-sm text-muted-foreground">a</span>
+          <Input className="w-full" type="number" min={0} placeholder="Idade máx." value={idadeMax} onChange={(e) => setIdadeMax(e.target.value)} />
+        </div>
+        </div>
+      ) : null}
 
       {filtrados.length ? (
         <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-border/70 px-4 py-3">
@@ -1821,16 +1863,22 @@ function AlunosPage() {
             Selecionar todos
           </label>
           <span className="text-sm text-muted-foreground">{selecionados.length} selecionado(s)</span>
-          <div className="ml-auto flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" disabled={!selecionados.length} onClick={() => void alternarAtivo(selecionadosAlunos, false)}>
-              <UserX className="size-4" /> Inativar
-            </Button>
-            <Button variant="outline" size="sm" disabled={!selecionados.length} onClick={() => void alternarAtivo(selecionadosAlunos, true)}>
-              <UserCheck className="size-4" /> Reativar
-            </Button>
-            <Button variant="destructive" size="sm" disabled={!selecionados.length} onClick={() => setConfirmarExclusao(selecionadosAlunos)}>
-              <Trash2 className="size-4" /> Excluir
-            </Button>
+          <div className="-mx-1 flex w-full gap-2 overflow-x-auto px-1 pb-1 md:mx-0 md:ml-auto md:w-auto md:flex-wrap md:overflow-visible md:px-0 md:pb-0 [&>*]:shrink-0">
+            {pode("editar_alunos") ? (
+              <>
+                <Button variant="outline" size="sm" disabled={!selecionados.length} onClick={() => void alternarAtivo(selecionadosAlunos, false)}>
+                  <UserX className="size-4" /> Inativar
+                </Button>
+                <Button variant="outline" size="sm" disabled={!selecionados.length} onClick={() => void alternarAtivo(selecionadosAlunos, true)}>
+                  <UserCheck className="size-4" /> Reativar
+                </Button>
+              </>
+            ) : null}
+            {isAdmin ? (
+              <Button variant="destructive" size="sm" disabled={!selecionados.length} onClick={() => setConfirmarExclusao(selecionadosAlunos)}>
+                <Trash2 className="size-4" /> Excluir
+              </Button>
+            ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={gerandoCrachas || !filtrados.length}>
@@ -1913,63 +1961,147 @@ function AlunosPage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-3">
-        {filtrados.map((aluno) => {
-          const turmasDoAluno = matriculas
-            .filter((m) => m.aluno_id === aluno.id)
+      {(() => {
+        const nomesTurmas = (id: string) =>
+          matriculas
+            .filter((m) => m.aluno_id === id)
             .map((m) => turmas.find((t) => t.id === m.turma_id)?.nome)
-            .filter(Boolean);
-          return (
-            <Card key={aluno.id} className="border-border/70">
-              <CardContent className="flex flex-wrap items-center gap-4 py-4">
-                <Checkbox
-                  checked={selecionados.includes(aluno.id)}
-                  onCheckedChange={(v) =>
-                    setSelecionados((s) => (v ? [...s, aluno.id] : s.filter((x) => x !== aluno.id)))
-                  }
-                  aria-label={`Selecionar ${aluno.nome}`}
-                />
-                {fotos[aluno.id] ? (
-                  <img src={fotos[aluno.id]} alt={`Foto de ${aluno.nome}`} className="size-11 shrink-0 rounded-full object-cover" />
-                ) : (
-                  <div className="grid size-11 shrink-0 place-items-center rounded-full bg-pool font-display text-sm font-semibold text-primary-foreground">
-                    {aluno.nome.slice(0, 2).toUpperCase()}
-                  </div>
-                )}
-                <div className="min-w-40 flex-1">
-                  <button type="button" onClick={() => void abrirDetalhe(aluno)} className="text-left font-medium text-foreground hover:text-primary hover:underline">
-                    {aluno.nome}
-                  </button>
-                   <p className="font-mono text-xs text-muted-foreground">Matrícula {aluno.codigo}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {turmasDoAluno.length ? turmasDoAluno.join(", ") : "Sem turma"}
-                    {aluno.telefone ? ` · ${aluno.telefone}` : ""}
-                  </p>
-                </div>
-                {aluno.pcd ? <Badge variant="outline">PCD</Badge> : null}
-                <Badge variant={aluno.ativo ? "default" : "secondary"}>{aluno.ativo ? "Ativo" : "Inativo"}</Badge>
-                <Button variant="ghost" size="icon" onClick={() => abrirEdicao(aluno)}><Pencil className="size-4" /></Button>
-                <Button variant="outline" size="sm" title="Registrar Licença Médica" onClick={() => void abrirDetalhe(aluno)}>
-                  <Stethoscope className="size-4" /> Licença médica
-                </Button>
-                <Button variant="outline" size="icon" title="Visualizar crachá" onClick={() => void abrirPreviewCracha(aluno)}><IdCard className="size-4" /></Button>
-                <Button variant="ghost" size="icon" title={aluno.ativo ? "Inativar" : "Reativar"} onClick={() => void alternarAtivo([aluno], !aluno.ativo)}>
-                  {aluno.ativo ? <UserX className="size-4" /> : <UserCheck className="size-4" />}
-                </Button>
-                <Button variant="ghost" size="icon" className="text-destructive" title="Excluir" onClick={() => setConfirmarExclusao([aluno])}>
-                  <Trash2 className="size-4" />
-                </Button>
-
-              </CardContent>
-            </Card>
+            .filter(Boolean)
+            .join(", ") || "Sem turma";
+        const foto = (aluno: Aluno, tamanho: string) =>
+          fotos[aluno.id] ? (
+            <img src={fotos[aluno.id]} alt={`Foto de ${aluno.nome}`} className={cn(tamanho, "shrink-0 rounded-full border border-border object-cover")} />
+          ) : (
+            <div className={cn(tamanho, "grid shrink-0 place-items-center rounded-full bg-pool font-display text-sm font-semibold text-primary-foreground")}>
+              {aluno.nome.slice(0, 2).toUpperCase()}
+            </div>
           );
-        })}
-        {!filtrados.length && (
-          <p className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-            Nenhum aluno cadastrado ainda.
-          </p>
-        )}
-      </div>
+        const etiqueta = (aluno: Aluno) => {
+          const lic = licencaAtual(aluno.id);
+          return (
+            <EtiquetaSituacao
+              situacao={situacaoAluno(aluno)}
+              texto={aluno.ativo && lic ? `Licença até ${formatarDataCurta(lic.data_retorno)}` : undefined}
+            />
+          );
+        };
+        const selecao = (aluno: Aluno) => (
+          <Checkbox
+            checked={selecionados.includes(aluno.id)}
+            onCheckedChange={(v) => setSelecionados((s) => (v ? [...s, aluno.id] : s.filter((x) => x !== aluno.id)))}
+            aria-label={`Selecionar ${aluno.nome}`}
+          />
+        );
+        const acoes = (aluno: Aluno) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label={`Ações de ${aluno.nome}`} title="Ações">
+                <MoreHorizontal className="size-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => void abrirDetalhe(aluno)}>
+                <Eye className="size-4" /> Ver perfil
+              </DropdownMenuItem>
+              {pode("editar_alunos") ? (
+                <DropdownMenuItem onClick={() => abrirEdicao(aluno)}>
+                  <Pencil className="size-4" /> Editar
+                </DropdownMenuItem>
+              ) : null}
+              {pode("gerenciar_licencas") ? (
+                <DropdownMenuItem onClick={() => void abrirDetalhe(aluno)}>
+                  <Stethoscope className="size-4" /> Registrar licença médica
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem onClick={() => void abrirPreviewCracha(aluno)}>
+                <IdCard className="size-4" /> Ver crachá
+              </DropdownMenuItem>
+              {pode("editar_alunos") ? (
+                <DropdownMenuItem onClick={() => void alternarAtivo([aluno], !aluno.ativo)}>
+                  {aluno.ativo ? <UserX className="size-4" /> : <UserCheck className="size-4" />}
+                  {aluno.ativo ? "Inativar" : "Reativar"}
+                </DropdownMenuItem>
+              ) : null}
+              {isAdmin ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive-strong focus:text-destructive-strong" onClick={() => setConfirmarExclusao([aluno])}>
+                    <Trash2 className="size-4" /> Excluir
+                  </DropdownMenuItem>
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+        if (!filtrados.length) {
+          return (
+            <p className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+              {alunos.length ? "Nenhum aluno encontrado com estes filtros." : "Nenhum aluno cadastrado ainda."}
+            </p>
+          );
+        }
+        return (
+          <div className="max-h-[calc(100dvh-15rem)] min-h-[18rem] overflow-auto overscroll-contain rounded-xl border border-border/70 bg-card shadow-suave md:max-h-[calc(100dvh-12rem)]">
+            {/* Computador: tabela com títulos fixos no topo */}
+            <table className="hidden w-full border-separate border-spacing-0 text-sm md:table">
+              <thead>
+                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <th className="sticky top-0 z-10 w-10 border-b border-border bg-card px-3 py-3"><span className="sr-only">Selecionar</span></th>
+                  <th className="sticky top-0 z-10 border-b border-border bg-card px-3 py-3">Nome</th>
+                  <th className="sticky top-0 z-10 border-b border-border bg-card px-3 py-3">Matrícula</th>
+                  <th className="sticky top-0 z-10 border-b border-border bg-card px-3 py-3">Turma</th>
+                  <th className="sticky top-0 z-10 border-b border-border bg-card px-3 py-3">Situação</th>
+                  <th className="sticky top-0 z-10 w-14 border-b border-border bg-card px-3 py-3"><span className="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtrados.map((aluno) => (
+                  <tr key={aluno.id} className="transition-colors hover:bg-secondary/50">
+                    <td className="border-b border-border/60 px-3 py-2.5">{selecao(aluno)}</td>
+                    <td className="border-b border-border/60 px-3 py-2.5">
+                      <div className="flex min-w-0 items-center gap-3">
+                        {foto(aluno, "size-10")}
+                        <div className="min-w-0">
+                          <button type="button" onClick={() => void abrirDetalhe(aluno)} className="text-left font-medium text-foreground hover:text-primary hover:underline">
+                            {aluno.nome}
+                          </button>
+                          {aluno.pcd ? <Badge variant="outline" className="ml-2 align-middle">PCD</Badge> : null}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="border-b border-border/60 px-3 py-2.5 font-mono text-xs text-muted-foreground">{aluno.codigo}</td>
+                    <td className="max-w-64 border-b border-border/60 px-3 py-2.5 text-muted-foreground">{nomesTurmas(aluno.id)}</td>
+                    <td className="border-b border-border/60 px-3 py-2.5">{etiqueta(aluno)}</td>
+                    <td className="border-b border-border/60 px-3 py-2.5 text-right">{acoes(aluno)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Celular: um cartão por aluno */}
+            <div className="divide-y divide-border/70 md:hidden">
+              {filtrados.map((aluno) => (
+                <div key={aluno.id} className="flex items-start gap-3 px-3 py-3">
+                  <div className="pt-3">{selecao(aluno)}</div>
+                  {foto(aluno, "size-12")}
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <button type="button" onClick={() => void abrirDetalhe(aluno)} className="block max-w-full text-left font-medium leading-snug text-foreground hover:text-primary">
+                      {aluno.nome}
+                    </button>
+                    <p className="font-mono text-xs text-muted-foreground">Matrícula {aluno.codigo}</p>
+                    <p className="truncate text-xs text-muted-foreground">{nomesTurmas(aluno.id)}</p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {etiqueta(aluno)}
+                      {aluno.pcd ? <Badge variant="outline">PCD</Badge> : null}
+                    </div>
+                  </div>
+                  <div className="-mr-1 shrink-0">{acoes(aluno)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       <Dialog open={!!detalhe} onOpenChange={(o) => !o && setDetalhe(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">

@@ -108,7 +108,7 @@ export function TransicaoVideo() {
   return (
     <div
       aria-hidden={!visivel}
-      className={`fixed inset-0 z-[90] overflow-hidden bg-primary transition-opacity duration-500 ease-out ${
+      className={`fixed inset-0 z-[90] overflow-hidden bg-sidebar transition-opacity duration-500 ease-out ${
         visivel ? "opacity-100" : "pointer-events-none opacity-0"
       }`}
     >
