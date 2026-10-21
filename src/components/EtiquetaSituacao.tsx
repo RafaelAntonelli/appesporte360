@@ -23,8 +23,8 @@ export function EtiquetaSituacao({
 }: {
   situacao: SituacaoAluno;
   /** Texto opcional no lugar do padrão (ex.: "Licença até 15/11"). */
-  texto?: string;
-  className?: string;
+  texto?: string | undefined;
+  className?: string | undefined;
 }) {
   return (
     <span

@@ -11,9 +11,9 @@ export const ROTULO_SITUACAO: Record<SituacaoAluno, string> = {
 };
 
 type AlunoSituacao = {
-  ativo?: boolean | null;
-  atestado_entregue?: boolean | null;
-  atestado_data?: string | null;
+  ativo?: boolean | null | undefined;
+  atestado_entregue?: boolean | null | undefined;
+  atestado_data?: string | null | undefined;
 };
 
 /**
