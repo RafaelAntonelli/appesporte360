@@ -1249,8 +1249,8 @@ function AlunosPage() {
       ) : null}
         </>
       ) : null}
-      <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center">
-        <div className="relative flex-1">
+      <div className="mb-3 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+        <div className="relative md:min-w-[18rem] md:flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input className="pl-9" placeholder="Buscar por matrícula, nome, responsável, CPF, RG ou telefone..." value={busca} onChange={(e) => setBusca(e.target.value)} />
         </div>
