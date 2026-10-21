@@ -4,8 +4,8 @@
   "description": "Matrículas e controle de presença do Programa Esporte 360",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#011672",
-  "theme_color": "#011672",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
   "icons": [
     { "src": "/favicon.png", "sizes": "64x64", "type": "image/png" },
     { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
