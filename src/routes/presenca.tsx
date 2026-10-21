@@ -633,7 +633,7 @@ function PresencaPage() {
                     const lic = licencaDoAluno(a.id);
                     const situacao = situacaoDoAluno({ ativo: true, atestado_entregue: a.atestado_entregue, atestado_data: a.atestado_data }, Boolean(lic));
                     return (
-                      <div key={a.id} className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card px-3 py-3 @xl:flex-row @xl:items-center @xl:justify-between @xl:px-4">
+                      <div key={a.id} className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card px-3 py-3 @2xl:flex-row @2xl:items-center @2xl:justify-between @2xl:px-4">
                         <div className="flex min-w-0 flex-1 items-center gap-3">
                           {fotos[a.id] ? (
                             <img

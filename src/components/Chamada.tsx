@@ -59,7 +59,7 @@ export function BotoesChamada({
   className?: string;
 }) {
   return (
-    <div className={cn("grid w-full shrink-0 grid-cols-[1fr_1fr_1.3fr] gap-1.5 @xl:w-auto @xl:min-w-[19rem]", className)}>
+    <div className={cn("grid w-full shrink-0 grid-cols-[1fr_1fr_1.3fr] gap-1.5 @2xl:w-auto @2xl:min-w-[19rem]", className)}>
       {OPCOES.map(({ status, rotulo, Icone, ativo, inativo }) => {
         const marcado = atual === status;
         return (
