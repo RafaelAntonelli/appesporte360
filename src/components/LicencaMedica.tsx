@@ -176,8 +176,8 @@ export function LicencaMedicaSecao({ alunoId }: { alunoId: string }) {
       <p className="font-medium">Licença médica</p>
 
       {ativa ? (
-        <div className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
-          <p className="font-medium text-amber-700 dark:text-amber-400">
+        <div className="space-y-2 rounded-lg border border-warning/50 bg-warning/15 p-3">
+          <p className="font-medium text-warning-strong">
             {licencaTerminada(ativa, hoje)
               ? `Licença terminou em ${formatarDataCurta(ativa.data_retorno)} — confirmar retorno ou renovar`
               : `Em licença até ${formatarDataCurta(ativa.data_retorno)}`}
