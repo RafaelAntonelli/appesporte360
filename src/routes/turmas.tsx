@@ -745,17 +745,10 @@ function TurmasPage() {
                       </div>
                       <p className="text-xs text-muted-foreground">{a.modalidade}</p>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <BotoesChamada
-                      className="flex-1 sm:w-full"
-                      atual={statusPresenca[a.id]}
-                      onEscolher={(status) => void registrarPresenca(a.id, status)}
-                    />
                     <Button
                       size="icon"
                       variant="outline"
-                      className="size-11 shrink-0"
+                      className="shrink-0 self-start"
                       title="Editar observação"
                       aria-label="Editar observação"
                       onClick={() => setEditandoObservacao({ alunoId: a.id, nome: a.nome, texto: observacoesPresenca[a.id] ?? "" })}
@@ -763,6 +756,11 @@ function TurmasPage() {
                       <Pencil className="size-4" />
                     </Button>
                   </div>
+                  <BotoesChamada
+                    className="sm:w-full"
+                    atual={statusPresenca[a.id]}
+                    onEscolher={(status) => void registrarPresenca(a.id, status)}
+                  />
                 </div>
                 );
               })
