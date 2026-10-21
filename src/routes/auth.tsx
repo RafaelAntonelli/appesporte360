@@ -273,10 +273,12 @@ function AuthPage() {
             <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>
           </div>
         <Card className="w-full border-border/70 shadow-pool">
-          <CardHeader className="pb-4 lg:hidden">
-            <CardDescription>{descricao}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 lg:pt-6">
+          {modo !== "entrar" || redefinindo || recuperando ? (
+            <CardHeader className="pb-4 lg:hidden">
+              <CardDescription>{descricao}</CardDescription>
+            </CardHeader>
+          ) : null}
+          <CardContent className={modo === "entrar" && !redefinindo && !recuperando ? "space-y-4 pt-6" : "space-y-4 lg:pt-6"}>
             {!online ? (
               <div role="alert" className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
                 <WifiOff className="mt-0.5 size-4 shrink-0" />

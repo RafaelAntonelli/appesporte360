@@ -1863,7 +1863,7 @@ function AlunosPage() {
             Selecionar todos
           </label>
           <span className="text-sm text-muted-foreground">{selecionados.length} selecionado(s)</span>
-          <div className="ml-auto flex flex-wrap gap-2">
+          <div className="-mx-1 flex w-full gap-2 overflow-x-auto px-1 pb-1 md:mx-0 md:ml-auto md:w-auto md:flex-wrap md:overflow-visible md:px-0 md:pb-0 [&>*]:shrink-0">
             {pode("editar_alunos") ? (
               <>
                 <Button variant="outline" size="sm" disabled={!selecionados.length} onClick={() => void alternarAtivo(selecionadosAlunos, false)}>
