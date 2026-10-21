@@ -757,7 +757,6 @@ function TurmasPage() {
                     </Button>
                   </div>
                   <BotoesChamada
-                    className="sm:w-full"
                     atual={statusPresenca[a.id]}
                     onEscolher={(status) => void registrarPresenca(a.id, status)}
                   />

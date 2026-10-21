@@ -627,13 +627,13 @@ function PresencaPage() {
                   />
                   <p className="text-xs text-muted-foreground">O texto é salvo no histórico do aluno junto com o registro.</p>
                 </div>
-                <div className="max-h-[38rem] space-y-2 overflow-y-auto pr-1">
+                <div className="@container max-h-[38rem] space-y-2 overflow-y-auto pr-1">
                   {filtrados.map((a) => {
                     const atual = statusPorAluno[`${a.id}:${turmaId}`];
                     const lic = licencaDoAluno(a.id);
                     const situacao = situacaoDoAluno({ ativo: true, atestado_entregue: a.atestado_entregue, atestado_data: a.atestado_data }, Boolean(lic));
                     return (
-                      <div key={a.id} className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+                      <div key={a.id} className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card px-3 py-3 @xl:flex-row @xl:items-center @xl:justify-between @xl:px-4">
                         <div className="flex min-w-0 flex-1 items-center gap-3">
                           {fotos[a.id] ? (
                             <img
@@ -648,7 +648,7 @@ function PresencaPage() {
                             </span>
                           )}
                           <div className="min-w-0 space-y-0.5">
-                            <button type="button" className="block max-w-full truncate text-left font-medium hover:underline" title="Abrir perfil do aluno" onClick={() => setPerfilAlunoId(a.id)}>{a.nome}</button>
+                            <button type="button" className="block max-w-full break-words text-left font-medium leading-snug hover:underline" title="Abrir perfil do aluno" onClick={() => setPerfilAlunoId(a.id)}>{a.nome}</button>
                             <p className="font-mono text-xs text-muted-foreground">Matrícula {a.codigo}</p>
                             <EtiquetaSituacao situacao={situacao} texto={lic ? `Licença até ${formatarDataCurta(lic.data_retorno)}` : undefined} />
                           </div>
