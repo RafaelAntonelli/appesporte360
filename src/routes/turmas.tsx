@@ -489,8 +489,8 @@ function TurmasPage() {
 
   return (
     <AppShell title="Turmas" subtitle="Modalidades, horários e professores">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap lg:flex-1">
           <Select value={filtroModalidade} onValueChange={setFiltroModalidade}>
             <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -529,7 +529,7 @@ function TurmasPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2 lg:justify-end">
           <Button variant="outline" onClick={() => setGerenciarDias(true)}><CalendarDays className="size-4" /> Editar dias</Button>
           <Button variant="outline" onClick={() => setGerenciarHorarios(true)}><Clock className="size-4" /> Editar horários</Button>
           <Button onClick={abrirNova}><Plus className="size-4" /> Nova turma</Button>
