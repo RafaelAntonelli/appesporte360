@@ -31,3 +31,6 @@
 - Offline actions are queued in IndexedDB with a UUID, UTC timestamp and strictly increasing sequence, and sync sends them one by one and stops at the first failure — why: later actions must never reach the server before earlier ones.
 - Links to student files are always signed and temporary: exports use the configured validity from src/lib/links-seguros.ts (capped server-side) and on-screen images use 1 hour — why: LGPD forbids permanent open links to personal documents.
 - Every captured image goes through otimizarImagem (src/lib/imagem.ts) in the browser before upload or AI reading; PDFs pass unchanged — why: smaller uploads and AI payloads on mobile networks.
+- Dark mode is a `.dark` class on <html> applied by the inline SCRIPT_TEMA in __root before first paint and toggled via useTema (src/lib/tema.ts); screens use only theme tokens — why: no white flash and every screen themes without per-page colors.
+- Student status uses situacaoDoAluno (src/lib/situacao.ts) with EtiquetaSituacao, and attendance UI uses BotoesChamada/ProgressoChamada/MarcarTodosPresentes (src/components/Chamada.tsx) with resumoChamada — why: Alunos, Turmas and Presença must show identical colors and bulk-marking rules.
+- A copy of the pre-redesign screens lives in .lovable/visual-anterior/ — why: the user asked to be able to revert the new look.
