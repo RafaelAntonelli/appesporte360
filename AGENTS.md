@@ -9,12 +9,12 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Treat each active student enrollment as an independent modality/class choice, allowing up to three distinct modalities; attendance is unique per student, class, and date so multi-enrolled students remain independent.
-- Generate student enrollment codes in the database as unique uppercase alphanumeric identifiers with exactly 7 characters so every creation path stays consistent.
+- Each active enrollment is an independent modality/class (max three distinct); attendance is unique per student, class and date.
+- Enrollment codes are generated in the database: unique, uppercase alphanumeric, exactly 7 chars — why: every creation path stays consistent.
 - Use the shared certificate notification predicates in student filters and certificate reports so notification counts and lists follow the same eligibility rule.
 - School suggestions are grouped by education network in a browser-safe module, picked via a searchable selector that allows manual entry — why: unlisted school names stay valid without editing the catalog.
-- Use one shared browser-safe WhatsApp link helper and contact button for student forms, profiles, and notification lists; click-to-chat delegates app/web handoff without claiming number availability.
-- Normalize emitted server createRequire helpers to a literal file URL in the Nitro output hook; the hosted Worker may not provide import.meta.url during module initialization.
+- One shared browser-safe WhatsApp link helper and contact button everywhere; click-to-chat never claims the number has WhatsApp.
+- Nitro output hook rewrites createRequire helpers to a literal file URL — why: the Worker may lack import.meta.url at init.
 - Medical leave lives in licencas_medicas (one active per student) with shared rules in src/lib/licenca.ts; enrollments stay active during leave so the seat stays reserved.
 - Backup runs (manual and automatic) are recorded in backup_historico with per-file failures so failed files can be resent alone; Drive uploads retry transient errors (429/5xx/network) up to 3 times before failing.
 - Teacher permissions are enforced in RLS via public.pode(uid, chave) reading permissoes_professor (admins always pass); UI gating in src/lib/permissoes.ts mirrors it — why: hiding buttons alone is not security.
@@ -22,7 +22,7 @@
 - Records keep the registrar's name in *_por_nome columns filled by trigger, and user FKs use ON DELETE SET NULL — why: removed accounts must not erase who registered.
 - Use DOCUMENTOS_PLANILHA as the shared document catalog in enrollment forms and profiles, and keep backup document destinations aligned — why: every attachment must remain visible and exportable.
 - Student access has no auth accounts: a device token (stored only as a SHA-256 hash in aluno_aparelhos, approved in person by an admin) is checked in public server functions that read and write only the caller's own student record through the admin client — why: students must never reach other students' data or staff tables.
-- Student push notifications are sent from server code through the linked Firebase Cloud Messaging connection (connector gateway, FIREBASE_MESSAGING_* secrets), and the root service worker (public/sw.js) displays them — why: one worker scope serves both the offline cache and push.
+- Student push goes from server code via the linked Firebase Cloud Messaging connection; public/sw.js displays it — why: one worker scope serves offline cache and push.
 - Class reminders run from a managed 5-minute HTTP schedule hitting /api/public/jobs/lembretes-aula; window rules live in src/lib/lembretes.ts (Brasília time) and lembretes_aula_enviados reserves each turma/date/lead time before sending — why: overlapping windows tolerate a missed tick without duplicate pushes.
 - Drive backup files are named CODIGO_TIPO.ext via src/lib/arquivos-drive.ts, the backup spreadsheet has no links, and Drive restoration re-reads the name from Drive to link each file by enrollment code — why: codes are unique while student names are not.
 - Offline actions are queued in IndexedDB with a UUID, UTC timestamp and strictly increasing sequence, and sync sends them one by one and stops at the first failure — why: later actions must never reach the server before earlier ones.
