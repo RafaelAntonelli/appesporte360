@@ -246,7 +246,7 @@ function AuthPage() {
               className="sombra-logo w-auto shrink-0 object-contain"
               style={{ height: "min(clamp(48px, 10vh, 104px), 12.5vw)" }}
             />
-            <span aria-hidden className="w-px self-stretch bg-sidebar-foreground/40" />
+            <span aria-hidden className="w-px shrink-0 self-stretch bg-sidebar-foreground/40" />
             <img
               src={seloSeculje.url}
               alt="SECULJE – Prefeitura de Lauro de Freitas"
