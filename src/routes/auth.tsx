@@ -217,7 +217,7 @@ function AuthPage() {
   const descricao = redefinindo
     ? "Defina uma nova senha para a sua conta."
     : recuperando
-      ? "Enviaremos um link para o seu e-mail."
+      ? "Informe o e-mail da sua conta. Enviaremos um link para você criar uma nova senha."
       : modo !== "entrar"
         ? "Crie sua conta. Um administrador precisará liberar seu acesso."
         : aba === "aluno"
@@ -284,9 +284,6 @@ function AuthPage() {
                 </form>
               ) : recuperando ? (
                 <form onSubmit={enviarRecuperacao} className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Informe o e-mail da sua conta. Enviaremos um link para você criar uma nova senha.
-                  </p>
                   <div className="space-y-2">
                     <Label htmlFor="email-recuperacao">E-mail</Label>
                     <Input id="email-recuperacao" type="email" required value={emailRecuperacao} onChange={(e) => setEmailRecuperacao(e.target.value)} />
