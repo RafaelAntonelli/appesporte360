@@ -86,20 +86,6 @@ function guardarEmail(valor: string | null) {
   }
 }
 
-/** Ondas decorativas do topo e do painel visual. */
-function Ondas({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden viewBox="0 0 1440 200" preserveAspectRatio="none" className={className}>
-      <path className="fill-sidebar-primary/15" d="M0,120 C180,60 360,180 540,130 C720,80 900,20 1080,70 C1260,120 1350,150 1440,110 L1440,200 L0,200 Z" />
-      <path className="fill-primary/25" d="M0,150 C200,110 400,190 640,150 C880,110 1080,90 1260,130 C1350,150 1400,160 1440,150 L1440,200 L0,200 Z" />
-    </svg>
-  );
-}
-
-function Logo({ className }: { className?: string }) {
-  return <img src="/icons/icon-192x192.png" alt={NOME_APP} className={`rounded-xl object-cover ${className ?? ""}`} />;
-}
-
 function AuthPage() {
   const { session, loading } = useAuth();
   const navigate = useNavigate();
