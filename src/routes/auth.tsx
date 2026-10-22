@@ -1,8 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, WifiOff } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, WifiOff } from "lucide-react";
 import { toast } from "sonner";
-import loginImagem from "@/assets/login-esporte-360.png.asset.json";
+import fundoComputador from "@/assets/fundo-ondas-computador.jpg.asset.json";
+import fundoCelular from "@/assets/fundo-ondas-celular.jpg.asset.json";
+import logoEsporte from "@/assets/logo-esporte-360.png.asset.json";
+import seloSeculje from "@/assets/selo-seculje.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
 
 import { useAuth } from "@/lib/auth";
@@ -12,10 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const NOME_APP = "Esporte 360";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -220,170 +220,188 @@ function AuthPage() {
 
   const bloqueado = busy || !online;
   const titulo = redefinindo
-    ? "Criar nova senha"
+    ? "Nova senha"
     : recuperando
       ? "Recuperar senha"
-      : modo === "criar"
+      : modo !== "entrar"
         ? "Cadastro da equipe"
-        : "Acesse sua conta";
+        : aba === "aluno"
+          ? "Área do aluno"
+          : "Bem-vindo(a) de volta";
   const descricao = redefinindo
     ? "Defina uma nova senha para a sua conta."
     : recuperando
       ? "Enviaremos um link para o seu e-mail."
-      : modo === "criar"
+      : modo !== "entrar"
         ? "Crie sua conta. Um administrador precisará liberar seu acesso."
         : aba === "aluno"
-          ? "Aluno: entre com CPF ou matrícula e data de nascimento."
+          ? "Consulte suas aulas, sua frequência e seu crachá."
           : "Entre para gerenciar alunos, turmas e presenças.";
 
   return (
-    <div className="min-h-screen bg-background lg:grid lg:grid-cols-[1.1fr_1fr]">
-      {/* Painel visual ao lado do formulário (computador) */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-navy p-12 text-sidebar-foreground lg:flex">
-        <img src={loginImagem.url} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover object-center opacity-30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-sidebar via-sidebar/70 to-sidebar/30" />
-        <Ondas className="absolute inset-x-0 bottom-0 h-48 w-full" />
-        <div className="relative z-10 flex items-center gap-3">
-          <Logo className="size-11" />
-          <span className="font-display text-xl font-semibold">{NOME_APP}</span>
-        </div>
-        <div className="relative z-10 max-w-md pb-16">
-          <p className="font-display text-3xl font-semibold leading-tight">Esporte que transforma, gestão que acompanha.</p>
-          <p className="mt-3 text-sm text-sidebar-foreground/70">Matrículas, turmas e presença do Programa Esporte 360 em um só lugar.</p>
-        </div>
-      </div>
+    <div className="relative min-h-dvh overflow-hidden">
+      {/* Fundo de ondas: em pé no celular, deitado a partir de 768 px */}
+      <picture aria-hidden className="pointer-events-none fixed inset-0">
+        <source media="(min-width: 768px)" srcSet={fundoComputador.url} />
+        <img src={fundoCelular.url} alt="" className="h-full w-full object-cover object-center" />
+      </picture>
+      <div aria-hidden className="pointer-events-none fixed inset-0 bg-veu-login" />
 
-      {/* Topo azul-marinho com ondas (celular) */}
-      <div className="relative overflow-hidden bg-navy px-6 pb-20 pt-[calc(2.5rem+env(safe-area-inset-top))] text-center text-sidebar-foreground lg:hidden">
-        <Ondas className="absolute inset-x-0 bottom-6 h-24 w-full opacity-80" />
-        <div className="relative z-10 flex flex-col items-center gap-3">
-          <Logo className="size-16 shadow-pool" />
-          <p className="text-sm font-medium text-sidebar-foreground/70">{NOME_APP}</p>
-          <h1 className="font-display text-2xl font-semibold">{titulo}</h1>
-        </div>
-        <svg aria-hidden viewBox="0 0 1440 120" preserveAspectRatio="none" className="absolute inset-x-0 -bottom-px h-12 w-full">
-          <path className="fill-background" d="M0,64 C240,120 480,8 720,40 C960,72 1200,120 1440,56 L1440,120 L0,120 Z" />
-        </svg>
-      </div>
+      <main className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-4 py-[max(1rem,env(safe-area-inset-top))]">
+        <div className="relative flex w-full max-w-md flex-col items-center gap-4 sm:gap-5">
+          {/* Brilho suave atrás da área de login */}
+          <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 -z-10 size-[min(40rem,120vw)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-destaque/20 blur-3xl" />
 
-      <div className="relative z-10 -mt-4 flex items-start justify-center px-4 pb-10 lg:mt-0 lg:items-center lg:p-10">
-        <div className="w-full max-w-md">
-          <div className="mb-6 hidden lg:block">
-            <h1 className="font-display text-3xl font-semibold tracking-tight text-foreground">{titulo}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>
+          {/* Logos lado a lado */}
+          <div className="flex items-center justify-center gap-3 sm:gap-5">
+            <img
+              src={logoEsporte.url}
+              alt="Programa Esporte 360"
+              className="sombra-logo w-auto shrink-0 object-contain"
+              style={{ height: "min(clamp(48px, 10vh, 104px), 12.5vw)" }}
+            />
+            <span aria-hidden className="w-px self-stretch bg-sidebar-foreground/40" />
+            <img
+              src={seloSeculje.url}
+              alt="SECULJE – Prefeitura de Lauro de Freitas"
+              className="w-auto shrink-0 object-contain"
+              style={{ height: "min(clamp(43px, 9vh, 92px), 11vw)" }}
+            />
           </div>
-        <Card className="w-full border-border/70 shadow-pool">
-          {modo !== "entrar" || redefinindo || recuperando ? (
-            <CardHeader className="pb-4 lg:hidden">
-              <CardDescription>{descricao}</CardDescription>
-            </CardHeader>
-          ) : null}
-          <CardContent className={modo === "entrar" && !redefinindo && !recuperando ? "space-y-4 pt-6" : "space-y-4 lg:pt-6"}>
-            {!online ? (
-              <div role="alert" className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                <WifiOff className="mt-0.5 size-4 shrink-0" />
-                <span>Você está sem internet. É preciso estar conectado para entrar no sistema.</span>
-              </div>
-            ) : null}
 
-            {redefinindo ? (
-              <form onSubmit={definirNovaSenha} className="space-y-4">
-                <p className="text-sm text-muted-foreground">Defina uma nova senha para a sua conta.</p>
-                <div className="space-y-2">
-                  <Label htmlFor="nova-senha">Nova senha</Label>
-                  <CampoSenha id="nova-senha" minLength={6} value={novaSenha} onChange={setNovaSenha} />
-                </div>
-                <Button type="submit" className="w-full" disabled={bloqueado}>Salvar nova senha</Button>
-              </form>
-            ) : recuperando ? (
-              <form onSubmit={enviarRecuperacao} className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Informe o e-mail da sua conta. Enviaremos um link para você criar uma nova senha.
+          {/* Área de login */}
+          <div className="w-full overflow-hidden rounded-3xl bg-card text-card-foreground shadow-2xl">
+            <div aria-hidden className="h-1.5 w-full bg-faixa-login" />
+            <div className="space-y-4 p-5 sm:p-7">
+              <div className="space-y-1">
+                <p className="font-display text-[32px] font-extrabold leading-none tracking-tight text-primary">
+                  Esporte <span className="text-destaque">360</span>
                 </p>
-                <div className="space-y-2">
-                  <Label htmlFor="email-recuperacao">E-mail</Label>
-                  <Input id="email-recuperacao" type="email" required value={emailRecuperacao} onChange={(e) => setEmailRecuperacao(e.target.value)} />
-                </div>
-                <Button type="submit" className="w-full" disabled={bloqueado}>Enviar link de recuperação</Button>
-                <Button type="button" variant="ghost" className="w-full" onClick={() => setRecuperando(false)}>
-                  Voltar para o login
-                </Button>
-              </form>
-            ) : modo === "criada" ? (
-              <div className="space-y-4">
-                <p className="rounded-md bg-muted p-3 text-sm">
-                  Conta criada! Confirme seu e-mail pelo link que enviamos. Depois, aguarde um administrador liberar seu acesso.
-                </p>
-                <Button className="w-full" onClick={() => { setSenha(""); setModo("entrar"); }}>Voltar para o login</Button>
+                <h1 className="pt-1 font-display text-lg font-semibold text-foreground">{titulo}</h1>
+                <p className="text-sm text-muted-foreground">{descricao}</p>
               </div>
-            ) : modo === "criar" ? (
-              <form onSubmit={cadastrar} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nome">Nome</Label>
-                  <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
+
+              {!online ? (
+                <div role="alert" className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  <WifiOff className="mt-0.5 size-4 shrink-0" />
+                  <span>Você está sem internet. É preciso estar conectado para entrar no sistema.</span>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email2">E-mail</Label>
-                  <Input id="email2" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              ) : null}
+
+              {redefinindo ? (
+                <form onSubmit={definirNovaSenha} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nova-senha">Nova senha</Label>
+                    <CampoSenha id="nova-senha" minLength={6} value={novaSenha} onChange={setNovaSenha} />
+                  </div>
+                  <Button type="submit" className="h-11 w-full text-base" disabled={bloqueado}>Salvar nova senha</Button>
+                </form>
+              ) : recuperando ? (
+                <form onSubmit={enviarRecuperacao} className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Informe o e-mail da sua conta. Enviaremos um link para você criar uma nova senha.
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="email-recuperacao">E-mail</Label>
+                    <Input id="email-recuperacao" type="email" required value={emailRecuperacao} onChange={(e) => setEmailRecuperacao(e.target.value)} />
+                  </div>
+                  <Button type="submit" className="h-11 w-full text-base" disabled={bloqueado}>Enviar link de recuperação</Button>
+                  <Button type="button" variant="ghost" className="w-full" onClick={() => setRecuperando(false)}>
+                    Voltar para o login
+                  </Button>
+                </form>
+              ) : modo === "criada" ? (
+                <div className="space-y-4">
+                  <p className="rounded-md bg-muted p-3 text-sm">
+                    Conta criada! Confirme seu e-mail pelo link que enviamos. Depois, aguarde um administrador liberar seu acesso.
+                  </p>
+                  <Button className="w-full" onClick={() => { setSenha(""); setModo("entrar"); }}>Voltar para o login</Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="senha2">Senha</Label>
-                  <CampoSenha id="senha2" minLength={6} value={senha} onChange={setSenha} />
-                </div>
-                <Button type="submit" className="w-full" disabled={bloqueado}>Criar conta</Button>
-                <Button type="button" variant="ghost" className="w-full" onClick={() => setModo("entrar")}>
-                  Voltar para o login
-                </Button>
-              </form>
-            ) : (
-              <Tabs value={aba} onValueChange={(v) => setAba(v as "equipe" | "aluno")}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="equipe">Equipe</TabsTrigger>
-                  <TabsTrigger value="aluno">Aluno</TabsTrigger>
-                </TabsList>
-                <TabsContent value="aluno" className="pt-2">
-                  <AcessoAluno bloqueado={!online} />
-                </TabsContent>
-                <TabsContent value="equipe" className="pt-2">
-              <form onSubmit={entrar} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="senha">Senha</Label>
-                  <CampoSenha id="senha" value={senha} onChange={setSenha} />
-                </div>
-                <label htmlFor="lembrar-email" className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-                  <Checkbox id="lembrar-email" checked={lembrarEmail} onCheckedChange={(v) => setLembrarEmail(v === true)} />
-                  Lembrar meu e-mail
-                </label>
-                <Button type="submit" className="h-11 w-full text-base" disabled={bloqueado}>Entrar</Button>
-                <Button
-                  type="button"
-                  variant="link"
-                  className="w-full"
-                  onClick={() => {
-                    setEmailRecuperacao(email);
-                    setRecuperando(true);
-                  }}
-                >
-                  Esqueci minha senha
-                </Button>
-                <p className="border-t border-border pt-4 text-center text-xs text-muted-foreground">
-                  Sou novo na equipe?{" "}
-                  <button type="button" className="font-medium text-primary underline-offset-4 hover:underline" onClick={() => setModo("criar")}>
-                    Solicitar acesso
-                  </button>
-                </p>
-              </form>
-                </TabsContent>
-              </Tabs>
-            )}
-          </CardContent>
-        </Card>
+              ) : modo === "criar" ? (
+                <form onSubmit={cadastrar} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nome">Nome</Label>
+                    <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email2">E-mail</Label>
+                    <Input id="email2" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="senha2">Senha</Label>
+                    <CampoSenha id="senha2" minLength={6} value={senha} onChange={setSenha} />
+                  </div>
+                  <Button type="submit" className="h-11 w-full text-base" disabled={bloqueado}>Criar conta</Button>
+                  <Button type="button" variant="ghost" className="w-full" onClick={() => setModo("entrar")}>
+                    Voltar para o login
+                  </Button>
+                </form>
+              ) : (
+                <Tabs value={aba} onValueChange={(v) => setAba(v as "equipe" | "aluno")}>
+                  <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-muted p-1">
+                    <TabsTrigger value="equipe" className={ABA}>Equipe</TabsTrigger>
+                    <TabsTrigger value="aluno" className={ABA}>Aluno</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="aluno" className="pt-2">
+                    <AcessoAluno bloqueado={!online} />
+                  </TabsContent>
+                  <TabsContent value="equipe" className="pt-2">
+                    <form onSubmit={entrar} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">E-mail</Label>
+                        <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="senha">Senha</Label>
+                        <CampoSenha id="senha" value={senha} onChange={setSenha} />
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                        <label htmlFor="lembrar-email" className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                          <Checkbox id="lembrar-email" checked={lembrarEmail} onCheckedChange={(v) => setLembrarEmail(v === true)} />
+                          Lembrar meu e-mail
+                        </label>
+                        <button
+                          type="button"
+                          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                          onClick={() => {
+                            setEmailRecuperacao(email);
+                            setRecuperando(true);
+                          }}
+                        >
+                          Esqueci minha senha
+                        </button>
+                      </div>
+                      <Button type="submit" className="h-12 w-full text-base" disabled={bloqueado}>
+                        {busy ? (
+                          <>
+                            <Loader2 className="size-5 animate-spin" />
+                            Entrando...
+                          </>
+                        ) : (
+                          <>
+                            Entrar
+                            <ArrowRight className="size-5" />
+                          </>
+                        )}
+                      </Button>
+                      <p className="border-t border-border pt-4 text-center text-sm text-muted-foreground">
+                        Sou novo na equipe?{" "}
+                        <button type="button" className="font-medium text-primary underline-offset-4 hover:underline" onClick={() => setModo("criar")}>
+                          Solicitar acesso
+                        </button>
+                      </p>
+                    </form>
+                  </TabsContent>
+                </Tabs>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
+
+/** Aba escolhida: branca (cor dos cartões no escuro), texto azul e uma sombrinha. */
+const ABA =
+  "h-full rounded-lg text-sm font-semibold data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm";

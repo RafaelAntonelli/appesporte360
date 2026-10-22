@@ -227,6 +227,27 @@
   background-image: linear-gradient(90deg, var(--card) 0%, var(--card) 30%, var(--faixa-seculje) 100%);
 }
 
+/* Tela de login: véu na cor do menu, mais escuro no topo e embaixo, quase nada no meio. */
+@utility bg-veu-login {
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--sidebar) 55%, transparent) 0%,
+    color-mix(in oklab, var(--sidebar) 5%, transparent) 45%,
+    color-mix(in oklab, var(--sidebar) 5%, transparent) 55%,
+    color-mix(in oklab, var(--sidebar) 60%, transparent) 100%
+  );
+}
+
+/* Faixa fina no topo da área de login: azul principal, azul-claro de destaque e amarelo. */
+@utility bg-faixa-login {
+  background-image: linear-gradient(90deg, var(--primary), var(--destaque), var(--warning));
+}
+
+/* Sombra suave atrás do logo, para ele se destacar das ondas. */
+@utility sombra-logo {
+  filter: drop-shadow(0 6px 16px color-mix(in oklab, var(--sidebar) 75%, transparent));
+}
+
 /* Véu sobre a imagem do menu lateral: mais forte no topo e no rodapé, mais fraco no meio. */
 @utility bg-veu-menu {
   background-image: linear-gradient(
