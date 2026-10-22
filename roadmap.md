@@ -52,3 +52,12 @@
 - [x] Etapa 6: chamada com botões grandes, barra "X de Y marcados" e "Marcar todos como presentes" em Presença e Turmas.
 - [x] Etapa 7: conferido no computador e no celular (360 px), claro e escuro, sem tela mais larga que o celular.
 - [ ] Conferir com uma conta de professor que os itens bloqueados continuam ocultos; depende de uma conta de professor para teste.
+
+## Ajustes do menu, barra superior, Painel e Turmas (pedido de 22/10)
+- [x] Cópia do visual atual guardada (.lovable/visual-anterior-menu/).
+- [x] Etapa 1: foto (ou iniciais), nome e papel no menu e no topo do celular, abrindo Meu perfil; tela Meu perfil com foto e nome.
+- [x] Etapa 2: imagem do Programa Esporte 360 em pé no fundo do menu, com véu na cor do menu (claro e escuro).
+- [x] Etapa 3: faixa SECULJE à direita da barra superior com degradê sem emenda.
+- [x] Etapa 4: Painel sem busca e sem os cartões; Nova matrícula só para administradores.
+- [x] Etapa 5: três cartões de resumo em Turmas (32 / 1.280 / 88 conferidos com os cartões das turmas); filtros e botões quebram de linha.
+- [ ] Conferir com uma conta de professor que "Nova matrícula" não aparece no Painel; não há conta de professor cadastrada.

@@ -99,6 +99,13 @@
       "when": 1792705006034,
       "tag": "0013_foto_perfil_equipe",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792705667571,
+      "tag": "0014_profiles_insert_own",
+      "breakpoints": true
     }
   ]
 }

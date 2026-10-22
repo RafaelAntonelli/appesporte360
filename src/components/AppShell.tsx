@@ -57,12 +57,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [maisAberto, setMaisAberto] = useState(false);
-  const nomeReserva =
-    (user?.user_metadata?.["nome"] as string | undefined) ||
-    (user?.user_metadata?.["full_name"] as string | undefined) ||
-    user?.email?.split("@")[0] ||
-    "Usuário";
-  const perfil = useMeuPerfil(user?.id, nomeReserva);
+  const perfil = useMeuPerfil(user);
 
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/auth" });

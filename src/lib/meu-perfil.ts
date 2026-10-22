@@ -22,9 +22,20 @@ export function rotuloPapel(isAdmin: boolean) {
   return isAdmin ? "Administrador" : "Professor";
 }
 
+type UsuarioBasico = { id: string; email?: string; user_metadata?: Record<string, unknown> } | null | undefined;
+
+/** Nome do cadastro da conta (mesma ordem usada nos registros), depois o do perfil, depois o e-mail. */
+export function nomeDoUsuario(user: UsuarioBasico, nomePerfil?: string | null) {
+  const meta = user?.user_metadata ?? {};
+  const candidatos = [meta["nome"], meta["full_name"], nomePerfil, user?.email?.split("@")[0]];
+  for (const c of candidatos) if (typeof c === "string" && c.trim()) return c.trim();
+  return "Usuário";
+}
+
 /** Nome, foto (link temporário de 1 hora) e caminho da foto de quem entrou. */
-export function useMeuPerfil(userId: string | undefined, nomeReserva: string) {
-  const [nome, setNome] = useState<string | null>(null);
+export function useMeuPerfil(user: UsuarioBasico) {
+  const userId = user?.id;
+  const [nomePerfil, setNomePerfil] = useState<string | null>(null);
   const [fotoPath, setFotoPath] = useState<string | null>(null);
   const [fotoUrl, setFotoUrl] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -32,7 +43,7 @@ export function useMeuPerfil(userId: string | undefined, nomeReserva: string) {
   const carregar = useCallback(async () => {
     if (!userId) return;
     const { data } = await supabase.from("profiles").select("nome,foto_path").eq("id", userId).maybeSingle();
-    setNome(data?.nome ?? null);
+    setNomePerfil(data?.nome ?? null);
     setFotoPath(data?.foto_path ?? null);
     if (data?.foto_path) {
       const { data: assinada } = await supabase.storage
@@ -52,5 +63,5 @@ export function useMeuPerfil(userId: string | undefined, nomeReserva: string) {
     return () => window.removeEventListener(EVENTO_PERFIL_ATUALIZADO, aoAtualizar);
   }, [carregar]);
 
-  return { nome: nome?.trim() || nomeReserva, nomeSalvo: nome, fotoPath, fotoUrl, carregando, recarregar: carregar };
+  return { nome: nomeDoUsuario(user, nomePerfil), fotoPath, fotoUrl, carregando, recarregar: carregar };
 }
