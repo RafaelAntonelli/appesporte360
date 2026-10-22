@@ -30,5 +30,6 @@
 - Every captured image goes through otimizarImagem (src/lib/imagem.ts) in the browser before upload or AI reading; PDFs pass unchanged — why: smaller uploads and AI payloads on mobile networks.
 - Dark mode is a `.dark` class on <html> applied by the inline SCRIPT_TEMA in __root before first paint and toggled via useTema (src/lib/tema.ts); screens use only theme tokens — why: no white flash and every screen themes without per-page colors.
 - Student status uses situacaoDoAluno (src/lib/situacao.ts) with EtiquetaSituacao, and attendance UI uses BotoesChamada/ProgressoChamada/MarcarTodosPresentes (src/components/Chamada.tsx) with resumoChamada — why: Alunos, Turmas and Presença must show identical colors and bulk-marking rules.
-- A copy of the pre-redesign screens lives in .lovable/visual-anterior/ — why: the user asked to be able to revert the new look.
+- Pre-change screen copies live in .lovable/visual-anterior*/ — why: the user wants to be able to revert visual changes.
+- Staff photos: private fotos-equipe bucket, own {uid}/ folder, path in profiles.foto_path; display name follows nome_usuario order — why: menu matches registrar names.
 - Subdirectories may have their own AGENTS.md (e.g. src/lib/ai/); read it before changing files there.
