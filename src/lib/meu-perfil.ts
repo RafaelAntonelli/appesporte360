@@ -13,8 +13,8 @@ export function iniciaisDoNome(nome: string) {
     .split(/[\s._-]+/)
     .filter(Boolean);
   if (!partes.length) return "?";
-  const primeira = partes[0][0] ?? "";
-  const ultima = partes.length > 1 ? (partes[partes.length - 1][0] ?? "") : "";
+  const primeira = partes[0]?.[0] ?? "";
+  const ultima = partes.length > 1 ? (partes[partes.length - 1]?.[0] ?? "") : "";
   return (primeira + ultima).toUpperCase();
 }
 
