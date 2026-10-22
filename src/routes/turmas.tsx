@@ -1,8 +1,9 @@
 import { usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Users, Trash2, Pencil, Clock, CalendarDays, Printer, Search } from "lucide-react";
+import { Plus, Users, Trash2, Pencil, Clock, CalendarDays, Printer, Search, LayoutGrid, UserCheck } from "lucide-react";
 import { normalizarTexto } from "@/lib/formatacao";
+import { numeroBR, resumoTurmas } from "@/lib/turmas-resumo";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useHorarios } from "@/lib/horarios";
@@ -487,10 +488,30 @@ function TurmasPage() {
   }
 
 
+  const resumo = resumoTurmas(visiveis, contagem);
+  const cartoesResumo = [
+    { rotulo: "Turmas abertas", valor: resumo.abertas, icone: CalendarDays },
+    { rotulo: "Total de vagas", valor: resumo.vagas, icone: LayoutGrid },
+    { rotulo: "Vagas ocupadas", valor: resumo.ocupadas, icone: UserCheck },
+  ];
+
   return (
     <AppShell title="Turmas" subtitle="Modalidades, horários e professores">
-      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap lg:flex-1">
+      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+        {cartoesResumo.map((c) => (
+          <div key={c.rotulo} className="flex items-center gap-3 rounded-xl bg-navy px-4 py-3 text-sidebar-foreground shadow-suave">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-sidebar-primary">
+              <c.icone className="size-4" />
+            </span>
+            <div className="min-w-0 leading-tight">
+              <p className="font-display text-xl font-semibold">{numeroBR(c.valor)}</p>
+              <p className="truncate text-xs text-sidebar-foreground/70">{c.rotulo}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <Select value={filtroModalidade} onValueChange={setFiltroModalidade}>
             <SelectTrigger className="sm:w-56"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -519,7 +540,6 @@ function TurmasPage() {
             </SelectContent>
           </Select>
           <Select value={filtroHorario} onValueChange={setFiltroHorario}>
-
             <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
             <SelectContent className="max-h-80">
               <SelectItem value="todos">Todos os horários</SelectItem>
@@ -528,8 +548,7 @@ function TurmasPage() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="flex shrink-0 flex-wrap gap-2 lg:justify-end">
+        <div className="flex min-w-0 flex-wrap gap-2 sm:ml-auto">
           <Button variant="outline" onClick={() => setGerenciarDias(true)}><CalendarDays className="size-4" /> Editar dias</Button>
           <Button variant="outline" onClick={() => setGerenciarHorarios(true)}><Clock className="size-4" /> Editar horários</Button>
           <Button onClick={abrirNova}><Plus className="size-4" /> Nova turma</Button>

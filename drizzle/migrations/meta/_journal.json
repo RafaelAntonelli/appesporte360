@@ -92,6 +92,13 @@
       "when": 1792503284858,
       "tag": "0012_senha_para_permissoes_professores",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792705006034,
+      "tag": "0013_foto_perfil_equipe",
+      "breakpoints": true
     }
   ]
 }
