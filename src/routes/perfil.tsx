@@ -34,16 +34,25 @@ function avisarMenu() {
 
 function MeuPerfil() {
   const { user, isAdmin } = useAuth();
-  const reserva = user?.email?.split("@")[0] ?? "Usuário";
-  const perfil = useMeuPerfil(user?.id, reserva);
+  const perfil = useMeuPerfil(user);
   const [nome, setNome] = useState("");
   const [salvandoNome, setSalvandoNome] = useState(false);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const entrada = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!perfil.carregando) setNome(perfil.nomeSalvo ?? "");
-  }, [perfil.carregando, perfil.nomeSalvo]);
+    if (!perfil.carregando) setNome(perfil.nome);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perfil.carregando]);
+
+  /** Grava na linha do próprio usuário (cria a linha se ainda não existir). */
+  async function gravarPerfil(campos: { nome?: string; foto_path?: string | null }) {
+    if (!user) return false;
+    const { error } = await supabase
+      .from("profiles")
+      .upsert({ id: user.id, email: user.email ?? null, ...campos }, { onConflict: "id" });
+    return !error;
+  }
 
   async function trocarFoto(arquivo: File | undefined) {
     if (!arquivo || !user) return;
@@ -56,8 +65,7 @@ function MeuPerfil() {
         .from(BUCKET_FOTOS_EQUIPE)
         .upload(caminho, otimizada, { contentType: otimizada.type || "image/jpeg" });
       if (erroEnvio) return toast.error("Não foi possível enviar a foto. Tente de novo.");
-      const { data, error } = await supabase.from("profiles").update({ foto_path: caminho }).eq("id", user.id).select("id");
-      if (error || !data?.length) {
+      if (!(await gravarPerfil({ foto_path: caminho }))) {
         await supabase.storage.from(BUCKET_FOTOS_EQUIPE).remove([caminho]);
         return toast.error("Não foi possível salvar a foto no seu cadastro.");
       }
@@ -74,10 +82,10 @@ function MeuPerfil() {
   async function removerFoto() {
     if (!user || !perfil.fotoPath) return;
     setEnviandoFoto(true);
-    const { error } = await supabase.from("profiles").update({ foto_path: null }).eq("id", user.id);
-    if (!error) await supabase.storage.from(BUCKET_FOTOS_EQUIPE).remove([perfil.fotoPath]);
+    const ok = await gravarPerfil({ foto_path: null });
+    if (ok) await supabase.storage.from(BUCKET_FOTOS_EQUIPE).remove([perfil.fotoPath]);
     setEnviandoFoto(false);
-    if (error) return toast.error("Não foi possível remover a foto.");
+    if (!ok) return toast.error("Não foi possível remover a foto.");
     toast.success("Foto removida");
     avisarMenu();
     return;
@@ -89,9 +97,12 @@ function MeuPerfil() {
     const valor = capitalizarNome(nome.trim());
     if (!valor) return toast.error("Informe seu nome.");
     setSalvandoNome(true);
-    const { data, error } = await supabase.from("profiles").update({ nome: valor }).eq("id", user.id).select("id");
+    // O nome da conta é o mesmo usado para identificar quem fez cada registro.
+    const { error } = await supabase.auth.updateUser({ data: { nome: valor } });
+    const ok = !error && (await gravarPerfil({ nome: valor }));
     setSalvandoNome(false);
-    if (error || !data?.length) return toast.error("Não foi possível salvar o nome.");
+    if (!ok) return toast.error("Não foi possível salvar o nome.");
+    setNome(valor);
     toast.success("Nome atualizado");
     avisarMenu();
     return;
