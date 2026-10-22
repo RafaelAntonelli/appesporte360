@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Users, CalendarDays, Plus, Trash2, Search, Stethoscope, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Stethoscope, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CONDICOES_PCD } from "@/lib/pcd";
 import { useHorarios } from "@/lib/horarios";
-import { capitalizarNome, formatarCelular, correspondeBusca, relevanciaBusca, normalizarTexto } from "@/lib/formatacao";
+import { useAuth } from "@/lib/auth";
+import { capitalizarNome, formatarCelular, normalizarTexto } from "@/lib/formatacao";
 import { dataISO, somarDias, formatarDataCurta, licencaTerminada } from "@/lib/licenca";
 import { PerfilAluno } from "@/components/PerfilAluno";
 import { MODALIDADES, MODALIDADE_PADRAO } from "@/lib/modalidades";
@@ -54,10 +55,8 @@ export const Route = createFileRoute("/")({
 
 function Painel() {
   const { lista: listaHorarios } = useHorarios();
-  const [stats, setStats] = useState({ alunos: 0, turmas: 0 });
+  const { isAdmin } = useAuth();
   const [alunosPorModalidade, setAlunosPorModalidade] = useState<Record<string, number>>({});
-  const [busca, setBusca] = useState("");
-  const [alunosBusca, setAlunosBusca] = useState<{ id: string; nome: string; codigo: string | null; cpf: string | null }[]>([]);
   const [perfilId, setPerfilId] = useState<string | null>(null);
   const [aulas, setAulas] = useState<{ id: string; nome: string; horario: string | null; capacidade: number; ocupacao: number }[]>([]);
   const [licencas, setLicencas] = useState<{ id: string; aluno_id: string; nome: string; data_retorno: string; vencida: boolean }[]>([]);
@@ -134,26 +133,18 @@ function Painel() {
 
   useEffect(() => {
     void (async () => {
-      const [alunos, turmas, matriculasAtivas, listaAlunos, listaTurmas, matTurmas, lics] = await Promise.all([
-        supabase.from("alunos").select("id", { count: "exact", head: true }).eq("ativo", true),
-        supabase.from("turmas").select("id", { count: "exact", head: true }).eq("ativa", true),
+      const [matriculasAtivas, listaTurmas, matTurmas, lics] = await Promise.all([
         supabase.from("matriculas").select("aluno_id,modalidade,alunos!inner(ativo)").eq("status", "ativa").eq("alunos.ativo", true),
-        supabase.from("alunos").select("id,nome,codigo,cpf").order("nome"),
         supabase.from("turmas").select("id,nome,horario,capacidade,dias_semana").eq("ativa", true),
         supabase.from("matriculas").select("turma_id").eq("status", "ativa"),
         supabase.from("licencas_medicas").select("id,aluno_id,data_retorno,status,alunos(nome)").eq("status", "ativa"),
       ]);
-      setStats({
-        alunos: alunos.count ?? 0,
-        turmas: turmas.count ?? 0,
-      });
       const contagens: Record<string, Set<string>> = {};
       for (const matricula of matriculasAtivas.data ?? []) {
         const modalidade = matricula.modalidade as string;
         (contagens[modalidade] ??= new Set()).add(matricula.aluno_id as string);
       }
       setAlunosPorModalidade(Object.fromEntries(Object.entries(contagens).map(([nome, ids]) => [nome, ids.size])));
-      setAlunosBusca((listaAlunos.data ?? []) as typeof alunosBusca);
       const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
       const hojeDia = DIAS[new Date().getDay()];
       const ocup: Record<string, number> = {};
