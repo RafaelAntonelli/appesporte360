@@ -172,62 +172,9 @@ function Painel() {
     })();
   }, []);
 
-  const cards = [
-    { label: "Alunos ativos", value: stats.alunos, icon: Users },
-    { label: "Turmas abertas", value: stats.turmas, icon: CalendarDays },
-  ];
-
-  const resultados = busca.trim()
-    ? alunosBusca
-        .filter((a) => correspondeBusca({ nome: a.nome, cpf: a.cpf, codigo: a.codigo }, busca))
-        .sort((x, y) => relevanciaBusca(x.nome, busca) - relevanciaBusca(y.nome, busca))
-        .slice(0, 8)
-    : [];
-
   return (
     <AppShell title="Painel" subtitle="Visão geral do Esporte 360">
-      <div className="relative mb-6">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder="Buscar aluno por nome, matrícula ou CPF"
-          aria-label="Buscar aluno"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-        />
-        {busca.trim() ? (
-          <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-border/70 bg-popover shadow-lg">
-            {resultados.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-secondary"
-                onClick={() => { setPerfilId(a.id); setBusca(""); }}
-              >
-                <span className="font-medium">{a.nome}</span>
-                <span className="text-xs text-muted-foreground">{a.codigo}{a.cpf ? ` · ${a.cpf}` : ""}</span>
-              </button>
-            ))}
-            {!resultados.length && <p className="px-3 py-3 text-sm text-muted-foreground">Nenhum aluno encontrado.</p>}
-          </div>
-        ) : null}
-      </div>
       <PerfilAluno alunoId={perfilId} onFechar={() => setPerfilId(null)} />
-      <div className="mb-6 grid gap-4 sm:grid-cols-2">
-        {cards.map((c) => (
-          <Card key={c.label} className="border-border/70">
-            <CardContent className="flex items-center gap-4 py-6">
-              <span className="grid size-11 place-items-center rounded-xl bg-secondary text-primary">
-                <c.icon className="size-5" />
-              </span>
-              <div>
-                <p className="font-display text-2xl font-semibold">{c.value}</p>
-                <p className="text-sm text-muted-foreground">{c.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       <Card className="mb-6 border-border/70">
         <CardHeader><CardTitle className="font-display text-lg">Alunos por modalidade</CardTitle></CardHeader>
@@ -252,9 +199,12 @@ function Painel() {
               <Button asChild variant="secondary">
                 <Link to="/presenca">Registrar presença</Link>
               </Button>
-              <Button asChild variant="outline" className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10">
-                <Link to="/alunos" search={{ novo: true }}>Nova matrícula</Link>
-              </Button>
+              {/* Nova matrícula só para administradores; professores não veem o botão. */}
+              {isAdmin ? (
+                <Button asChild variant="outline" className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10">
+                  <Link to="/alunos" search={{ novo: true }}>Nova matrícula</Link>
+                </Button>
+              ) : null}
             </div>
           </CardContent>
         </Card>
