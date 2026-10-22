@@ -216,3 +216,23 @@
 @utility bg-navy {
   background-image: var(--gradient-navy);
 }
+
+/* Azul da borda esquerda da faixa SECULJE, rgb(1, 30, 122): igual nos dois temas. */
+:root {
+  --faixa-seculje: oklch(0.2982 0.1573 263.69);
+}
+
+/* Barra superior: cor dos cartões até ~30% e o azul da faixa exatamente na borda dela. */
+@utility bg-faixa-topo {
+  background-image: linear-gradient(90deg, var(--card) 0%, var(--card) 30%, var(--faixa-seculje) 100%);
+}
+
+/* Véu sobre a imagem do menu lateral: mais forte no topo e no rodapé, mais fraco no meio. */
+@utility bg-veu-menu {
+  background-image: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--sidebar) 90%, transparent) 0%,
+    color-mix(in oklab, var(--sidebar) 45%, transparent) 50%,
+    color-mix(in oklab, var(--sidebar) 90%, transparent) 100%
+  );
+}
