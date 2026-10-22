@@ -8,7 +8,6 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -105,7 +104,6 @@ function PresencaPage() {
   const [scanning, setScanning] = useState(false);
   const [busca, setBusca] = useState("");
   const [statusPorAluno, setStatusPorAluno] = useState<Record<string, StatusPresenca>>({});
-  const [observacao, setObservacao] = useState("");
   const [registros, setRegistros] = useState<{ nome: string; codigo: string; hora: string; status: StatusPresenca; obs: string | null }[]>([]);
   const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null);
   const lastRef = useRef<{ code: string; at: number }>({ code: "", at: 0 });
@@ -213,7 +211,7 @@ function PresencaPage() {
   }, [hoje, turmaId, licencas, matriculas]);
 
   async function registrar(aluno: Aluno, metodo: "qrcode" | "manual", status: StatusPresenca = "presente") {
-    const obs = observacao.trim() ? observacao.trim() : null;
+    const obs: string | null = null;
     const agoraIso = new Date().toISOString();
 
     if (!estaOnline()) {
@@ -232,7 +230,6 @@ function PresencaPage() {
         { nome: aluno.nome, codigo: aluno.codigo, hora: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }), status, obs },
         ...r.filter((x) => x.nome !== aluno.nome),
       ]);
-      setObservacao("");
       toast.success(`${rotuloStatus[status]}: ${aluno.nome} (salvo offline)`);
       return;
     }
@@ -248,7 +245,7 @@ function PresencaPage() {
     if (existente.data) {
       const { error } = await supabase
         .from("presencas")
-        .update({ status, metodo, turma_id: turmaId || null, horario: agoraIso, observacoes: obs })
+        .update({ status, metodo, turma_id: turmaId || null, horario: agoraIso })
         .eq("id", existente.data.id);
       if (error) {
         toast.error(error.message);
@@ -269,7 +266,6 @@ function PresencaPage() {
       }
     }
     toast.success(`${rotuloStatus[status]}: ${aluno.nome}`);
-    setObservacao("");
     void carregarPresencasDoDia();
   }
 
@@ -616,16 +612,6 @@ function PresencaPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input className="pl-9" placeholder="Buscar por matrícula ou nome..." value={busca} onChange={(e) => setBusca(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Observações (justificativa)</Label>
-                  <Textarea
-                    rows={2}
-                    placeholder="Ex.: apresentou atestado médico"
-                    value={observacao}
-                    onChange={(e) => setObservacao(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">O texto é salvo no histórico do aluno junto com o registro.</p>
                 </div>
                 <div className="@container max-h-[38rem] space-y-2 overflow-y-auto pr-1">
                   {filtrados.map((a) => {
