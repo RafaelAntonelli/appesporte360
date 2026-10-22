@@ -61,3 +61,12 @@
 - [x] Etapa 4: Painel sem busca e sem os cartões; Nova matrícula só para administradores.
 - [x] Etapa 5: três cartões de resumo em Turmas (32 / 1.280 / 88 conferidos com os cartões das turmas); filtros e botões quebram de linha.
 - [ ] Conferir com uma conta de professor que "Nova matrícula" não aparece no Painel; não há conta de professor cadastrada.
+
+## Nova tela de login (pedido de 22/10, noite)
+- [x] Cópia da tela de login guardada (.lovable/visual-anterior-login/).
+- [x] Fundo de ondas (em pé no celular, deitado a partir de 768 px), véu e brilho atrás da área de login.
+- [x] Logo Esporte 360 e selo SECULJE lado a lado no topo, com linha fina entre eles.
+- [x] Área de login centralizada (até 448 px), faixa em degradê, "Esporte 360", títulos por aba e tela.
+- [x] Abas em botão duplo, "Lembrar meu e-mail" e "Esqueci minha senha" na mesma linha, Entrar com seta e "Entrando...".
+- [x] Conferido no celular, 1000×700 e 1920×1080, claro e escuro, sem rolar.
+- [ ] Entrar com uma conta da equipe de verdade; depende da senha de uma conta da equipe.
