@@ -70,3 +70,10 @@
 - [x] Abas em botão duplo, "Lembrar meu e-mail" e "Esqueci minha senha" na mesma linha, Entrar com seta e "Entrando...".
 - [x] Conferido no celular, 1000×700 e 1920×1080, claro e escuro, sem rolar.
 - [ ] Entrar com uma conta da equipe de verdade; depende da senha de uma conta da equipe.
+
+## Letras mais visíveis no menu lateral (pedido de 23/10)
+- [x] Cópia do menu lateral guardada (.lovable/visual-anterior-menu-lateral/).
+- [x] Botões sem caixa, letras brancas semi-negrito com sombra leve, ícones de 20 px, destaque ao passar o mouse.
+- [x] Tela aberta com fundo suave, faixa azul de 3 px e ícone azul; rodapé (Meu perfil, Modo escuro, Sair) no mesmo estilo e mais alto.
+- [x] Conferido no computador, claro e escuro, como administrador; celular sem mudanças.
+- [ ] Conferir como professor; não há conta de professor cadastrada.
