@@ -257,3 +257,8 @@
     color-mix(in oklab, var(--sidebar) 90%, transparent) 100%
   );
 }
+
+/* Sombra leve atrás das letras do menu lateral, para destacar o texto sobre a imagem de fundo. */
+@utility sombra-texto-menu {
+  text-shadow: 0 1px 2px oklch(0 0 0 / 35%);
+}

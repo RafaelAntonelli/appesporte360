@@ -47,8 +47,11 @@ const adminNav: ItemMenu[] = [
   { to: "/equipe", label: "Equipe", icon: ShieldCheck },
 ];
 
-const classeBotaoMenu =
-  "justify-start gap-3 text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground";
+/** Botões do menu lateral: sem caixa, direto sobre a imagem; letras brancas semi-negrito com sombra leve. */
+const classeItemMenu =
+  "flex w-full shrink-0 items-center gap-3 rounded-lg px-3 text-left text-sm font-semibold text-sidebar-foreground sombra-texto-menu transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring";
+/** Tela aberta: fundo suave e faixa fina azul à esquerda, sem borda em volta. */
+const classeItemAtivo = "bg-sidebar-accent/80 text-sidebar-accent-foreground shadow-[inset_3px_0_0_var(--sidebar-primary)]";
 
 export function AppShell({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
   const { session, loading, isStaff, isAdmin, user } = useAuth();
@@ -138,32 +141,28 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
             <Link
               key={item.to}
               to={item.to}
-              className={cn(
-                "flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                ativo(item.to) && "bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_3px_0_0_var(--sidebar-primary)]",
-              )}
+              aria-current={ativo(item.to) ? "page" : undefined}
+              className={cn(classeItemMenu, "py-2.5", ativo(item.to) && classeItemAtivo)}
             >
-              <item.icon className={cn("size-4", ativo(item.to) && "text-sidebar-primary")} />
+              <item.icon className={cn("size-5 shrink-0", ativo(item.to) && "text-sidebar-primary")} />
               {item.label}
             </Link>
           ))}
         </nav>
         <div className="relative z-10 mt-3 flex shrink-0 flex-col gap-1 border-t border-sidebar-border pt-3">
-          <Button
-            asChild
-            variant="ghost"
-            className={cn(classeBotaoMenu, ativo("/perfil") && "bg-sidebar-accent text-sidebar-accent-foreground")}
+          <Link
+            to="/perfil"
+            aria-current={ativo("/perfil") ? "page" : undefined}
+            className={cn(classeItemMenu, "py-3", ativo("/perfil") && classeItemAtivo)}
           >
-            <Link to="/perfil">
-              <UserRound className="size-4" /> Meu perfil
-            </Link>
-          </Button>
-          <Button variant="ghost" className={classeBotaoMenu} onClick={alternar} aria-pressed={escuro}>
-            <IconeTema className="size-4" /> {rotuloTema}
-          </Button>
-          <Button variant="ghost" className={classeBotaoMenu} onClick={() => void sair()}>
-            <LogOut className="size-4" /> Sair
-          </Button>
+            <UserRound className={cn("size-5 shrink-0", ativo("/perfil") && "text-sidebar-primary")} /> Meu perfil
+          </Link>
+          <button type="button" className={cn(classeItemMenu, "py-3")} onClick={alternar} aria-pressed={escuro}>
+            <IconeTema className="size-5 shrink-0" /> {rotuloTema}
+          </button>
+          <button type="button" className={cn(classeItemMenu, "py-3")} onClick={() => void sair()}>
+            <LogOut className="size-5 shrink-0" /> Sair
+          </button>
         </div>
       </aside>
 
