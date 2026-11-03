@@ -77,3 +77,11 @@
 - [x] Tela aberta com fundo suave, faixa azul de 3 px e ícone azul; rodapé (Meu perfil, Modo escuro, Sair) no mesmo estilo e mais alto.
 - [x] Conferido no computador, claro e escuro, como administrador; celular sem mudanças.
 - [ ] Conferir como professor; não há conta de professor cadastrada.
+
+## Falta automática, carregamento e telas vazias (pedido de 03/11)
+- [ ] Etapa 1: cartão "Falta automática" na Presença (só administrador muda), verificação no servidor nos horários das turmas, registro marcado como automático.
+- [ ] Etapa 2: prazo de 5 a 60 minutos (padrão 15), texto e confirmação com o prazo, agenda atualizada ao mudar.
+- [ ] Etapa 3: blocos cinza com brilho em Alunos, Turmas e Presença; "—" nos resumos de Turmas.
+- [ ] Etapa 4: telas vazias com ícone, explicação e botão (um único componente).
+- [ ] Etapa 5: foto maior no celular e barra da chamada fixa no topo (Presença e Turmas).
+- [ ] Conferência: computador e celular, claro e escuro, administrador e professor; falta automática desligada no final.
