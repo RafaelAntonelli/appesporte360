@@ -1,7 +1,7 @@
 import { ordenarTurmasDoProfessor, usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Camera, CameraOff, Search, CalendarIcon, SlidersHorizontal } from "lucide-react";
+import { Camera, CameraOff, Search, CalendarIcon, SlidersHorizontal, UserSearch, ClipboardList, Bot } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -39,6 +39,10 @@ import { BotoesChamada, MarcarTodosPresentes, ProgressoChamada } from "@/compone
 import { EtiquetaSituacao } from "@/components/EtiquetaSituacao";
 import { situacaoDoAluno } from "@/lib/situacao";
 import { resumoChamada } from "@/lib/chamada";
+import { FaltaAutomatica } from "@/components/FaltaAutomatica";
+import { Carregando } from "@/components/Carregando";
+import { EstadoVazio } from "@/components/EstadoVazio";
+import { ehFaltaAutomatica } from "@/lib/falta-automatica";
 
 
 
@@ -46,10 +50,10 @@ export const Route = createFileRoute("/presenca")({
   component: PresencaPage,
   head: () => ({
     meta: [
-      { title: "Registro de presença | Arena Aquática" },
+      { title: "Registro de presença | Esporte 360" },
       { name: "description", content: "Registre a presença dos alunos por leitura de QR Code ou pela lista da turma." },
-      { property: "og:title", content: "Registro de presença | Arena Aquática" },
-      { property: "og:description", content: "Presença por QR Code na Arena Aquática." },
+      { property: "og:title", content: "Registro de presença | Esporte 360" },
+      { property: "og:description", content: "Presença por QR Code ou lista da turma no Esporte 360." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -104,7 +108,9 @@ function PresencaPage() {
   const [scanning, setScanning] = useState(false);
   const [busca, setBusca] = useState("");
   const [statusPorAluno, setStatusPorAluno] = useState<Record<string, StatusPresenca>>({});
-  const [registros, setRegistros] = useState<{ nome: string; codigo: string; hora: string; status: StatusPresenca; obs: string | null }[]>([]);
+  const [registros, setRegistros] = useState<{ nome: string; codigo: string; hora: string; status: StatusPresenca; obs: string | null; automatica?: boolean }[]>([]);
+  const [automaticas, setAutomaticas] = useState<Set<string>>(new Set());
+  const [carregando, setCarregando] = useState(true);
   const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null);
   const lastRef = useRef<{ code: string; at: number }>({ code: "", at: 0 });
   const [confirmacao, setConfirmacao] = useState<{ aluno: Aluno; jaRegistrado: StatusPresenca | null } | null>(null);
@@ -127,6 +133,7 @@ function PresencaPage() {
           setAlunos(c.alunos ?? []);
           setMatriculas(c.matriculas ?? []);
         }
+        setCarregando(false);
         return;
       }
       const [t, a, m] = await Promise.all([
@@ -140,6 +147,7 @@ function PresencaPage() {
       const listaAlunos = (a.data ?? []) as Aluno[];
       if (a.data) setAlunos(listaAlunos);
       if (m.data) setMatriculas(m.data as { aluno_id: string; turma_id: string }[]);
+      setCarregando(false);
       void salvarCache("presenca", { turmas: t.data ?? [], alunos: a.data ?? [], matriculas: m.data ?? [] });
       const comFoto = listaAlunos.filter((x) => x.foto_path);
       if (comFoto.length) {
@@ -161,7 +169,7 @@ function PresencaPage() {
     if (!estaOnline()) return;
     let consulta = supabase
       .from("presencas")
-      .select("aluno_id,turma_id,horario,status,observacoes,alunos(nome,codigo)")
+      .select("aluno_id,turma_id,horario,status,observacoes,metodo,alunos(nome,codigo)")
       .eq("data", hoje)
       .order("horario", { ascending: false });
     if (turmaId) consulta = consulta.eq("turma_id", turmaId);
@@ -194,6 +202,7 @@ function PresencaPage() {
       mapa[`${String(r.aluno_id)}:${String(r.turma_id ?? "")}`] = (r.status as StatusPresenca) ?? "presente";
     });
     setStatusPorAluno(mapa);
+    setAutomaticas(new Set(data.filter((r) => ehFaltaAutomatica(r.metodo as string)).map((r) => `${String(r.aluno_id)}:${String(r.turma_id ?? "")}`)));
     setRegistros(
       data.map((r) => ({
         nome: (r.alunos as { nome: string; codigo: string } | null)?.nome ?? "Aluno",
@@ -201,6 +210,7 @@ function PresencaPage() {
         hora: new Date(r.horario as string).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
         status: (r.status as StatusPresenca) ?? "presente",
         obs: (r.observacoes as string | null) ?? null,
+        automatica: ehFaltaAutomatica(r.metodo as string),
       })),
     );
   }
@@ -226,6 +236,7 @@ function PresencaPage() {
         horario: agoraIso,
       });
       setStatusPorAluno((s) => ({ ...s, [`${aluno.id}:${turmaId}`]: status }));
+      setAutomaticas((s) => { const n = new Set(s); n.delete(`${aluno.id}:${turmaId}`); return n; });
       setRegistros((r) => [
         { nome: aluno.nome, codigo: aluno.codigo, hora: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }), status, obs },
         ...r.filter((x) => x.nome !== aluno.nome),
@@ -380,6 +391,16 @@ function PresencaPage() {
     };
   }, []);
 
+  function limparFiltros() {
+    setBusca("");
+    setFiltroTurno("todos");
+    setFiltroModalidade("todas");
+    setFiltroDias("todos");
+    setFaixasEtarias([]);
+    setTurmaId("");
+  }
+  const temFiltros = Boolean(busca) || filtroTurno !== "todos" || filtroModalidade !== "todas" || filtroDias !== "todos" || faixasEtarias.length > 0 || Boolean(turmaId);
+
   const turmasDoAluno = (id: string) => matriculas
     .filter((matricula) => matricula.aluno_id === id)
     .map((matricula) => turmas.find((turma) => turma.id === matricula.turma_id))
@@ -424,6 +445,7 @@ function PresencaPage() {
 
   return (
     <AppShell title="Presença" subtitle={`Registros de ${data.toLocaleDateString("pt-BR")}`}>
+      <FaltaAutomatica />
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 [&>*]:min-w-0">
         <div className="space-y-2">
 
@@ -595,26 +617,29 @@ function PresencaPage() {
           <TabsContent value="lista" className="pt-4">
             <Card className="border-border/70">
               <CardContent className="space-y-3 pt-6">
-                {turmaId ? (
-                  <div className="space-y-3 rounded-xl border border-border/70 bg-secondary/40 p-3">
-                    <ProgressoChamada marcados={chamada.marcados} total={chamada.total} />
-                    <MarcarTodosPresentes
-                      pendentes={chamada.pendentes.length}
-                      emLicenca={chamada.emLicenca}
-                      onConfirmar={() => marcarTodosPresentes(chamada.pendentes)}
-                    />
-                  </div>
-                ) : (
-                  <p className="rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-                    Escolha a turma da aula para ver o progresso da chamada e marcar todos de uma vez.
-                  </p>
-                )}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input className="pl-9" placeholder="Buscar por matrícula ou nome..." value={busca} onChange={(e) => setBusca(e.target.value)} />
                 </div>
-                <div className="@container max-h-[38rem] space-y-2 overflow-y-auto pr-1">
-                  {filtrados.map((a) => {
+                <div className="@container space-y-2 lg:max-h-[38rem] lg:overflow-y-auto lg:pr-1">
+                  {turmaId ? (
+                    <div className="sticky top-[calc(3.75rem+env(safe-area-inset-top))] z-20 -mx-1 bg-card px-1 pb-2 md:top-0">
+                      <div className="space-y-3 rounded-xl border border-border/70 bg-secondary/40 p-3 shadow-suave">
+                        <ProgressoChamada marcados={chamada.marcados} total={chamada.total} />
+                        <MarcarTodosPresentes
+                          pendentes={chamada.pendentes.length}
+                          emLicenca={chamada.emLicenca}
+                          onConfirmar={() => marcarTodosPresentes(chamada.pendentes)}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+                      Escolha a turma da aula para ver o progresso da chamada e marcar todos de uma vez.
+                    </p>
+                  )}
+                  {carregando ? <Carregando formato="chamada" quantidade={5} rotulo="Carregando alunos..." /> : null}
+                  {!carregando && filtrados.map((a) => {
                     const atual = statusPorAluno[`${a.id}:${turmaId}`];
                     const lic = licencaDoAluno(a.id);
                     const situacao = situacaoDoAluno({ ativo: true, atestado_entregue: a.atestado_entregue, atestado_data: a.atestado_data }, Boolean(lic));
@@ -626,17 +651,20 @@ function PresencaPage() {
                               src={fotos[a.id]}
                               alt={`Foto de ${a.nome}`}
                               loading="lazy"
-                              className="size-14 shrink-0 rounded-full border border-border object-cover"
+                              className="size-20 shrink-0 rounded-full border border-border object-cover sm:size-14"
                             />
                           ) : (
-                            <span className="flex size-14 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-sm font-semibold text-muted-foreground">
+                            <span className="flex size-20 shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-base font-semibold text-muted-foreground sm:size-14 sm:text-sm">
                               {iniciais(a.nome)}
                             </span>
                           )}
                           <div className="min-w-0 space-y-0.5">
                             <button type="button" className="block max-w-full break-words text-left font-medium leading-snug hover:underline" title="Abrir perfil do aluno" onClick={() => setPerfilAlunoId(a.id)}>{a.nome}</button>
                             <p className="font-mono text-xs text-muted-foreground">Matrícula {a.codigo}</p>
-                            <EtiquetaSituacao situacao={situacao} texto={lic ? `Licença até ${formatarDataCurta(lic.data_retorno)}` : undefined} />
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <EtiquetaSituacao situacao={situacao} texto={lic ? `Licença até ${formatarDataCurta(lic.data_retorno)}` : undefined} />
+                              {automaticas.has(`${a.id}:${turmaId}`) ? <SeloAutomatica /> : null}
+                            </div>
                           </div>
                         </div>
                         <BotoesChamada
@@ -646,7 +674,20 @@ function PresencaPage() {
                       </div>
                     );
                   })}
-                  {!filtrados.length && <p className="py-6 text-center text-sm text-muted-foreground">Nenhum aluno encontrado.</p>}
+                  {!carregando && !filtrados.length ? (
+                    <EstadoVazio
+                      icone={UserSearch}
+                      titulo={busca ? `Nenhum aluno encontrado para "${busca}"` : "Nenhum aluno para os filtros escolhidos"}
+                      descricao={
+                        alunos.length
+                          ? busca
+                            ? "Confira a grafia ou busque pelo número da matrícula. Os filtros acima também podem estar escondendo o aluno."
+                            : "Nenhum aluno ativo está matriculado em turmas com essa combinação de turno, modalidade, dias, faixa etária e turma."
+                          : "Ainda não há alunos ativos com matrícula. Faça as matrículas na tela Alunos."
+                      }
+                      acoes={temFiltros ? <Button variant="outline" onClick={limparFiltros}>Limpar filtros</Button> : null}
+                    />
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
@@ -661,12 +702,14 @@ function PresencaPage() {
               <div key={i} className="rounded-lg bg-secondary/60 px-3 py-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span><span className="font-mono text-xs text-muted-foreground">{r.codigo}</span> · {r.nome}</span>
-                  <span className="text-muted-foreground">{rotuloStatus[r.status]} · {r.hora}</span>
+                  <span className="flex shrink-0 items-center gap-1.5 text-muted-foreground">{r.automatica ? <SeloAutomatica /> : null}{rotuloStatus[r.status]} · {r.hora}</span>
                 </div>
                 {r.obs ? <p className="mt-0.5 text-xs text-muted-foreground">Obs.: {r.obs}</p> : null}
               </div>
             ))}
-            {!registros.length && <p className="py-8 text-center text-sm text-muted-foreground">Nenhum registro nesta data.</p>}
+            {!registros.length ? (
+              <EstadoVazio compacto icone={ClipboardList} titulo="Nenhum registro nesta data" descricao="As presenças, faltas e justificativas marcadas aparecem aqui." />
+            ) : null}
             </div>
           </CardContent>
         </Card>
@@ -719,5 +762,14 @@ function PresencaPage() {
       <PerfilAluno alunoId={perfilAlunoId} onFechar={() => setPerfilAlunoId(null)} />
     </AppShell>
 
+  );
+}
+
+/** Identifica a falta lançada pelo sistema (e não pela equipe). */
+function SeloAutomatica() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground" title="Falta lançada automaticamente pelo sistema">
+      <Bot className="size-3" aria-hidden /> Automática
+    </span>
   );
 }

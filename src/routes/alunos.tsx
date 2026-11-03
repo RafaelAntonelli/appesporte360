@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, Search, Pencil, Image as ImageIcon, AlertTriangle, Bell, Trash2, UserX, UserCheck, Download, Camera, Upload, IdCard, FileDown, FileSpreadsheet, ChevronDown, ChevronUp, FileWarning, Stethoscope, MoreHorizontal, SlidersHorizontal, Eye } from "lucide-react";
+import { Plus, Search, Pencil, Image as ImageIcon, AlertTriangle, Bell, Trash2, UserX, UserCheck, Download, Camera, Upload, IdCard, FileDown, FileSpreadsheet, ChevronDown, ChevronUp, FileWarning, Stethoscope, MoreHorizontal, SlidersHorizontal, Eye, Users, CloudOff, RefreshCw, SearchX } from "lucide-react";
+import { Carregando } from "@/components/Carregando";
+import { EstadoVazio } from "@/components/EstadoVazio";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -356,6 +358,19 @@ function AlunosPage() {
     toast.success("Foto excluída");
     void carregar();
     return;
+  }
+
+  /** Volta todos os filtros (situação e "Mais filtros") para "Todos"; a busca não muda. */
+  function limparFiltrosAlunos() {
+    setFiltroNotificacao("todos");
+    setFiltroPcd("todos");
+    setFiltroSexo("todos");
+    setFiltroModalidade("todas");
+    setFiltroHorario("todos");
+    setFiltroDias("todos");
+    setFiltroTurno("todos");
+    setIdadeMin("");
+    setIdadeMax("");
   }
 
   function abrirNovo() {
@@ -2033,11 +2048,50 @@ function AlunosPage() {
             </DropdownMenuContent>
           </DropdownMenu>
         );
-        if (!filtrados.length) {
+        if (carregando && !alunos.length) {
+          return <Carregando formato="linhas" quantidade={8} rotulo="Carregando alunos..." />;
+        }
+        if (erro && !alunos.length) {
           return (
-            <p className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
-              {alunos.length ? "Nenhum aluno encontrado com estes filtros." : "Nenhum aluno cadastrado ainda."}
-            </p>
+            <EstadoVazio
+              tom="erro"
+              icone={CloudOff}
+              titulo="Não foi possível carregar os alunos"
+              descricao={estaOnline() ? "Houve um problema ao buscar a lista. Confira a internet e tente de novo." : erro}
+              acoes={<Button onClick={() => void carregar()}><RefreshCw className="size-4" /> Tentar de novo</Button>}
+            />
+          );
+        }
+        if (!alunos.length) {
+          return (
+            <EstadoVazio
+              icone={Users}
+              titulo="Nenhum aluno cadastrado"
+              descricao={pode("cadastrar_alunos") ? "Comece pela primeira matrícula. Os alunos cadastrados aparecem nesta lista." : "Quando a equipe fizer as matrículas, os alunos aparecem nesta lista."}
+              acoes={pode("cadastrar_alunos") ? <Button onClick={abrirNovo}><Plus className="size-4" /> Nova matrícula</Button> : null}
+            />
+          );
+        }
+        if (!filtrados.length) {
+          return busca.trim() ? (
+            <EstadoVazio
+              icone={SearchX}
+              titulo={`Nenhum aluno encontrado para "${busca.trim()}"`}
+              descricao="Confira a grafia ou busque pelo código, CPF ou telefone"
+              acoes={
+                <>
+                  <Button variant="outline" onClick={() => setBusca("")}>Limpar busca</Button>
+                  <Button variant="outline" onClick={limparFiltrosAlunos}>Limpar filtros</Button>
+                </>
+              }
+            />
+          ) : (
+            <EstadoVazio
+              icone={SearchX}
+              titulo="Nenhum aluno com estes filtros"
+              descricao="Nenhum aluno combina com a situação e os filtros escolhidos."
+              acoes={<Button variant="outline" onClick={limparFiltrosAlunos}>Limpar filtros</Button>}
+            />
           );
         }
         return (

@@ -262,3 +262,26 @@
 @utility sombra-texto-menu {
   text-shadow: 0 1px 2px oklch(0 0 0 / 35%);
 }
+
+/* Blocos cinza do carregamento, com um brilho leve passando. */
+@keyframes brilho-carregando {
+  0% { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+
+@utility bloco-carregando {
+  background-color: color-mix(in oklab, var(--muted-foreground) 16%, var(--card));
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--card) 55%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: brilho-carregando 1.4s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

@@ -1,7 +1,7 @@
 import { usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Users, Trash2, Pencil, Clock, CalendarDays, Printer, Search, LayoutGrid, UserCheck } from "lucide-react";
+import { Plus, Users, Trash2, Pencil, Clock, CalendarDays, Printer, Search, LayoutGrid, UserCheck, Bot, SearchX, UserRound } from "lucide-react";
 import { normalizarTexto } from "@/lib/formatacao";
 import { numeroBR, resumoTurmas } from "@/lib/turmas-resumo";
 import { toast } from "sonner";
@@ -13,7 +13,10 @@ import { BotoesChamada, MarcarTodosPresentes, ProgressoChamada } from "@/compone
 import { EtiquetaSituacao } from "@/components/EtiquetaSituacao";
 import { situacaoDoAluno } from "@/lib/situacao";
 import { resumoChamada } from "@/lib/chamada";
-import { formatarDataCurta, licencaVigente, type LicencaMedica } from "@/lib/licenca";
+import { dataISO, formatarDataCurta, licencaVigente, type LicencaMedica } from "@/lib/licenca";
+import { Carregando, valorOuTraco } from "@/components/Carregando";
+import { EstadoVazio } from "@/components/EstadoVazio";
+import { ehFaltaAutomatica } from "@/lib/falta-automatica";
 
 import { useGruposDias, diasDoLabel } from "@/lib/dias";
 import { AppShell } from "@/components/AppShell";
@@ -84,7 +87,7 @@ const ROTULO_PRESENCA: Record<StatusPresenca, string> = {
 };
 
 function TurmasPage() {
-  const { minhasTurmas } = usePermissoes();
+  const { minhasTurmas, pode } = usePermissoes();
   const { horarios, lista: listaHorarios, recarregar: recarregarHorarios } = useHorarios();
   const { grupos, lista: listaGrupos, recarregar: recarregarGrupos } = useGruposDias();
   const [gerenciarDias, setGerenciarDias] = useState(false);
@@ -123,6 +126,8 @@ function TurmasPage() {
 
   const [novoHorario, setNovoHorario] = useState("");
   const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [carregandoTurmas, setCarregandoTurmas] = useState(true);
+  const [automaticas, setAutomaticas] = useState<Set<string>>(new Set());
   const [contagem, setContagem] = useState<Record<string, number>>({});
   const [aberto, setAberto] = useState(false);
   const [editando, setEditando] = useState<Turma | null>(null);
@@ -161,6 +166,14 @@ function TurmasPage() {
       for (const row of m.data as { turma_id: string }[]) c[row.turma_id] = (c[row.turma_id] ?? 0) + 1;
       setContagem(c);
     }
+    setCarregandoTurmas(false);
+  }
+
+  function limparFiltros() {
+    setFiltroModalidade("todas");
+    setFiltroHorario("todos");
+    setFiltroTurno("todos");
+    setFiltroDias("todos");
   }
 
   useEffect(() => {
@@ -318,32 +331,33 @@ function TurmasPage() {
       setFotos(mapa);
     }
 
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = dataISO();
     const pres = await supabase
       .from("presencas")
-      .select("aluno_id,status,observacoes")
+      .select("aluno_id,status,observacoes,metodo")
       .eq("data", hoje)
+      .eq("turma_id", t.id)
       .in("aluno_id", lista.map((a) => a.id));
     if (pres.data) {
       const mapa: Record<string, StatusPresenca> = {};
       const mapaObs: Record<string, string> = {};
-      for (const r of pres.data as { aluno_id: string; status: string; observacoes: string | null }[]) {
+      const auto = new Set<string>();
+      for (const r of pres.data as { aluno_id: string; status: string; observacoes: string | null; metodo: string | null }[]) {
         mapa[r.aluno_id] = (r.status as StatusPresenca) ?? "presente";
         mapaObs[r.aluno_id] = r.observacoes ?? "";
+        if (ehFaltaAutomatica(r.metodo)) auto.add(r.aluno_id);
       }
       setStatusPresenca(mapa);
       setObservacoesPresenca(mapaObs);
+      setAutomaticas(auto);
     }
   }
 
   async function registrarPresenca(alunoId: string, status: StatusPresenca) {
-    const hoje = new Date().toISOString().slice(0, 10);
-    const existente = await supabase
-      .from("presencas")
-      .select("id")
-      .eq("aluno_id", alunoId)
-      .eq("data", hoje)
-      .maybeSingle();
+    const hoje = dataISO();
+    let consulta = supabase.from("presencas").select("id,observacoes,metodo").eq("aluno_id", alunoId).eq("data", hoje);
+    consulta = turmaAberta ? consulta.eq("turma_id", turmaAberta.id) : consulta.is("turma_id", null);
+    const existente = await consulta.maybeSingle();
     const { error } = existente.data
       ? await supabase
           .from("presencas")
@@ -358,6 +372,11 @@ function TurmasPage() {
         });
     if (error) return toast.error(error.message);
     setStatusPresenca((s) => ({ ...s, [alunoId]: status }));
+    if (existente.data && ehFaltaAutomatica(existente.data.metodo)) {
+      // a marcação da equipe substitui a falta automática (o texto automático é apagado)
+      setObservacoesPresenca((o) => ({ ...o, [alunoId]: "" }));
+    }
+    setAutomaticas((s) => { const n = new Set(s); n.delete(alunoId); return n; });
     toast.success(ROTULO_PRESENCA[status] + " registrada");
     return;
   }
@@ -365,12 +384,10 @@ function TurmasPage() {
   /** Marca como presentes só quem ainda não tem registro hoje; quem está em licença fica de fora. */
   async function marcarTodosPresentes(ids: string[]) {
     if (!ids.length) return;
-    const hoje = new Date().toISOString().slice(0, 10);
-    const { data: existentes, error: erroConsulta } = await supabase
-      .from("presencas")
-      .select("aluno_id")
-      .eq("data", hoje)
-      .in("aluno_id", ids);
+    const hoje = dataISO();
+    let consultaExistentes = supabase.from("presencas").select("aluno_id").eq("data", hoje).in("aluno_id", ids);
+    consultaExistentes = turmaAberta ? consultaExistentes.eq("turma_id", turmaAberta.id) : consultaExistentes.is("turma_id", null);
+    const { data: existentes, error: erroConsulta } = await consultaExistentes;
     if (erroConsulta) return void toast.error(erroConsulta.message);
     const jaTem = new Set((existentes ?? []).map((r) => String(r.aluno_id)));
     const novos = ids.filter((id) => !jaTem.has(id));
@@ -387,13 +404,10 @@ function TurmasPage() {
   async function salvarObservacao() {
     if (!editandoObservacao) return;
     const { alunoId, texto } = editandoObservacao;
-    const hoje = new Date().toISOString().slice(0, 10);
-    const existente = await supabase
-      .from("presencas")
-      .select("id")
-      .eq("aluno_id", alunoId)
-      .eq("data", hoje)
-      .maybeSingle();
+    const hoje = dataISO();
+    let consulta = supabase.from("presencas").select("id").eq("aluno_id", alunoId).eq("data", hoje);
+    consulta = turmaAberta ? consulta.eq("turma_id", turmaAberta.id) : consulta.is("turma_id", null);
+    const existente = await consulta.maybeSingle();
     const { error } = existente.data
       ? await supabase
           .from("presencas")
@@ -433,7 +447,7 @@ function TurmasPage() {
     return !b || normalizarTexto(a.nome).includes(b) || normalizarTexto(a.codigo).includes(b);
   });
 
-  const hojeChamada = new Date().toISOString().slice(0, 10);
+  const hojeChamada = dataISO();
   const licencaDoAluno = (id: string) => licencasTurma.find((l) => l.aluno_id === id && licencaVigente(l, hojeChamada));
   const chamada = resumoChamada(
     (alunosTurma ?? []).filter((a) => a.status === "ativa").map((a) => a.id),
@@ -504,7 +518,7 @@ function TurmasPage() {
               <c.icone className="size-4" />
             </span>
             <div className="min-w-0 leading-tight">
-              <p className="font-display text-xl font-semibold">{numeroBR(c.valor)}</p>
+              <p className="font-display text-xl font-semibold">{valorOuTraco(carregandoTurmas, numeroBR(c.valor))}</p>
               <p className="truncate text-xs text-sidebar-foreground/70">{c.rotulo}</p>
             </div>
           </div>
@@ -551,7 +565,7 @@ function TurmasPage() {
         <div className="flex min-w-0 flex-wrap gap-2 sm:ml-auto">
           <Button variant="outline" onClick={() => setGerenciarDias(true)}><CalendarDays className="size-4" /> Editar dias</Button>
           <Button variant="outline" onClick={() => setGerenciarHorarios(true)}><Clock className="size-4" /> Editar horários</Button>
-          <Button onClick={abrirNova}><Plus className="size-4" /> Nova turma</Button>
+          {pode("editar_turmas") ? <Button onClick={abrirNova}><Plus className="size-4" /> Nova turma</Button> : null}
         </div>
       </div>
 
@@ -615,7 +629,8 @@ function TurmasPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {carregandoTurmas ? <Carregando formato="cartoes" quantidade={6} rotulo="Carregando turmas..." /> : null}
+      <div className={carregandoTurmas ? "hidden" : "grid gap-4 md:grid-cols-2 xl:grid-cols-3"}>
         {visiveis.map((t) => (
           <Card
             key={t.id}
@@ -693,17 +708,31 @@ function TurmasPage() {
             </CardContent>
           </Card>
         ))}
-        {!visiveis.length && (
-          <p className="rounded-xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground md:col-span-2 xl:col-span-3">
-            Nenhuma turma para este filtro.
-          </p>
-        )}
+        {!visiveis.length ? (
+          turmas.length ? (
+            <EstadoVazio
+              className="md:col-span-2 xl:col-span-3"
+              icone={SearchX}
+              titulo="Nenhuma turma para estes filtros"
+              descricao="Nenhuma turma combina com a modalidade, os dias, o turno e o horário escolhidos."
+              acoes={<Button variant="outline" onClick={limparFiltros}>Limpar filtros</Button>}
+            />
+          ) : (
+            <EstadoVazio
+              className="md:col-span-2 xl:col-span-3"
+              icone={CalendarDays}
+              titulo="Nenhuma turma cadastrada"
+              descricao={pode("editar_turmas") ? "Crie a primeira turma escolhendo a modalidade, os dias e o horário." : "Quando um administrador criar as turmas, elas aparecem aqui."}
+              acoes={pode("editar_turmas") ? <Button onClick={abrirNova}><Plus className="size-4" /> Nova turma</Button> : null}
+            />
+          )
+        ) : null}
       </div>
 
       <PerfilAluno alunoId={perfilAlunoId} onFechar={() => setPerfilAlunoId(null)} />
 
       <Dialog open={!!turmaAberta} onOpenChange={(o) => !o && setTurmaAberta(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[85vh] grid-cols-[minmax(0,1fr)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display">{turmaAberta?.nome}</DialogTitle>
           </DialogHeader>
@@ -711,13 +740,15 @@ function TurmasPage() {
             {turmaAberta?.horario ?? "Sem horário"} · {alunosTurma?.length ?? 0} de {turmaAberta?.capacidade ?? 40} vagas
           </p>
           {alunosTurma?.length ? (
-            <div className="space-y-3 rounded-xl border border-border/70 bg-secondary/40 p-3">
-              <ProgressoChamada marcados={chamada.marcados} total={chamada.total} />
-              <MarcarTodosPresentes
-                pendentes={chamada.pendentes.length}
-                emLicenca={chamada.emLicenca}
-                onConfirmar={() => marcarTodosPresentes(chamada.pendentes)}
-              />
+            <div className="sticky -top-6 z-20 -mx-6 bg-background px-6 pb-1 pt-2">
+              <div className="space-y-3 rounded-xl border border-border/70 bg-secondary/40 p-3 shadow-suave">
+                <ProgressoChamada marcados={chamada.marcados} total={chamada.total} />
+                <MarcarTodosPresentes
+                  pendentes={chamada.pendentes.length}
+                  emLicenca={chamada.emLicenca}
+                  onConfirmar={() => marcarTodosPresentes(chamada.pendentes)}
+                />
+              </div>
             </div>
           ) : null}
           <div className="relative">
@@ -726,9 +757,22 @@ function TurmasPage() {
           </div>
           <div className="space-y-2">
             {alunosTurma === null ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Carregando alunos...</p>
+              <Carregando formato="chamada" quantidade={4} rotulo="Carregando alunos..." />
             ) : alunosTurma.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">Nenhum aluno matriculado nesta turma.</p>
+              <EstadoVazio
+                compacto
+                icone={UserRound}
+                titulo="Nenhum aluno matriculado nesta turma"
+                descricao="As matrículas são feitas na tela Alunos, em Nova matrícula."
+              />
+            ) : alunosVisiveis.length === 0 ? (
+              <EstadoVazio
+                compacto
+                icone={SearchX}
+                titulo={`Nenhum aluno encontrado para "${buscaAluno}"`}
+                descricao="Confira a grafia ou busque pelo número da matrícula."
+                acoes={<Button variant="outline" onClick={() => setBuscaAluno("")}>Limpar busca</Button>}
+              />
             ) : (
               alunosVisiveis.map((a) => {
                 const lic = licencaDoAluno(a.id);
@@ -737,10 +781,10 @@ function TurmasPage() {
                   <div className="flex items-center gap-3">
                     {fotos[a.id] ? (
                       <button type="button" title="Ampliar foto" className="shrink-0" onClick={() => setFotoAmpliada({ url: fotos[a.id]!, nome: a.nome })}>
-                        <img src={fotos[a.id]} alt={`Foto de ${a.nome}`} className="size-14 rounded-full border border-border object-cover" />
+                        <img src={fotos[a.id]} alt={`Foto de ${a.nome}`} className="size-20 rounded-full border border-border object-cover sm:size-14" />
                       </button>
                     ) : (
-                      <div className="grid size-14 shrink-0 place-items-center rounded-full border border-border bg-secondary text-sm font-semibold text-muted-foreground">
+                      <div className="grid size-20 shrink-0 place-items-center rounded-full border border-border bg-secondary text-base font-semibold text-muted-foreground sm:size-14 sm:text-sm">
                         {a.nome.slice(0, 2).toUpperCase()}
                       </div>
                     )}
@@ -761,6 +805,11 @@ function TurmasPage() {
                         />
                         {a.pcd ? <Badge variant="outline">PCD</Badge> : null}
                         {a.status !== "ativa" ? <Badge variant="secondary">Matrícula {a.status}</Badge> : null}
+                        {automaticas.has(a.id) ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground" title="Falta lançada automaticamente pelo sistema">
+                            <Bot className="size-3" aria-hidden /> Falta automática
+                          </span>
+                        ) : null}
                       </div>
                       <p className="text-xs text-muted-foreground">{a.modalidade}</p>
                     </div>

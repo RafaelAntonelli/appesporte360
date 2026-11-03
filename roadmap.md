@@ -79,9 +79,10 @@
 - [ ] Conferir como professor; não há conta de professor cadastrada.
 
 ## Falta automática, carregamento e telas vazias (pedido de 03/11)
-- [ ] Etapa 1: cartão "Falta automática" na Presença (só administrador muda), verificação no servidor nos horários das turmas, registro marcado como automático.
-- [ ] Etapa 2: prazo de 5 a 60 minutos (padrão 15), texto e confirmação com o prazo, agenda atualizada ao mudar.
-- [ ] Etapa 3: blocos cinza com brilho em Alunos, Turmas e Presença; "—" nos resumos de Turmas.
-- [ ] Etapa 4: telas vazias com ícone, explicação e botão (um único componente).
-- [ ] Etapa 5: foto maior no celular e barra da chamada fixa no topo (Presença e Turmas).
-- [ ] Conferência: computador e celular, claro e escuro, administrador e professor; falta automática desligada no final.
+- [x] Etapa 1: cartão "Falta automática" na Presença (só administrador muda), verificação no servidor nos horários das turmas, registro marcado como automático.
+- [x] Etapa 2: prazo de 5 a 60 minutos (padrão 15), texto e confirmação com o prazo, agenda atualizada ao mudar.
+- [x] Etapa 3: blocos cinza com brilho em Alunos, Turmas e Presença; "—" nos resumos de Turmas.
+- [x] Etapa 4: telas vazias com ícone, explicação e botão (um único componente).
+- [x] Etapa 5: foto maior no celular e barra da chamada fixa no topo (Presença e Turmas).
+- [x] Conferência: computador e celular, claro e escuro; falta automática desligada no final (prazo de volta a 15 min), nenhuma presença criada.
+- [ ] Conferir com uma conta de professor de verdade que o cartão fica só para leitura (testado simulando o papel de professor); não há conta de professor cadastrada.

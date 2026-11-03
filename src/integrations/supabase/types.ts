@@ -500,6 +500,89 @@ export type Database = {
         }
         Relationships: []
       }
+      falta_automatica: {
+        Row: {
+          ativa: boolean
+          atualizado_por: string | null
+          atualizado_por_nome: string | null
+          id: boolean
+          ligada_em: string | null
+          minutos: number
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          atualizado_por?: string | null
+          atualizado_por_nome?: string | null
+          id?: boolean
+          ligada_em?: string | null
+          minutos?: number
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          atualizado_por?: string | null
+          atualizado_por_nome?: string | null
+          id?: boolean
+          ligada_em?: string | null
+          minutos?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      falta_automatica_agenda: {
+        Row: {
+          agenda: string
+          created_at: string
+          horario_brasilia: string
+          nome: string
+        }
+        Insert: {
+          agenda: string
+          created_at?: string
+          horario_brasilia: string
+          nome: string
+        }
+        Update: {
+          agenda?: string
+          created_at?: string
+          horario_brasilia?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      faltas_automaticas_execucoes: {
+        Row: {
+          data: string
+          executado_em: string
+          faltas: number
+          prazo_minutos: number
+          turma_id: string
+        }
+        Insert: {
+          data: string
+          executado_em?: string
+          faltas?: number
+          prazo_minutos: number
+          turma_id: string
+        }
+        Update: {
+          data?: string
+          executado_em?: string
+          faltas?: number
+          prazo_minutos?: number
+          turma_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "faltas_automaticas_execucoes_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fila_espera: {
         Row: {
           created_at: string
@@ -956,12 +1039,14 @@ export type Database = {
         Args: { _ativo: boolean; _dia: number; _hora: number; _minuto: number }
         Returns: undefined
       }
+      aplicar_faltas_automaticas: { Args: never; Returns: number }
       buscar_pedido_aparelho: { Args: { _codigo: string }; Returns: string }
       calc_faixa_etaria: {
         Args: { _idade: number; _nascimento: string }
         Returns: string
       }
       calc_turno: { Args: { _horario: string }; Returns: string }
+      dia_semana_num: { Args: { _dia: string }; Returns: number }
       disparar_backup_semanal: { Args: never; Returns: undefined }
       gerar_codigo_matricula: { Args: never; Returns: string }
       has_role: {
@@ -971,6 +1056,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      inicio_da_aula: { Args: { _horario: string }; Returns: number }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       liberar_aparelho_aluno: { Args: { _id: string }; Returns: undefined }
       localizar_aluno_acesso: {
@@ -984,6 +1070,7 @@ export type Database = {
       permissoes_desbloqueadas: { Args: { _user_id: string }; Returns: boolean }
       pode: { Args: { _permissao: string; _user_id: string }; Returns: boolean }
       recusar_aparelho_aluno: { Args: { _id: string }; Returns: undefined }
+      reprogramar_falta_automatica: { Args: never; Returns: undefined }
       revogar_aparelho_aluno: { Args: { _id: string }; Returns: undefined }
     }
     Enums: {
