@@ -21,7 +21,7 @@
 - Teacher-permission writes need a fresh admin password re-check (desbloquearPermissoesFn writes a short-lived desbloqueios_permissoes row the RLS requires) — why: an unattended admin session must not suffice.
 - Records keep the registrar's name in trigger-filled *_por_nome columns; user FKs are ON DELETE SET NULL — why: removed accounts keep authorship.
 - Use DOCUMENTOS_PLANILHA as the shared document catalog in enrollment forms and profiles, and keep backup document destinations aligned — why: every attachment must remain visible and exportable.
-- Students have no auth accounts: a device token (SHA-256 hash in aluno_aparelhos, admin-approved in person) gates public server functions that touch only the caller's own record via the admin client — why: students never reach others' data.
+- Students have no auth accounts: an in-person-approved device token (SHA-256 in aluno_aparelhos) gates public server fns that read only the caller's record; their sole write is own photo — why: no student edits data.
 - Student push goes from server code via the linked Firebase Cloud Messaging connection; public/sw.js displays it — why: one worker scope serves offline cache and push.
 - Class reminders run from a managed 5-minute HTTP schedule hitting /api/public/jobs/lembretes-aula; window rules live in src/lib/lembretes.ts (Brasília time) and lembretes_aula_enviados reserves each turma/date/lead time before sending — why: overlapping windows tolerate a missed tick without duplicate pushes.
 - Drive files are named CODIGO_TIPO.ext (src/lib/arquivos-drive.ts), the backup sheet has no links, and restoration links files by code — why: codes are unique, names are not.

@@ -88,6 +88,6 @@
 - [ ] Conferir com uma conta de professor de verdade que o cartão fica só para leitura (testado simulando o papel de professor); não há conta de professor cadastrada.
 
 ## Área do Aluno: perfil só para consulta e crachá automático (pedido de 04/11)
-- [ ] Etapa 1: aba "Meu perfil" com cadastro completo em blocos, "Não informado" em cinza, sem edição (também bloqueado no servidor); fotos continuam.
-- [ ] Etapa 2: crachá aparece sozinho (mesmo modelo da equipe), bloco cinza ao carregar, "Baixar PDF do crachá" acima, erro com "Tentar de novo".
-- [ ] Etapa 3: conferir como aluno (celular/computador, claro/escuro), PDF igual à imagem, edição da equipe em Alunos.
+- [x] Etapa 1: aba "Meu perfil" com cadastro completo em blocos, "Não informado" em cinza, sem edição (também bloqueado no servidor); fotos continuam.
+- [x] Etapa 2: crachá aparece sozinho (mesmo modelo da equipe), bloco cinza ao carregar, "Baixar PDF do crachá" acima, erro com "Tentar de novo".
+- [x] Etapa 3: conferir como aluno (celular/computador, claro/escuro), PDF igual à imagem, edição da equipe em Alunos.
