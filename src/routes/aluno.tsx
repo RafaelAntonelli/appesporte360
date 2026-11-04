@@ -1,10 +1,28 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useRef, useState } from "react";
-import { Bell, BellRing, Camera, CheckCheck, Download, FileText, ImageIcon, KeyRound, LogOut, Save, UserRound } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  AlertTriangle,
+  Bell,
+  BellRing,
+  CalendarDays,
+  Camera,
+  CheckCheck,
+  FileText,
+  HeartPulse,
+  IdCard,
+  ImageIcon,
+  Info,
+  KeyRound,
+  LogOut,
+  Phone,
+  RefreshCw,
+  School,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
-  atualizarContatoAlunoFn,
   configNotificacoesAlunoFn,
   enviarFotoAlunoFn,
   lembretesAulaAlunoFn,
@@ -18,16 +36,19 @@ import {
   type DadosAreaAluno,
   type TurmaDoAluno,
 } from "@/lib/aluno.functions";
-import { FOTO_TIPOS, validarEmail, validarFoto, validarTelefone } from "@/lib/aluno-acesso";
+import { FOTO_TIPOS, validarFoto } from "@/lib/aluno-acesso";
 import { consentimentoLocal, salvarConsentimentoLocal, tokenLocal } from "@/lib/aluno-local";
 import { notificacoesSuportadas, obterTokenNotificacao } from "@/lib/push-aluno";
 import { otimizarImagem } from "@/lib/imagem";
-import { formatarCelular } from "@/lib/formatacao";
+import { NAO_INFORMADO, dataBrasileira, textoNascimento } from "@/lib/perfil-aluno";
+import { formatarDataCurta } from "@/lib/licenca";
+import { EtiquetaSituacao } from "@/components/EtiquetaSituacao";
+import { BlocoCarregando } from "@/components/Carregando";
+import { EstadoVazio } from "@/components/EstadoVazio";
 import { gerarCrachaPreviewImagem, gerarCrachasPdfFielAoPreview, type DadosCracha } from "@/lib/cracha";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -63,7 +84,7 @@ function quando(iso: string) {
 }
 
 const ATESTADO = {
-  valido: { rotulo: "Válido", classe: "bg-secondary text-secondary-foreground" },
+  valido: { rotulo: "Em dia", classe: "bg-secondary text-secondary-foreground" },
   vencendo: { rotulo: "Vencendo", classe: "bg-accent text-accent-foreground" },
   vencido: { rotulo: "Vencido", classe: "bg-destructive text-destructive-foreground" },
   nao_entregue: { rotulo: "Não entregue", classe: "bg-muted text-muted-foreground" },
@@ -83,7 +104,6 @@ function AreaAluno() {
   const [dados, setDados] = useState<DadosAreaAluno | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aba, setAba] = useState("dia");
-  const [perfilAberto, setPerfilAberto] = useState(false);
   const [consentAberto, setConsentAberto] = useState(false);
   const [ativando, setAtivando] = useState(false);
   const [semPush, setSemPush] = useState(false);
@@ -257,7 +277,7 @@ function AreaAluno() {
           </div>
         </div>
         <div className="mx-auto mt-4 flex max-w-lg flex-wrap gap-2">
-          <Button size="sm" variant="secondary" onClick={() => setPerfilAberto(true)}>
+          <Button size="sm" variant="secondary" onClick={() => setAba("perfil")}>
             <UserRound className="mr-1 size-4" /> Acessar meu perfil
           </Button>
           {!dados.aparelho.loginSalvo ? (
@@ -281,10 +301,11 @@ function AreaAluno() {
         ) : null}
 
         <Tabs value={aba} onValueChange={setAba} className="mt-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="dia">Meu dia</TabsTrigger>
-            <TabsTrigger value="cracha">Crachá</TabsTrigger>
-            <TabsTrigger value="avisos" className="gap-1">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="dia" className="px-1">Meu dia</TabsTrigger>
+            <TabsTrigger value="perfil" className="px-1">Meu perfil</TabsTrigger>
+            <TabsTrigger value="cracha" className="px-1">Crachá</TabsTrigger>
+            <TabsTrigger value="avisos" className="gap-1 px-1">
               Avisos
               {naoLidos.length ? (
                 <span className="grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[11px] font-bold leading-5 text-destructive-foreground">
@@ -329,6 +350,10 @@ function AreaAluno() {
                 </span>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="perfil" className="pt-2">
+            <MeuPerfil dados={dados} aoMudarFoto={() => void carregar(true)} />
           </TabsContent>
 
           <TabsContent value="cracha" className="pt-2">
@@ -387,8 +412,6 @@ function AreaAluno() {
         </Tabs>
       </main>
 
-      <PerfilDoAluno aberto={perfilAberto} aoFechar={() => setPerfilAberto(false)} dados={dados} aoSalvar={() => void carregar(true)} />
-
       <Dialog open={consentAberto} onOpenChange={setConsentAberto}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -433,8 +456,11 @@ function ItemAviso({ aviso, aoLer }: { aviso: AvisoDoAluno; aoLer: () => void })
 function CrachaDigital({ dados }: { dados: DadosAreaAluno }) {
   const [turmaId, setTurmaId] = useState(dados.turmas[0]?.id ?? "");
   const [imagem, setImagem] = useState<string | null>(null);
+  const [falhou, setFalhou] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
   const [gerando, setGerando] = useState(false);
   const turma = dados.turmas.find((t) => t.id === turmaId) ?? dados.turmas[0];
+  // Mesmos campos que a equipe usa na tela Alunos: mesmo modelo, mesma imagem, mesmo PDF.
   const cracha: DadosCracha = {
     nome: dados.aluno.nome,
     rg: dados.aluno.rg,
@@ -448,28 +474,23 @@ function CrachaDigital({ dados }: { dados: DadosAreaAluno }) {
     fotoUrl: dados.aluno.fotoUrl,
     codigo: dados.aluno.codigo,
   };
-  const chave = `${turmaId}|${dados.aluno.fotoUrl ?? ""}|${dados.aluno.telefone ?? ""}`;
+  // A foto vem com link temporário que muda a cada atualização; a chave usa só o arquivo.
+  const fotoChave = (dados.aluno.fotoUrl ?? "").split("?")[0];
+  const chave = `${turmaId}|${fotoChave}|${dados.aluno.telefone ?? ""}|${tentativa}`;
 
   useEffect(() => {
     let vivo = true;
     setImagem(null);
+    setFalhou(false);
     void gerarCrachaPreviewImagem(cracha)
       .then((url) => vivo && setImagem(url))
-      .catch(() => vivo && toast.error("Não foi possível montar o crachá."));
+      .catch(() => vivo && setFalhou(true));
     return () => {
       vivo = false;
     };
   }, [chave]);
 
   const nomeArquivo = `cracha-${dados.aluno.nome.toLowerCase().replace(/\s+/g, "-")}`;
-
-  function baixarImagem() {
-    if (!imagem) return;
-    const a = document.createElement("a");
-    a.href = imagem;
-    a.download = `${nomeArquivo}.png`;
-    a.click();
-  }
 
   async function baixarPdf() {
     setGerando(true);
@@ -493,59 +514,75 @@ function CrachaDigital({ dados }: { dados: DadosAreaAluno }) {
           ))}
         </div>
       ) : null}
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        {imagem ? (
-          <img src={imagem} alt={`Crachá de ${dados.aluno.nome}`} className="block h-auto w-full" />
-        ) : (
-          <div className="grid aspect-[1920/1209] w-full place-items-center text-sm text-muted-foreground">Montando crachá…</div>
-        )}
-      </div>
-      <p className="text-xs text-muted-foreground">O QR Code do crachá é usado para registrar sua presença.</p>
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" disabled={!imagem} onClick={baixarImagem}>
-          <Download className="mr-1 size-4" /> Gerar crachá
-        </Button>
-        <Button disabled={!imagem || gerando} onClick={() => void baixarPdf()}>
-          <FileText className="mr-1 size-4" /> {gerando ? "Gerando…" : "Gerar PDF"}
-        </Button>
-      </div>
+      {falhou ? (
+        <EstadoVazio
+          icone={AlertTriangle}
+          tom="erro"
+          compacto
+          titulo="Não foi possível mostrar o crachá agora"
+          descricao="Verifique a internet e tente de novo."
+          acoes={
+            <Button size="sm" onClick={() => setTentativa((n) => n + 1)}>
+              <RefreshCw className="mr-1 size-4" /> Tentar de novo
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          <Button className="w-full" disabled={!imagem || gerando} onClick={() => void baixarPdf()}>
+            <FileText className="mr-1 size-4" /> {gerando ? "Gerando PDF…" : "Baixar PDF do crachá"}
+          </Button>
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            {imagem ? (
+              <img src={imagem} alt={`Crachá de ${dados.aluno.nome}`} className="block h-auto w-full" />
+            ) : (
+              <div role="status" aria-label="Montando o crachá" className="aspect-[1920/1209] w-full">
+                <BlocoCarregando className="size-full rounded-none" />
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">O QR Code do crachá é usado para registrar sua presença.</p>
+        </>
+      )}
     </div>
   );
 }
 
-function PerfilDoAluno({ aberto, aoFechar, dados, aoSalvar }: { aberto: boolean; aoFechar: () => void; dados: DadosAreaAluno; aoSalvar: () => void }) {
-  const salvarFn = useServerFn(atualizarContatoAlunoFn);
+/** Uma linha "rótulo: valor"; valor vazio aparece como "Não informado" em cinza. */
+function Campo({ rotulo, valor }: { rotulo: string; valor: string | null | undefined }) {
+  const vazio = !valor || !valor.trim();
+  return (
+    <div className="flex flex-col gap-0.5 py-2 sm:flex-row sm:justify-between sm:gap-4">
+      <dt className="text-xs text-muted-foreground sm:text-sm">{rotulo}</dt>
+      <dd className={vazio ? "text-sm text-muted-foreground" : "min-w-0 break-words text-sm font-medium text-foreground sm:text-right"}>
+        {vazio ? NAO_INFORMADO : valor}
+      </dd>
+    </div>
+  );
+}
+
+function Bloco({ titulo, icone: Icone, children }: { titulo: string; icone: LucideIcon; children: ReactNode }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <h3 className="mb-1 flex items-center gap-2 font-display text-base font-semibold text-foreground">
+          <span className="grid size-8 place-items-center rounded-lg bg-secondary text-primary">
+            <Icone className="size-4" />
+          </span>
+          {titulo}
+        </h3>
+        <dl className="divide-y divide-border">{children}</dl>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Cadastro completo do aluno, só para consulta. A única ação é trocar a própria foto. */
+function MeuPerfil({ dados, aoMudarFoto }: { dados: DadosAreaAluno; aoMudarFoto: () => void }) {
   const fotoFn = useServerFn(enviarFotoAlunoFn);
-  const [telefone, setTelefone] = useState("");
-  const [telefone2, setTelefone2] = useState("");
-  const [email, setEmail] = useState("");
-  const [salvando, setSalvando] = useState(false);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
   const camera = useRef<HTMLInputElement>(null);
   const galeria = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!aberto) return;
-    setTelefone(dados.aluno.telefone ?? "");
-    setTelefone2(dados.aluno.telefone2 ?? "");
-    setEmail(dados.aluno.email ?? "");
-  }, [aberto]);
-
-  async function salvar() {
-    if (!validarTelefone(telefone) || !validarTelefone(telefone2)) return void toast.error("Telefone inválido. Use DDD + número.");
-    if (!validarEmail(email)) return void toast.error("E-mail inválido.");
-    setSalvando(true);
-    try {
-      await salvarFn({ data: { token: tokenLocal(), telefone, telefone2, email } });
-      toast.success("Dados atualizados.");
-      aoSalvar();
-      aoFechar();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível salvar.");
-    } finally {
-      setSalvando(false);
-    }
-  }
 
   async function enviarFoto(bruto: File | undefined) {
     if (!bruto) return;
@@ -561,7 +598,7 @@ function PerfilDoAluno({ aberto, aoFechar, dados, aoSalvar }: { aberto: boolean;
       if (t) fd.append("token", t);
       await fotoFn({ data: fd });
       toast.success("Foto atualizada.");
-      aoSalvar();
+      aoMudarFoto();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível enviar a foto.");
     } finally {
@@ -572,75 +609,104 @@ function PerfilDoAluno({ aberto, aoFechar, dados, aoSalvar }: { aberto: boolean;
   }
 
   const a = dados.aluno;
-  const fixos: [string, string | null][] = [
-    ["Nome", a.nome],
-    ["Data de nascimento", dataBR(a.dataNascimento)],
-    ["Matrícula", a.codigo],
-    ["CPF", a.cpf],
-    ["RG", a.rg],
-    ["Responsável", a.responsavel],
-    ["Escola", a.escola],
-  ];
+  const at = ATESTADO[dados.atestado.situacao];
+  const validade = dados.atestado.venceEm
+    ? `${dados.atestado.situacao === "vencido" ? "Venceu em" : "Válido até"} ${dataBR(dados.atestado.venceEm)}`
+    : null;
 
   return (
-    <Dialog open={aberto} onOpenChange={(o) => !o && aoFechar()}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Meu perfil</DialogTitle>
-          <DialogDescription>Você pode alterar telefone, segundo telefone, e-mail e foto.</DialogDescription>
-        </DialogHeader>
+    <div className="space-y-3">
+      <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-secondary px-4 py-3 text-sm text-secondary-foreground">
+        <Info className="mt-0.5 size-4 shrink-0" />
+        <p>Estes são os seus dados cadastrados. Para corrigir alguma informação, procure a equipe.</p>
+      </div>
 
-        <div className="flex items-center gap-3">
-          {a.fotoUrl ? (
-            <img src={a.fotoUrl} alt={a.nome} className="size-20 rounded-xl object-cover" />
-          ) : (
-            <div className="grid size-20 place-items-center rounded-xl bg-muted">
-              <UserRound className="size-8 text-muted-foreground" />
+      <Card>
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-center gap-3">
+            {a.fotoUrl ? (
+              <img src={a.fotoUrl} alt={a.nome} className="size-20 shrink-0 rounded-xl object-cover" />
+            ) : (
+              <div className="grid size-20 shrink-0 place-items-center rounded-xl bg-muted">
+                <UserRound className="size-8 text-muted-foreground" />
+              </div>
+            )}
+            <div className="min-w-0 space-y-1.5">
+              <p className="break-words font-display text-lg font-semibold leading-tight text-foreground">{a.nome}</p>
+              <EtiquetaSituacao
+                situacao={dados.situacao}
+                texto={dados.situacao === "licenca" && dados.licencaAte ? `Licença até ${formatarDataCurta(dados.licencaAte)}` : undefined}
+              />
             </div>
-          )}
-          <div className="grid flex-1 gap-2">
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <Button size="sm" variant="outline" disabled={enviandoFoto} onClick={() => camera.current?.click()}>
               <Camera className="mr-1 size-4" /> Tirar foto
             </Button>
             <Button size="sm" variant="outline" disabled={enviandoFoto} onClick={() => galeria.current?.click()}>
-              <ImageIcon className="mr-1 size-4" /> Escolher da galeria
+              <ImageIcon className="mr-1 size-4" /> Escolher foto
             </Button>
           </div>
           <input ref={camera} type="file" accept="image/*" capture="user" className="hidden" onChange={(e) => void enviarFoto(e.target.files?.[0])} />
           <input ref={galeria} type="file" accept={FOTO_TIPOS.join(",")} className="hidden" onChange={(e) => void enviarFoto(e.target.files?.[0])} />
-        </div>
-        <p className="text-xs text-muted-foreground">{enviandoFoto ? "Enviando foto…" : "JPG, PNG ou WebP de até 5 MB."}</p>
+          <p className="text-xs text-muted-foreground">{enviandoFoto ? "Enviando foto…" : "JPG, PNG ou WebP de até 5 MB."}</p>
+        </CardContent>
+      </Card>
 
-        <dl className="grid gap-2 rounded-lg bg-muted p-3 text-sm">
-          {fixos.map(([rotulo, valor]) => (
-            <div key={rotulo} className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">{rotulo}</dt>
-              <dd className="min-w-0 break-words text-right font-medium text-foreground">{valor || "—"}</dd>
+      <Bloco titulo="Dados pessoais" icone={IdCard}>
+        <Campo rotulo="Nome completo" valor={a.nome} />
+        <Campo rotulo="Data de nascimento" valor={textoNascimento(a.dataNascimento, a.idade)} />
+        <Campo rotulo="Sexo" valor={a.sexo} />
+        <Campo rotulo="Faixa etária" valor={a.faixaEtaria} />
+        <Campo rotulo="CPF" valor={a.cpf} />
+        <Campo rotulo="RG" valor={a.rg} />
+        <Campo rotulo="Matrícula" valor={a.codigo} />
+        <Campo rotulo="Data do cadastro" valor={dataBrasileira(a.cadastradoEm)} />
+      </Bloco>
+
+      <Bloco titulo="Contato" icone={Phone}>
+        <Campo rotulo="Responsável" valor={a.responsavel} />
+        <Campo rotulo="Telefone" valor={a.telefone} />
+        <Campo rotulo="Outro telefone" valor={a.telefone2} />
+        <Campo rotulo="E-mail" valor={a.email} />
+      </Bloco>
+
+      <Bloco titulo="Escola" icone={School}>
+        <Campo rotulo="Rede de ensino" valor={a.redeEnsino} />
+        <Campo rotulo="Escola" valor={a.escola} />
+      </Bloco>
+
+      <Bloco titulo="Saúde" icone={HeartPulse}>
+        <div className="flex items-center justify-between gap-3 py-2">
+          <dt className="text-xs text-muted-foreground sm:text-sm">Atestado médico</dt>
+          <dd className="flex flex-col items-end gap-1 text-right">
+            <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${at.classe}`}>{at.rotulo}</span>
+            {validade ? <span className="text-xs text-muted-foreground">{validade}</span> : null}
+          </dd>
+        </div>
+        <Campo rotulo="Pessoa com deficiência (PCD)" valor={a.pcd ? "Sim" : "Não"} />
+        {a.pcd ? (
+          <>
+            <Campo rotulo="Condições" valor={a.pcdCondicoes.join("; ")} />
+            <Campo rotulo="Descrição" valor={a.pcdDescricao} />
+          </>
+        ) : null}
+      </Bloco>
+
+      <Bloco titulo="Minhas turmas" icone={CalendarDays}>
+        {dados.turmas.length ? (
+          dados.turmas.map((t) => (
+            <div key={t.id} className="py-2">
+              <dt className="font-medium text-foreground">{t.modalidade}</dt>
+              <dd className="text-sm text-muted-foreground">
+                {t.dias.map(nomeDia).join(" e ") || "Dias a definir"} · {t.horario ?? "Horário a definir"}
+              </dd>
             </div>
-          ))}
-        </dl>
-
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <Label htmlFor="perfil-tel">Telefone</Label>
-            <Input id="perfil-tel" inputMode="numeric" value={telefone} onChange={(e) => setTelefone(formatarCelular(e.target.value))} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="perfil-tel2">Segundo telefone</Label>
-            <Input id="perfil-tel2" inputMode="numeric" value={telefone2} onChange={(e) => setTelefone2(formatarCelular(e.target.value))} />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="perfil-email">E-mail</Label>
-            <Input id="perfil-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-        </div>
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={aoFechar}>Cancelar</Button>
-          <Button disabled={salvando} onClick={() => void salvar()}>
-            <Save className="mr-1 size-4" /> {salvando ? "Salvando…" : "Salvar"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          ))
+        ) : (
+          <p className="py-2 text-sm text-muted-foreground">Você ainda não está em nenhuma turma.</p>
+        )}
+      </Bloco>
+    </div>
   );
 }

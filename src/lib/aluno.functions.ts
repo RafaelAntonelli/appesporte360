@@ -7,12 +7,11 @@ import {
   gerarCodigoAparelho,
   situacaoAtestado,
   tipoDaFoto,
-  validarEmail,
-  validarTelefone,
   validarFoto,
   type SituacaoAtestado,
 } from "@/lib/aluno-acesso";
 import { vencimentoAtestado } from "@/lib/atestado";
+import { situacaoDoAluno, type SituacaoAluno } from "@/lib/situacao";
 
 const tokenOpcional = z.string().max(80).optional().nullable();
 
@@ -147,10 +146,18 @@ export type DadosAreaAluno = {
     email: string | null;
     responsavel: string | null;
     escola: string | null;
+    redeEnsino: string | null;
     sexo: string | null;
+    faixaEtaria: string | null;
+    idade: number | null;
     pcd: boolean;
+    pcdCondicoes: string[];
+    pcdDescricao: string | null;
+    cadastradoEm: string;
     fotoUrl: string | null;
   };
+  situacao: SituacaoAluno;
+  licencaAte: string | null;
   turmas: TurmaDoAluno[];
   atestado: { situacao: SituacaoAtestado; venceEm: string | null };
   avisos: AvisoDoAluno[];
@@ -162,17 +169,35 @@ async function sessaoOuErro(token?: string | null) {
   return { s, ...(await s.exigirSessaoAluno(token)) };
 }
 
-/** Somente os dados do próprio aluno, sem detalhes médicos. */
+/** Data de hoje no horário de Brasília (AAAA-MM-DD). */
+function hojeBrasilia() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+/** Somente os dados do próprio aluno (identificado pelo aparelho liberado), apenas para leitura. */
 export const meusDadosAlunoFn = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({ token: tokenOpcional }).parse(d))
   .handler(async ({ data }): Promise<DadosAreaAluno> => {
     const { db, alunoId, aparelho } = await sessaoOuErro(data.token);
     const { data: a, error } = await db
       .from("alunos")
-      .select("nome,codigo,data_nascimento,cpf,rg,telefone,telefone2,email,responsavel,escola,sexo,pcd,foto_path,atestado_entregue,atestado_data,created_at")
+      .select(
+        "nome,codigo,ativo,data_nascimento,idade,cpf,rg,telefone,telefone2,email,responsavel,escola,rede_ensino,sexo,faixa_etaria,pcd,pcd_condicoes,pcd_descricao,foto_path,atestado_entregue,atestado_data,created_at",
+      )
       .eq("id", alunoId)
       .single();
     if (error || !a) throw new Error("Cadastro não encontrado.");
+
+    const hoje = hojeBrasilia();
+    const { data: lic } = await db
+      .from("licencas_medicas")
+      .select("data_retorno")
+      .eq("aluno_id", alunoId)
+      .eq("status", "ativa")
+      .lte("data_inicio", hoje)
+      .order("data_retorno", { ascending: false })
+      .limit(1);
+    const licencaAte = lic?.[0]?.data_retorno ?? null;
 
     const { data: mats } = await db.from("matriculas").select("turma_id,modalidade").eq("aluno_id", alunoId).eq("status", "ativa");
     const ids = (mats ?? []).map((m) => m.turma_id);
@@ -220,10 +245,18 @@ export const meusDadosAlunoFn = createServerFn({ method: "POST" })
         email: a.email,
         responsavel: a.responsavel,
         escola: a.escola,
+        redeEnsino: a.rede_ensino,
         sexo: a.sexo,
+        faixaEtaria: a.faixa_etaria,
+        idade: a.idade,
         pcd: a.pcd,
+        pcdCondicoes: a.pcd_condicoes ?? [],
+        pcdDescricao: a.pcd_descricao,
+        cadastradoEm: a.created_at,
         fotoUrl,
       },
+      situacao: situacaoDoAluno(a, !!licencaAte),
+      licencaAte,
       turmas,
       atestado: { situacao: situacaoAtestado(a), venceEm: a.atestado_entregue && vence ? vence.toISOString().slice(0, 10) : null },
       avisos: (avs ?? []).map((v) => ({
@@ -244,29 +277,9 @@ export const meusDadosAlunoFn = createServerFn({ method: "POST" })
     };
   });
 
-/** Aluno só pode alterar telefone, segundo telefone e e-mail. */
-export const atualizarContatoAlunoFn = createServerFn({ method: "POST" })
-  .inputValidator((d) =>
-    z
-      .object({
-        token: tokenOpcional,
-        telefone: z.string().max(20),
-        telefone2: z.string().max(20),
-        email: z.string().max(120),
-      })
-      .parse(d),
-  )
-  .handler(async ({ data }) => {
-    if (!validarTelefone(data.telefone) || !validarTelefone(data.telefone2)) throw new Error("Telefone inválido. Use DDD + número.");
-    if (!validarEmail(data.email)) throw new Error("E-mail inválido.");
-    const { db, alunoId } = await sessaoOuErro(data.token);
-    const { error } = await db
-      .from("alunos")
-      .update({ telefone: data.telefone.trim() || null, telefone2: data.telefone2.trim() || null, email: data.email.trim() || null })
-      .eq("id", alunoId);
-    if (error) throw new Error("Não foi possível salvar. Tente novamente.");
-    return { ok: true };
-  });
+// O aluno não altera nenhum dado do cadastro: não existe função de edição para a conta do aluno.
+// A única gravação permitida é a própria foto (enviarFotoAlunoFn), que muda só foto_path.
+// A equipe edita o cadastro pela tela Alunos, protegida pelas permissões do banco.
 
 export const enviarFotoAlunoFn = createServerFn({ method: "POST" })
   .inputValidator((d) => {
