@@ -18,11 +18,13 @@ type MetaFila = {
   criado_em_utc?: string;
   /** Posição estritamente crescente: define a ordem exata de envio. */
   sequencia?: number;
+  conta_id?: string;
   tentativas?: number;
   ultimo_erro?: string | null;
 };
 
 export type OperacaoFila = MetaFila & (
+  | { tipo: "presenca_remover"; aluno_id: string; turma_id: string | null; data: string; horario: string }
   | { tipo: "aluno_novo"; aluno: Record<string, unknown>; foto?: Blob | null; fotoNome?: string | null }
   | { tipo: "aluno_update"; aluno_id: string; dados: Record<string, unknown>; foto?: Blob | null; fotoNome?: string | null }
   | {
@@ -42,6 +44,10 @@ export type OperacaoFila = MetaFila & (
       horario: string;
     }
 );
+
+let conta: string | null = null;
+export function contaAtual() { return conta; }
+export function definirContaOffline(id: string | null) { conta = id; notificar(); }
 
 function suportado() {
   return typeof indexedDB !== "undefined";
@@ -65,27 +71,27 @@ async function comStore<T>(store: string, modo: IDBTransactionMode, fn: (s: IDBO
   return new Promise<T>((resolve, reject) => {
     const tx = db.transaction(store, modo);
     const req = fn(tx.objectStore(store));
-    req.onsuccess = () => resolve(req.result as T);
+    let resultado: T;
+    req.onsuccess = () => { resultado = req.result as T; };
     req.onerror = () => reject(req.error);
-    tx.oncomplete = () => db.close();
+    tx.onabort = () => { db.close(); reject(tx.error ?? new Error("Não foi possível guardar no aparelho.")); };
+    tx.oncomplete = () => { db.close(); resolve(resultado); };
   });
 }
 
 // ------------------------------- Cache de dados ----------------------------
 
-export async function salvarCache(chave: string, valor: unknown) {
-  if (!suportado()) return;
-  try {
-    await comStore(STORE_CACHE, "readwrite", (s) => s.put(valor, chave));
-  } catch {
-    /* ignora */
-  }
+export async function salvarCache(chave: string, valor: unknown, esperado = conta) {
+  if (!suportado() || !esperado || conta !== esperado) throw new Error("A conta mudou ou não há armazenamento disponível.");
+  await comStore(STORE_CACHE, "readwrite", (s) => s.put(valor, `${esperado}:${chave}`));
 }
 
 export async function lerCache<T>(chave: string): Promise<T | null> {
-  if (!suportado()) return null;
+  if (!suportado() || !conta) return null;
+  const esperado = conta;
   try {
-    const v = await comStore<T>(STORE_CACHE, "readonly", (s) => s.get(chave));
+    const v = await comStore<T>(STORE_CACHE, "readonly", (s) => s.get(`${esperado}:${chave}`));
+    if (conta !== esperado) return null;
     return (v as T) ?? null;
   } catch {
     return null;
@@ -119,27 +125,33 @@ export function proximaSequencia(agora: number, ultima: number) {
 
 export async function listarFila(): Promise<OperacaoFila[]> {
   if (!suportado()) return [];
+  const esperado = conta;
   try {
     const itens = await comStore<OperacaoFila[]>(STORE_FILA, "readonly", (s) => s.getAll());
-    return (itens ?? []).sort(ordemFila);
+    if (conta !== esperado) return [];
+    return (itens ?? []).filter((o) => o.conta_id === esperado && Boolean(esperado)).sort(ordemFila);
   } catch {
     return [];
   }
 }
 
-type CamposControle = "id" | "criado_em" | "criado_em_utc" | "sequencia" | "tentativas" | "ultimo_erro";
+type CamposControle = "conta_id" | "id" | "criado_em" | "criado_em_utc" | "sequencia" | "tentativas" | "ultimo_erro";
 type SemMeta<T> = T extends unknown ? Omit<T, CamposControle> & { id?: string } : never;
 
 let ultimaSequencia = 0;
 
 export async function enfileirar(op: SemMeta<OperacaoFila>): Promise<string> {
+  if (!conta) throw new Error("Entre na conta antes de guardar alterações.");
+  const esperado = conta;
   const id = op.id ?? crypto.randomUUID();
   const agora = Date.now();
   const fila = await listarFila();
+  if (conta !== esperado) throw new Error("A conta mudou. A alteração não foi salva.");
   const ultimaNaFila = fila.reduce((m, o) => Math.max(m, o.sequencia ?? o.criado_em * 1000), 0);
   ultimaSequencia = proximaSequencia(agora, Math.max(ultimaSequencia, ultimaNaFila));
   const registro = {
     ...op,
+    conta_id: esperado,
     id,
     criado_em: agora,
     criado_em_utc: new Date(agora).toISOString(),
@@ -166,6 +178,7 @@ async function marcarErro(op: OperacaoFila, erro: unknown) {
 
 /** Remove da fila um registro que não pode ser enviado (decisão da pessoa, com confirmação). */
 export async function descartarDaFila(id: string) {
+  if (!(await listarFila()).some((o) => o.id === id)) throw new Error("Registro de outra conta.");
   await remover(id);
 }
 
@@ -226,27 +239,18 @@ async function executar(op: OperacaoFila) {
     }
     return;
   }
-  // presença: substitui apenas o registro da mesma turma e dia
-  let consultaExistente = supabase.from("presencas").select("id").eq("aluno_id", op.aluno_id).eq("data", op.data);
-  consultaExistente = op.turma_id ? consultaExistente.eq("turma_id", op.turma_id) : consultaExistente.is("turma_id", null);
-  const existente = await consultaExistente.maybeSingle();
-  if (existente.data) {
-    const { error } = await supabase
-      .from("presencas")
-      .update({ status: op.status, metodo: op.metodo, turma_id: op.turma_id, horario: op.horario, observacoes: op.observacoes })
-      .eq("id", existente.data.id);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase.from("presencas").insert({
-      aluno_id: op.aluno_id,
-      turma_id: op.turma_id,
-      data: op.data,
-      status: op.status,
-      metodo: op.metodo,
-      observacoes: op.observacoes,
-      horario: op.horario,
-    } as never);
-    if (error) throw error;
+  const { data: resultado, error } = await supabase.rpc("enviar_chamada_offline", {
+    _id: op.id, _conta: op.conta_id ?? "", _aluno: op.aluno_id, _turma: op.turma_id ?? "",
+    _data: op.data, _horario: op.horario, _status: op.tipo === "presenca" ? op.status : "presente",
+    _remover: op.tipo === "presenca_remover", _metodo: op.tipo === "presenca" ? op.metodo : "manual",
+  });
+  if (error) throw error;
+  if (resultado === "enviado" && op.conta_id === conta) {
+    const dados = await lerCache<{ presencas: import("./offline-regras").MarcaOffline[] } & Record<string, unknown>>("dados-offline");
+    if (dados) {
+      const { sobreporPendentes } = await import("./offline-regras");
+      await salvarCache("dados-offline", { ...dados, presencas: sobreporPendentes(dados.presencas, [op]) }, op.conta_id);
+    }
   }
 }
 
@@ -270,6 +274,10 @@ export async function sincronizar(): Promise<ResultadoSync> {
     const fila = await listarFila();
     for (const op of fila) {
       try {
+        const verificada = await supabase.auth.getUser();
+        if (verificada.error || verificada.data.user?.id !== op.conta_id || conta !== op.conta_id) {
+          throw new Error("Entre novamente na conta que fez estas alterações.");
+        }
         await executar(op);
         await remover(op.id);
         enviados++;
@@ -282,5 +290,6 @@ export async function sincronizar(): Promise<ResultadoSync> {
   } finally {
     sincronizando = false;
   }
+  if (enviados && typeof window !== "undefined") window.dispatchEvent(new Event("chamada-sincronizada"));
   return { enviados, falhas: bloqueado ? 1 : 0, bloqueado };
 }

@@ -27,6 +27,10 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { StatusOffline } from "@/components/StatusOffline";
 import { FotoUsuario } from "@/components/FotoUsuario";
+import { AreaOffline } from "@/components/AreaOffline";
+import { listarFila, definirContaOffline } from "@/lib/offline";
+import { useOffline } from "@/hooks/useOffline";
+import { lerDadosOffline } from "@/lib/offline-dados";
 import fundoMenu from "@/assets/fundo-menu-esporte-360.jpg.asset.json";
 import faixaSeculje from "@/assets/faixa-seculje.jpg.asset.json";
 
@@ -61,6 +65,13 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [maisAberto, setMaisAberto] = useState(false);
   const perfil = useMeuPerfil(user);
+  const { online } = useOffline();
+  const [localDisponivel, setLocalDisponivel] = useState(false);
+  const [manterLocal, setManterLocal] = useState(false);
+  useEffect(() => {
+    if (!online) setManterLocal(true);
+    void lerDadosOffline().then((d) => setLocalDisponivel(Boolean(d && d.userId === user?.id)));
+  }, [online, user?.id]);
 
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/auth" });
@@ -79,11 +90,14 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   }
 
   async function sair() {
+    const fila = await listarFila();
+    if (fila.length && !window.confirm(`Há ${fila.length} alteração(ões) não enviada(s). Sair agora? Elas ficam neste aparelho e só serão enviadas ao entrar novamente nesta mesma conta.`)) return;
     await supabase.auth.signOut();
+    definirContaOffline(null);
     navigate({ to: "/auth", replace: true });
   }
 
-  if (!isStaff) {
+  if (!isStaff && !(!online && localDisponivel)) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
         <Waves className="size-8 text-primary" />
@@ -102,7 +116,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   }
 
   // Mesmas regras de antes: Relatórios segue a permissão; Avisos, Backup e Equipe só para administradores.
-  const extras: ItemMenu[] = [...(pode("ver_relatorios") ? [relatorios] : []), ...(isAdmin ? adminNav : [])];
+  const extras: ItemMenu[] = online ? [...(pode("ver_relatorios") ? [relatorios] : []), ...(isAdmin ? adminNav : [])] : [];
   const nav = [...principais, ...extras];
   const ativo = (to: string) => pathname === to;
   const extraAtivo = extras.some((i) => ativo(i.to)) || ativo("/perfil");
@@ -203,7 +217,12 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         />
       </header>
 
-      <main className="min-w-0 px-4 py-6 md:px-10">{children}</main>
+      <main className="min-w-0 px-4 py-6 md:px-10">
+        {manterLocal || !online ? <>
+          {online ? <div className="mb-4 flex flex-wrap items-center gap-3 text-sm"><span>Internet restabelecida. As alterações são enviadas sem interromper a chamada.</span><Button variant="outline" onClick={() => setManterLocal(false)}>Voltar à tela conectada</Button></div> : null}
+          <AreaOffline pagina={pathname} />
+        </> : children}
+      </main>
 
       {/* Barra inferior (celular): 4 principais + Mais */}
       <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-sidebar-border bg-sidebar pb-[env(safe-area-inset-bottom)] md:hidden">

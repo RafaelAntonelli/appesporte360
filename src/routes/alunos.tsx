@@ -1,3 +1,4 @@
+import { todasPaginas } from "@/lib/offline-regras";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { useEffect, useRef, useState } from "react";
@@ -260,9 +261,9 @@ function AlunosPage() {
     }
     try {
       const [a, t, m] = await Promise.all([
-        supabase.from("alunos").select("*").order("nome"),
-        supabase.from("turmas").select("id,nome,horario,dias_semana,modalidade,capacidade").order("nome"),
-        supabase.from("matriculas").select("*"),
+        todasPaginas((i, f) => supabase.from("alunos").select("*").order("id").range(i, f)).then((data) => ({ data, error: null })),
+        todasPaginas((i, f) => supabase.from("turmas").select("id,nome,horario,dias_semana,modalidade,capacidade").order("id").range(i, f)).then((data) => ({ data, error: null })),
+        todasPaginas((i, f) => supabase.from("matriculas").select("*").order("id").range(i, f)).then((data) => ({ data, error: null })),
       ]);
       if (a.error) throw a.error;
       if (t.error) throw t.error;
@@ -270,7 +271,7 @@ function AlunosPage() {
       setAlunos(a.data as Aluno[]);
       setTurmas(t.data as Turma[]);
       setMatriculas(m.data as Matricula[]);
-      void salvarCache("alunos", { alunos: a.data, turmas: t.data, matriculas: m.data });
+
       const perfis = await supabase.from("profiles").select("id,nome,email");
       if (perfis.data) {
         const mapa: Record<string, string> = {};

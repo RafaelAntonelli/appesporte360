@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { definirContaOffline } from "@/lib/offline";
 
 export type AppRole = "admin" | "professor";
 
@@ -9,17 +10,22 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [rolesLoading, setRolesLoading] = useState(true);
+  const [reconexao, setReconexao] = useState(0);
 
   useEffect(() => {
+    const reconectar = () => setReconexao((n) => n + 1);
+    window.addEventListener("online", reconectar);
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      definirContaOffline(s?.user?.id ?? null);
       setSession(s);
       setLoading(false);
     });
     supabase.auth.getSession().then(({ data }) => {
+      definirContaOffline(data.session?.user?.id ?? null);
       setSession(data.session);
       setLoading(false);
     });
-    return () => sub.subscription.unsubscribe();
+    return () => { sub.subscription.unsubscribe(); window.removeEventListener("online", reconectar); };
   }, []);
 
   useEffect(() => {
@@ -30,6 +36,7 @@ export function useAuth() {
       return;
     }
     let active = true;
+    if (!navigator.onLine) { setRoles([]); setRolesLoading(false); return; }
     setRolesLoading(true);
     supabase
       .from("user_roles")
@@ -43,7 +50,7 @@ export function useAuth() {
     return () => {
       active = false;
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, reconexao]);
 
   return {
     session,

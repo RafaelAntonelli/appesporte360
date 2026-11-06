@@ -22,10 +22,10 @@
 - Records keep the registrar's name in trigger-filled *_por_nome columns; user FKs are ON DELETE SET NULL — why: removed accounts keep authorship.
 - Use DOCUMENTOS_PLANILHA as the shared document catalog in enrollment forms and profiles, and keep backup document destinations aligned — why: every attachment must remain visible and exportable.
 - Students have no auth accounts: an in-person-approved device token (SHA-256 in aluno_aparelhos) gates public server fns that read only the caller's record; their sole write is own photo — why: no student edits data.
-- Student push goes from server code via the linked Firebase Cloud Messaging connection; public/sw.js displays it — why: one worker scope serves offline cache and push.
+- Student push uses Firebase with /notificacoes/firebase-messaging-sw.js; generated app SW keeps legacy push handlers — why: separate scopes preserve messaging.
 - Class reminders run from a managed 5-minute HTTP schedule hitting /api/public/jobs/lembretes-aula; window rules live in src/lib/lembretes.ts (Brasília time) and lembretes_aula_enviados reserves each turma/date/lead time before sending — why: overlapping windows tolerate a missed tick without duplicate pushes.
 - Drive files are named CODIGO_TIPO.ext (src/lib/arquivos-drive.ts), the backup sheet has no links, and restoration links files by code — why: codes are unique, names are not.
-- Offline actions are queued in IndexedDB with a UUID, UTC timestamp and strictly increasing sequence, and sync sends them one by one and stops at the first failure — why: later actions must never reach the server before earlier ones.
+- Offline data/queue are account-keyed; UUID/UTC/sequence replay stops on error via enviar_chamada_offline with dedup/version checks. Generated SW boots anonymous offline-entry — why: no private HTML cache or cross-account replay.
 - Links to student files are always signed and temporary: exports use the configured validity from src/lib/links-seguros.ts (capped server-side) and on-screen images use 1 hour — why: LGPD forbids permanent open links to personal documents.
 - Every captured image goes through otimizarImagem (src/lib/imagem.ts) before upload or AI reading; PDFs pass unchanged — why: mobile networks.
 - Dark mode: `.dark` on <html> set by inline SCRIPT_TEMA in __root before paint, toggled via useTema; screens use only theme tokens — why: no white flash.

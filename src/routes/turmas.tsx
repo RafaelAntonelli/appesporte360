@@ -1,3 +1,4 @@
+import { todasPaginas } from "@/lib/offline-regras";
 import { usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -156,9 +157,10 @@ function TurmasPage() {
   const [confirmarExclusao, setConfirmarExclusao] = useState<Turma | null>(null);
 
   async function carregar() {
+    if (!navigator.onLine) { setCarregandoTurmas(false); return; }
     const [t, m] = await Promise.all([
-      supabase.from("turmas").select("*").order("nome"),
-      supabase.from("matriculas").select("turma_id"),
+      todasPaginas((i,f) => supabase.from("turmas").select("*").order("id").range(i,f)).then(data => ({ data })),
+      todasPaginas((i,f) => supabase.from("matriculas").select("turma_id").order("id").range(i,f)).then(data => ({ data })),
     ]);
     if (t.data) setTurmas(t.data as Turma[]);
     if (m.data) {

@@ -1,43 +1,16 @@
-const CACHE = "esporte-360-v7";
-
-self.addEventListener("install", (event) => {
-  self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest", "/favicon.ico", "/favicon.png", "/icons/icon-192x192.png", "/icons/icon-512x512.png", "/icons/apple-touch-icon.png"]).catch(() => undefined)));
-});
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((chaves) => Promise.all(chaves.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()),
-  );
-});
-
-self.addEventListener("fetch", (event) => {
-  const req = event.request;
-  if (req.method !== "GET") return;
-  const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;
-
-  event.respondWith(
-    fetch(req)
-      .then((res) => {
-        if (res && res.status === 200 && res.type === "basic") {
-          const copia = res.clone();
-          void caches.open(CACHE).then((c) => c.put(req, copia));
-        }
-        return res;
-      })
-      .catch(async () => {
-        const cacheado = await caches.match(req);
-        if (cacheado) return cacheado;
-        if (req.mode === "navigate") {
-          const inicial = await caches.match("/");
-          if (inicial) return inicial;
-        }
-        return new Response("Offline", { status: 503, statusText: "Offline" });
-      }),
-  );
-});
-
+// Remove only this application's old private-response caches. Messaging is kept.
+function isWorkboxCacheForThisRegistration(name) {
+  const hasWorkboxBucket = /(^|-)precache-v\d+-|(^|-)runtime-|(^|-)googleAnalytics-/.test(name);
+  return hasWorkboxBucket && name.endsWith(self.registration.scope);
+}
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => event.waitUntil((async () => {
+  try {
+    const names = await caches.keys();
+    await Promise.allSettled(names.filter((name) => /^esporte-360-v\d+$/.test(name) || isWorkboxCacheForThisRegistration(name)).map((name) => caches.delete(name)));
+    await self.clients.claim();
+  } finally { await self.registration.unregister(); }
+})()));
 // ---- Avisos para alunos (Firebase Cloud Messaging) ----
 self.addEventListener("push", (event) => {
   let carga = {};
@@ -68,7 +41,8 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const destino = new URL((event.notification.data && event.notification.data.url) || "/aluno", self.location.origin).href;
+  const alvo = new URL((event.notification.data && event.notification.data.url) || "/aluno", self.location.origin);
+  const destino = alvo.origin === self.location.origin ? alvo.href : new URL("/aluno", self.location.origin).href;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((janelas) => {
       for (const j of janelas) {

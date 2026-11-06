@@ -16,6 +16,7 @@ import { TransicaoVideo } from "@/components/TransicaoVideo";
 
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SCRIPT_TEMA } from "@/lib/tema";
+import { registrarOffline } from "@/lib/pwa";
 
 function NotFoundComponent() {
   return (
@@ -77,7 +78,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient; offlineDocument?: boolean }>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -117,6 +118,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  if (router.options.context?.offlineDocument) return <>{children}</>;
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
@@ -136,10 +139,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
-    const registrar = () => void navigator.serviceWorker.register("/sw.js").catch(() => undefined);
-    if (document.readyState === "complete") registrar();
-    else window.addEventListener("load", registrar, { once: true });
+    void registrarOffline().catch(() => undefined);
   }, []);
 
   return (

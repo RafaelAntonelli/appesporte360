@@ -91,3 +91,12 @@
 - [x] Etapa 1: aba "Meu perfil" com cadastro completo em blocos, "Não informado" em cinza, sem edição (também bloqueado no servidor); fotos continuam.
 - [x] Etapa 2: crachá aparece sozinho (mesmo modelo da equipe), bloco cinza ao carregar, "Baixar PDF do crachá" acima, erro com "Tentar de novo".
 - [x] Etapa 3: conferir como aluno (celular/computador, claro/escuro), PDF igual à imagem, edição da equipe em Alunos.
+
+## Abertura sem internet (pedido de 06/11)
+- [x] Preparar abertura pública segura, separar notificações e proteger prévias.
+- [x] Salvar listas completas por conta, licenças e atualização; não sobrescrever em falhas.
+- [x] Restaurar chamada e desfazer alterações, guardando imediatamente.
+- [x] Enviar em ordem com conta/permissão verificadas, idempotência e proteção contra ações antigas.
+- [x] Conferir cenários locais sem alterar presenças reais: 99 testes; leitura de 280 alunos, 35 turmas e 292 matrículas; fila sintética local removida; banco continua sem presenças.
+- [ ] Conferir fechamento/reabertura totalmente sem rede e push em Android real no site publicado; depende da publicação e aparelho real.
+- [ ] Conferir envio de presença válida e professor real; depende de contas/dados próprios para teste, sem criar presença falsa de aluno real.

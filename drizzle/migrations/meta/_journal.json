@@ -113,6 +113,13 @@
       "when": 1793746042905,
       "tag": "0015_falta_automatica",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794005686977,
+      "tag": "0016_sincronizacao_chamada_segura",
+      "breakpoints": true
     }
   ]
 }

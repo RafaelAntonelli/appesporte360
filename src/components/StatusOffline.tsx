@@ -10,10 +10,11 @@ const DESCRICAO: Record<OperacaoFila["tipo"], string> = {
   aluno_update: "Alteração de aluno",
   matriculas_sync: "Turmas do aluno",
   presenca: "Registro de presença",
+  presenca_remover: "Desmarcar presença",
 };
 
 export function StatusOffline() {
-  const { online, pendentes, bloqueado, sincronizando, sincronizarAgora, descartar } = useOffline();
+  const { online, atualizadoEm, pendentes, bloqueado, sincronizando, sincronizarAgora, descartar } = useOffline();
   const jaSincronizou = useRef(false);
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export function StatusOffline() {
     if (!online) jaSincronizou.current = false;
   }, [online, pendentes, sincronizarAgora]);
 
-  if (online && pendentes === 0) return null;
+  if (online && pendentes === 0 && !atualizadoEm) return null;
 
   async function descartarBloqueado() {
     if (!bloqueado) return;
@@ -44,8 +45,9 @@ export function StatusOffline() {
         {online ? <UploadCloud className="size-4 text-primary" /> : <CloudOff className="size-4 text-destructive" />}
         <span className="text-muted-foreground">
           {online
-            ? `${pendentes} registro(s) aguardando envio.`
-            : `Modo offline ativo${pendentes ? ` — ${pendentes} registro(s) salvos no aparelho` : ""}. Tudo será enviado na mesma ordem quando a internet voltar.`}
+            ? (pendentes ? `${pendentes} alteração(ões) aguardando envio.` : "Listas salvas para usar sem internet.")
+            : `Sem internet — ${pendentes} alteração(ões) pendente(s).`}
+          {atualizadoEm ? ` Última atualização: ${new Date(atualizadoEm).toLocaleString("pt-BR")}.` : (!online ? " As listas ainda não foram preparadas neste aparelho." : "")}
         </span>
         {online && pendentes > 0 ? (
           <Button size="sm" variant="outline" disabled={sincronizando} onClick={() => void sincronizarAgora()}>

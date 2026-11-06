@@ -35,6 +35,9 @@ export function TransicaoVideo() {
   // Pré-carrega as duas imagens antes de iniciar a animação.
   useEffect(() => {
     let ativo = true;
+    const semInternet = () => { abriu.current = true; animacaoIniciada.current = true; setVisivel(false); };
+    window.addEventListener("offline", semInternet);
+    if (!navigator.onLine) { abriu.current = true; animacaoIniciada.current = true; setVisivel(false); return; }
     const carregar = (url: string, aoConcluir: (ok: boolean) => void) => {
       const img = new Image();
       img.onload = () => aoConcluir(true);
@@ -49,6 +52,7 @@ export function TransicaoVideo() {
     });
     return () => {
       ativo = false;
+      window.removeEventListener("offline", semInternet);
     };
   }, []);
 
@@ -83,13 +87,14 @@ export function TransicaoVideo() {
       };
     };
 
+    if (!navigator.onLine || (statusPrimeira === "erro" && statusSegunda === "erro")) { abriu.current = true; animacaoIniciada.current = true; setVisivel(false); return; }
     if (prontoParaAnimar) return iniciar();
     const tMax = window.setTimeout(() => iniciar(), PRELOAD_MAXIMO);
     return () => window.clearTimeout(tMax);
   }, [prontoParaAnimar, statusPrimeira, statusSegunda]);
 
   useEffect(() => {
-    if (!abriu.current) return;
+    if (!abriu.current || !navigator.onLine) return;
     if (carregando) {
       setVisivel(true);
       setMostrarSegundaImagem(true);

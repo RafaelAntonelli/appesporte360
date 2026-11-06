@@ -461,6 +461,48 @@ export type Database = {
         }
         Relationships: []
       }
+      chamada_offline_acoes: {
+        Row: {
+          id: string
+          recebida_em: string
+          resultado: string
+          user_id: string
+        }
+        Insert: {
+          id: string
+          recebida_em?: string
+          resultado: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          recebida_em?: string
+          resultado?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chamada_offline_versoes: {
+        Row: {
+          aluno_id: string
+          data: string
+          turma_id: string
+          versao: string
+        }
+        Insert: {
+          aluno_id: string
+          data: string
+          turma_id: string
+          versao: string
+        }
+        Update: {
+          aluno_id?: string
+          data?: string
+          turma_id?: string
+          versao?: string
+        }
+        Relationships: []
+      }
       configuracoes: {
         Row: {
           chave: string
@@ -1048,6 +1090,20 @@ export type Database = {
       calc_turno: { Args: { _horario: string }; Returns: string }
       dia_semana_num: { Args: { _dia: string }; Returns: number }
       disparar_backup_semanal: { Args: never; Returns: undefined }
+      enviar_chamada_offline: {
+        Args: {
+          _aluno: string
+          _conta: string
+          _data: string
+          _horario: string
+          _id: string
+          _metodo: string
+          _remover: boolean
+          _status: string
+          _turma: string
+        }
+        Returns: string
+      }
       gerar_codigo_matricula: { Args: never; Returns: string }
       has_role: {
         Args: {

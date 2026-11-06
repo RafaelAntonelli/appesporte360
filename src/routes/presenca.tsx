@@ -1,3 +1,4 @@
+import { todasPaginas } from "@/lib/offline-regras";
 import { ordenarTurmasDoProfessor, usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -137,9 +138,9 @@ function PresencaPage() {
         return;
       }
       const [t, a, m] = await Promise.all([
-        supabase.from("turmas").select("id,nome,horario,modalidade,dias_semana").order("nome"),
-        supabase.from("alunos").select("id,nome,codigo,foto_path,data_nascimento,idade,atestado_entregue,atestado_data").eq("ativo", true).order("nome"),
-        supabase.from("matriculas").select("aluno_id,turma_id").eq("status", "ativa"),
+        todasPaginas((i,f) => supabase.from("turmas").select("id,nome,horario,modalidade,dias_semana").order("id").range(i,f)).then(data => ({ data })),
+        todasPaginas((i,f) => supabase.from("alunos").select("id,nome,codigo,foto_path,data_nascimento,idade,atestado_entregue,atestado_data").eq("ativo", true).order("id").range(i,f)).then(data => ({ data })),
+        todasPaginas((i,f) => supabase.from("matriculas").select("aluno_id,turma_id").eq("status", "ativa").order("id").range(i,f)).then(data => ({ data })),
       ]);
       const lic = await supabase.from("licencas_medicas").select("*").eq("status", "ativa");
       if (lic.data) setLicencas(lic.data as LicencaMedica[]);
@@ -148,7 +149,7 @@ function PresencaPage() {
       if (a.data) setAlunos(listaAlunos);
       if (m.data) setMatriculas(m.data as { aluno_id: string; turma_id: string }[]);
       setCarregando(false);
-      void salvarCache("presenca", { turmas: t.data ?? [], alunos: a.data ?? [], matriculas: m.data ?? [] });
+
       const comFoto = listaAlunos.filter((x) => x.foto_path);
       if (comFoto.length) {
         const { data: signed } = await supabase.storage
