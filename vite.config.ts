@@ -37,12 +37,15 @@ export default defineConfig({
       {
         name: "esporte-offline-document",
         apply: "build",
-        generateBundle(_options, bundle) {
+        // TanStack's client manifest accepts one entry chunk; the offline shell is
+        // a second entry, so it is unflagged before that plugin reads the bundle.
+        generateBundle: { order: "pre", handler(_options, bundle) {
           const entry = Object.values(bundle).find((b) => b.type === "chunk" && b.facadeModuleId?.endsWith("/src/offline-entry.tsx"));
           if (!entry || entry.type !== "chunk") return;
           const styles = Object.values(bundle).filter((b) => b.type === "asset" && b.fileName.endsWith(".css")).map((b) => `<link rel="stylesheet" href="/${b.fileName}">`).join("");
           this.emitFile({ type: "asset", fileName: "offline-shell.html", source: `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Esporte 360 — Sem internet</title><script>${SCRIPT_TEMA}</script>${styles}</head><body><div id="offline-app"></div><script type="module" src="/${entry.fileName}"></script></body></html>` });
-        },
+          (entry as { isEntry: boolean }).isEntry = false;
+        } },
       },
       VitePWA({
         strategies: "generateSW", filename: "sw.js", registerType: "autoUpdate", injectRegister: null,
