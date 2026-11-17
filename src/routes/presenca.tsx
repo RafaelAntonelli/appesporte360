@@ -10,6 +10,7 @@ import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,7 +41,7 @@ import { MODALIDADES } from "@/lib/modalidades";
 import { BotoesChamada, MarcarTodosPresentes, ProgressoChamada, ResumoDoDia } from "@/components/Chamada";
 import { EtiquetaSituacao } from "@/components/EtiquetaSituacao";
 import { situacaoDoAluno } from "@/lib/situacao";
-import { resumoChamada, resumoDoDia } from "@/lib/chamada";
+import { resumoChamada, resumoDoDia, idsDoContador, type ContadorChamada } from "@/lib/chamada";
 import { FaltaAutomatica } from "@/components/FaltaAutomatica";
 import { Carregando } from "@/components/Carregando";
 import { EstadoVazio } from "@/components/EstadoVazio";
@@ -119,6 +120,23 @@ function PresencaPage() {
   const lastRef = useRef<{ code: string; at: number }>({ code: "", at: 0 });
   const [confirmacao, setConfirmacao] = useState<{ aluno: Aluno; jaRegistrado: StatusPresenca | null } | null>(null);
   const [perfilAlunoId, setPerfilAlunoId] = useState<string | null>(null);
+  const [contadorAberto, setContadorAberto] = useState<ContadorChamada | null>(null);
+  const [online, setOnline] = useState(true);
+  useEffect(() => {
+    const atualizar = () => setOnline(estaOnline());
+    atualizar();
+    window.addEventListener("online", atualizar);
+    window.addEventListener("offline", atualizar);
+    return () => {
+      window.removeEventListener("online", atualizar);
+      window.removeEventListener("offline", atualizar);
+    };
+  }, []);
+  function abrirPerfil(id: string) {
+    if (!estaOnline()) return;
+    setContadorAberto(null);
+    setPerfilAlunoId(id);
+  }
   const [licencas, setLicencas] = useState<LicencaMedica[]>([]);
   const statusRef = useRef<Record<string, StatusPresenca>>({});
   statusRef.current = statusPorAluno;
@@ -451,7 +469,22 @@ function PresencaPage() {
     ? alunos.filter((a) => matriculas.some((m) => m.aluno_id === a.id && m.turma_id === turmaId)).map((a) => a.id)
     : [];
   const chamada = resumoChamada(idsDaTurma, (id) => Boolean(statusPorAluno[`${id}:${turmaId}`]), (id) => Boolean(licencaDoAluno(id)));
-  const resumoHoje = resumoDoDia(filtrados.map((a) => a.id), (id) => statusPorAluno[`${id}:${turmaId}`], (id) => Boolean(licencaDoAluno(id)));
+  const statusSemTurma: Record<string, StatusPresenca> = {};
+  for (const [chave, status] of Object.entries(statusPorAluno)) {
+    const id = chave.split(":")[0];
+    if (id && !statusSemTurma[id]) statusSemTurma[id] = status;
+  }
+  const statusDoResumo = (id: string) => turmaId ? statusPorAluno[`${id}:${turmaId}`] : statusSemTurma[id];
+  const resumoFiltrado = resumoDoDia(filtrados.map((a) => a.id), statusDoResumo, (id) => Boolean(licencaDoAluno(id)));
+  const progressoFiltrado = resumoChamada(filtrados.map((a) => a.id), (id) => Boolean(statusDoResumo(id)), (id) => Boolean(licencaDoAluno(id)));
+  const rotulosContador: Record<ContadorChamada, string> = { presentes: "Presentes", faltas: "Faltas", justificadas: "Justificadas", licenca: "Licença", semMarcacao: "Sem marcação", marcados: "Marcados" };
+  const idsContador = new Set(contadorAberto ? idsDoContador(
+    filtrados.map((a) => a.id),
+    contadorAberto,
+    statusDoResumo,
+    (id) => Boolean(licencaDoAluno(id)),
+  ) : []);
+  const alunosContador = alunos.filter((a) => idsContador.has(a.id)).sort((a, b) => a.nome.localeCompare(b.nome));
 
   return (
     <AppShell title="Presença" subtitle={`Registros de ${data.toLocaleDateString("pt-BR")}`}>
@@ -569,9 +602,10 @@ function PresencaPage() {
         </div>
         <div className="space-y-2">
           <Label>Turma da aula</Label>
-          <Select value={turmaId} onValueChange={setTurmaId}>
+          <Select value={turmaId || "todas"} onValueChange={(v) => setTurmaId(v === "todas" ? "" : v)}>
             <SelectTrigger><SelectValue placeholder="Selecione a turma (opcional)" /></SelectTrigger>
             <SelectContent className="max-h-80">
+              <SelectItem value="todas">Todas as turmas</SelectItem>
               {GRUPOS_DIAS.map((g) => {
                 const doGrupo = turmasVisiveis.filter((t) => t.nome.toLowerCase().startsWith(g.prefixo));
                 if (!doGrupo.length) return null;
@@ -632,22 +666,18 @@ function PresencaPage() {
                   <Input className="pl-9" placeholder="Buscar por matrícula ou nome..." value={busca} onChange={(e) => setBusca(e.target.value)} />
                 </div>
                 <div className="@container space-y-2 lg:max-h-[38rem] lg:overflow-y-auto lg:pr-1">
-                  {turmaId ? (
+                  {(
                     <div className="sticky top-[calc(3.75rem+env(safe-area-inset-top))] z-20 -mx-1 bg-card px-1 pb-2 md:top-0">
-                      <div className="space-y-3 rounded-xl border border-border/70 bg-secondary/40 p-3 shadow-suave">
-                        <ProgressoChamada marcados={chamada.marcados} total={chamada.total} />
-                        <ResumoDoDia resumo={resumoHoje} />
-                        <MarcarTodosPresentes
+                      <div className="space-y-2 rounded-lg border border-border/70 bg-card p-3 shadow-suave">
+                        <ProgressoChamada marcados={progressoFiltrado.marcados} total={progressoFiltrado.total} onMarcados={() => setContadorAberto("marcados")} />
+                        <ResumoDoDia resumo={resumoFiltrado} onContador={setContadorAberto} />
+                        {turmaId ? <MarcarTodosPresentes
                           pendentes={chamada.pendentes.length}
                           emLicenca={chamada.emLicenca}
                           onConfirmar={() => marcarTodosPresentes(chamada.pendentes)}
-                        />
+                        /> : null}
                       </div>
                     </div>
-                  ) : (
-                    <p className="rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-                      Escolha a turma da aula para ver o progresso da chamada e marcar todos de uma vez.
-                    </p>
                   )}
                   {carregando ? <Carregando formato="chamada" quantidade={5} rotulo="Carregando alunos..." /> : null}
                   {!carregando && visiveis.map((a) => {
@@ -670,7 +700,7 @@ function PresencaPage() {
                             </span>
                           )}
                           <div className="min-w-0 space-y-0.5">
-                            <button type="button" className="block max-w-full break-words text-left font-medium leading-snug hover:underline" title="Abrir perfil do aluno" onClick={() => setPerfilAlunoId(a.id)}>{a.nome}</button>
+                            <Button variant="link" disabled={!online} className="h-auto min-h-11 max-w-full justify-start whitespace-normal break-words px-0 text-left font-medium leading-snug underline" title={online ? "Abrir perfil do aluno" : "Perfil indisponível sem internet"} onClick={() => abrirPerfil(a.id)}>{a.nome}</Button>
                             <p className="font-mono text-xs text-muted-foreground">Matrícula {a.codigo}</p>
                             <div className="flex flex-wrap items-center gap-1.5">
                               <EtiquetaSituacao situacao={situacao} texto={lic ? `Licença até ${formatarDataCurta(lic.data_retorno)}` : undefined} />
@@ -771,6 +801,23 @@ function PresencaPage() {
 
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog open={contadorAberto !== null} onOpenChange={(aberto) => !aberto && setContadorAberto(null)}>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto" onCloseAutoFocus={(e) => { if (perfilAlunoId) e.preventDefault(); }}>
+          <DialogHeader>
+            <DialogTitle>{contadorAberto ? rotulosContador[contadorAberto] : "Alunos"} ({alunosContador.length})</DialogTitle>
+            <DialogDescription>{format(data, "dd/MM/yyyy")} · {turmas.find((t) => t.id === turmaId)?.nome}</DialogDescription>
+          </DialogHeader>
+          <div className="divide-y divide-border">
+            {alunosContador.map((a) => (
+              <div key={a.id} className="py-2">
+                <Button variant="link" disabled={!online} className="h-auto min-h-11 w-full justify-start whitespace-normal break-words px-2 text-left underline" title={online ? "Abrir perfil do aluno" : "Perfil indisponível sem internet"} onClick={() => abrirPerfil(a.id)}>{a.nome}</Button>
+                <p className="px-2 font-mono text-xs text-muted-foreground">Matrícula {a.codigo}</p>
+              </div>
+            ))}
+          </div>
+          {!alunosContador.length ? <EstadoVazio compacto icone={UserSearch} titulo="Nenhum aluno nesta lista" /> : null}
+        </DialogContent>
+      </Dialog>
       <PerfilAluno alunoId={perfilAlunoId} onFechar={() => setPerfilAlunoId(null)} />
     </AppShell>
 

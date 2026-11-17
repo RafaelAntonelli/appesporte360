@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resumoChamada } from "./chamada";
+import { resumoChamada, idsDoContador } from "./chamada";
 import { situacaoDoAluno } from "./situacao";
 
 describe("Marcar todos como presentes", () => {
@@ -53,5 +53,24 @@ describe("Resumo do dia", () => {
     const st: Record<string, string> = { a: "presente", b: "falta", c: "falta_justificada", d: "falta_justificada" };
     const r = resumoDoDia(["a", "b", "c", "d", "e", "a"], (id) => st[id], (id) => id === "d");
     expect(r).toEqual({ presentes: 1, faltas: 1, justificadas: 1, licenca: 1, semMarcacao: 1 });
+  });
+});
+
+describe("Alunos nas listas dos contadores", () => {
+  const ids = ["aluno-presente", "aluno-falta", "aluno-justificado", "aluno-licenca", "aluno-pendente"];
+  const registros = { "aluno-presente": "presente", "aluno-falta": "falta", "aluno-justificado": "falta_justificada", "aluno-licenca": "falta_justificada" };
+  const status = (id: string) => registros[id as keyof typeof registros];
+  const licenca = (id: string) => id === "aluno-licenca";
+  it.each([
+    ["presentes", ["aluno-presente"]],
+    ["faltas", ["aluno-falta"]],
+    ["justificadas", ["aluno-justificado"]],
+    ["licenca", ["aluno-licenca"]],
+    ["semMarcacao", ["aluno-pendente"]],
+    ["marcados", ids.slice(0, 4)],
+  ] as const)("seleciona os IDs corretos em %s sem alterar os registros", (contador, esperado) => {
+    const antes = { ...registros };
+    expect(idsDoContador(ids, contador, status, licenca)).toEqual(esperado);
+    expect(registros).toEqual(antes);
   });
 });

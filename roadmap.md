@@ -1,3 +1,10 @@
+## Presença e pendências (pedido de 17/11)
+- [x] Abrir o perfil pelos seis contadores, mantendo chamada e bloqueio offline; seleção por ID testada nas seis categorias e abertura real no computador/celular claro/escuro, sem gravações de presença.
+- [x] Exibir os contadores conforme a imagem enviada, inclusive sem turma selecionada, seguindo a lista filtrada.
+- [x] Conferir as melhorias existentes do prompt: digitação diferida, lista congelada durante matrícula, licença sem recarga com trava, paginação 60/40, próxima aula, avisos e registro de ações; 31 testes de regras passaram.
+- [ ] Identificar “Revisão de cadastros” para conferir sua busca; aguarda Rafael indicar onde acessa a tela.
+- [ ] Verificação em Android físico e fluxos de licença/avisos no publicado; depende de aparelho e dados autorizados para teste, sem alterar registros reais.
+
 - [x] Padronizar todos os códigos de matrícula como alfanuméricos únicos de exatamente 7 caracteres.
 - [x] Garantir letras e números aleatórios em cada código de matrícula de 7 caracteres.
 - [x] Exibir o código de matrícula nas listas de alunos e em todos os relatórios exportados.

@@ -84,18 +84,23 @@ export function BotoesChamada({
 }
 
 /** Barra "X de Y marcados" no topo da chamada. */
-export function ProgressoChamada({ marcados, total, className }: { marcados: number; total: number; className?: string }) {
+export function ProgressoChamada({ marcados, total, className, onMarcados }: { marcados: number; total: number; className?: string; onMarcados?: () => void }) {
   const pct = total ? Math.round((Math.min(marcados, total) / total) * 100) : 0;
   return (
     <div className={cn("space-y-1.5", className)}>
       <div className="flex items-center justify-between gap-2 text-sm">
-        <span className="font-semibold text-foreground">
-          {marcados} de {total} marcados
-        </span>
-        <span className="text-xs text-muted-foreground">{pct}%</span>
+        {onMarcados ? (
+          <>
+          <span className="text-foreground">Chamada</span>
+          <Button variant="link" className="h-auto min-h-11 whitespace-normal px-0 text-right font-medium" onClick={onMarcados}>
+            {marcados} de {total} marcados
+          </Button>
+          </>
+        ) : <span className="font-semibold text-foreground">{marcados} de {total} marcados</span>}
+        {!onMarcados ? <span className="text-xs text-muted-foreground">{pct}%</span> : null}
       </div>
       <div
-        className="h-2.5 overflow-hidden rounded-full bg-secondary"
+        className={cn("overflow-hidden rounded-full bg-secondary", onMarcados ? "h-2" : "h-2.5")}
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={total}
@@ -167,18 +172,21 @@ export function MarcarTodosPresentes({
 }
 
 /** Cinco números pequenos abaixo do contador: seguem a lista filtrada e mudam a cada marcação. */
-export function ResumoDoDia({ resumo }: { resumo: import("@/lib/chamada").ResumoDoDia }) {
+export function ResumoDoDia({ resumo, onContador }: { resumo: import("@/lib/chamada").ResumoDoDia; onContador?: (contador: keyof import("@/lib/chamada").ResumoDoDia) => void }) {
   const itens = [
-    { rotulo: "Presentes", valor: resumo.presentes, cor: "text-success-strong" },
-    { rotulo: "Faltas", valor: resumo.faltas, cor: "text-destructive-strong" },
-    { rotulo: "Justificadas", valor: resumo.justificadas, cor: "text-warning-strong" },
-    { rotulo: "Licença", valor: resumo.licenca, cor: "text-warning-strong" },
-    { rotulo: "Sem marcação", valor: resumo.semMarcacao, cor: "text-muted-foreground" },
-  ];
+    { chave: "presentes", rotulo: "Presentes", valor: resumo.presentes, cor: "text-success-strong" },
+    { chave: "faltas", rotulo: "Faltas", valor: resumo.faltas, cor: "text-destructive-strong" },
+    { chave: "justificadas", rotulo: "Justificadas", valor: resumo.justificadas, cor: "text-warning-strong" },
+    { chave: "licenca", rotulo: "Licença", valor: resumo.licenca, cor: "text-primary" },
+    { chave: "semMarcacao", rotulo: "Sem marcação", valor: resumo.semMarcacao, cor: "text-muted-foreground" },
+  ] as const;
   return (
     <div className="grid grid-cols-5 gap-1 text-center" role="group" aria-label="Resumo do dia">
       {itens.map((i) => (
-        <div key={i.rotulo} className="min-w-0 rounded-md bg-card px-1 py-1">
+        onContador ? <Button key={i.rotulo} variant="ghost" className="h-auto min-h-[52px] min-w-0 flex-col gap-0.5 whitespace-normal bg-secondary/40 px-1 py-2" onClick={() => onContador(i.chave)} aria-label={`${i.rotulo}: ${i.valor}`}>
+          <span className={cn("font-display text-base font-semibold leading-tight", i.cor)}>{i.valor}</span>
+          <span className="text-[10px] leading-tight text-muted-foreground">{i.rotulo}</span>
+        </Button> : <div key={i.rotulo} className="min-w-0 rounded-md bg-card px-1 py-1">
           <p className={cn("font-display text-base font-semibold leading-tight", i.cor)}>{i.valor}</p>
           <p className="truncate text-[10px] leading-tight text-muted-foreground">{i.rotulo}</p>
         </div>

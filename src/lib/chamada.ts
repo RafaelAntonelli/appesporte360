@@ -21,6 +21,27 @@ export function resumoChamada(
 
 export type ResumoDoDia = { presentes: number; faltas: number; justificadas: number; licenca: number; semMarcacao: number };
 
+export type ContadorChamada = keyof ResumoDoDia | "marcados";
+
+/** As listas usam as mesmas prioridades do resumo; Marcados inclui qualquer registro. */
+export function idsDoContador(
+  ids: string[],
+  contador: ContadorChamada,
+  status: (id: string) => string | undefined | null,
+  emLicenca: (id: string) => boolean,
+) {
+  return [...new Set(ids)].filter((id) => {
+    const s = status(id);
+    if (contador === "marcados") return Boolean(s);
+    if (emLicenca(id)) return contador === "licenca";
+    if (contador === "licenca") return false;
+    if (contador === "presentes") return s === "presente";
+    if (contador === "faltas") return s === "falta";
+    if (contador === "justificadas") return s === "falta_justificada";
+    return !s;
+  });
+}
+
 /**
  * Resumo do dia para a lista filtrada: quem está em licença médica conta só em "Licença";
  * os demais contam pelo registro do dia, ou em "Sem marcação" quando não há registro.

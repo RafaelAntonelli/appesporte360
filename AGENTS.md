@@ -34,4 +34,5 @@
 - Staff photos: private fotos-equipe bucket, own {uid}/ folder, path in profiles.foto_path; display name follows nome_usuario order — why: menu matches registrar names.
 - Auto-absence: admin-only falta_automatica config; SQL pg_cron jobs fire only at per-class deadlines, rebuilt by reprogramar_falta_automatica() on config/turma changes; rows use metodo 'automatica' and staff updates replace them — why: no polling, staff marks win.
 - Lists show loading/empty states only via Carregando and EstadoVazio (src/components).
+- Attendance counter lists use idsDoContador and the existing PerfilAluno; why: IDs preserve selection without attendance writes.
 - Subdirectories may have their own AGENTS.md (e.g. src/lib/ai/); read it before changing files there.
