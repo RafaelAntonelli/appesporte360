@@ -21,6 +21,7 @@ import { Route as PresencaRouteImport } from './routes/presenca'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as TurmasRouteImport } from './routes/turmas'
 import { Route as ApiPublicBackupSemanalRouteImport } from './routes/api/public/backup-semanal'
+import { Route as ApiPublicJobsAvisoAtestadoRouteImport } from './routes/api/public/jobs/aviso-atestado'
 import { Route as ApiPublicJobsLembretesAulaRouteImport } from './routes/api/public/jobs/lembretes-aula'
 
 const IndexRoute = IndexRouteImport.update({
@@ -83,6 +84,12 @@ const ApiPublicBackupSemanalRoute = ApiPublicBackupSemanalRouteImport.update({
   path: '/api/public/backup-semanal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicJobsAvisoAtestadoRoute =
+  ApiPublicJobsAvisoAtestadoRouteImport.update({
+    id: '/api/public/jobs/aviso-atestado',
+    path: '/api/public/jobs/aviso-atestado',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicJobsLembretesAulaRoute =
   ApiPublicJobsLembretesAulaRouteImport.update({
     id: '/api/public/jobs/lembretes-aula',
@@ -103,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof RelatoriosRoute
   '/turmas': typeof TurmasRoute
   '/api/public/backup-semanal': typeof ApiPublicBackupSemanalRoute
+  '/api/public/jobs/aviso-atestado': typeof ApiPublicJobsAvisoAtestadoRoute
   '/api/public/jobs/lembretes-aula': typeof ApiPublicJobsLembretesAulaRoute
 }
 export interface FileRoutesByTo {
@@ -118,6 +126,7 @@ export interface FileRoutesByTo {
   '/relatorios': typeof RelatoriosRoute
   '/turmas': typeof TurmasRoute
   '/api/public/backup-semanal': typeof ApiPublicBackupSemanalRoute
+  '/api/public/jobs/aviso-atestado': typeof ApiPublicJobsAvisoAtestadoRoute
   '/api/public/jobs/lembretes-aula': typeof ApiPublicJobsLembretesAulaRoute
 }
 export interface FileRoutesById {
@@ -134,6 +143,7 @@ export interface FileRoutesById {
   '/relatorios': typeof RelatoriosRoute
   '/turmas': typeof TurmasRoute
   '/api/public/backup-semanal': typeof ApiPublicBackupSemanalRoute
+  '/api/public/jobs/aviso-atestado': typeof ApiPublicJobsAvisoAtestadoRoute
   '/api/public/jobs/lembretes-aula': typeof ApiPublicJobsLembretesAulaRoute
 }
 export interface FileRouteTypes {
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/turmas'
     | '/api/public/backup-semanal'
+    | '/api/public/jobs/aviso-atestado'
     | '/api/public/jobs/lembretes-aula'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/turmas'
     | '/api/public/backup-semanal'
+    | '/api/public/jobs/aviso-atestado'
     | '/api/public/jobs/lembretes-aula'
   id:
     | '__root__'
@@ -181,6 +193,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/turmas'
     | '/api/public/backup-semanal'
+    | '/api/public/jobs/aviso-atestado'
     | '/api/public/jobs/lembretes-aula'
   fileRoutesById: FileRoutesById
 }
@@ -197,6 +210,7 @@ export interface RootRouteChildren {
   RelatoriosRoute: typeof RelatoriosRoute
   TurmasRoute: typeof TurmasRoute
   ApiPublicBackupSemanalRoute: typeof ApiPublicBackupSemanalRoute
+  ApiPublicJobsAvisoAtestadoRoute: typeof ApiPublicJobsAvisoAtestadoRoute
   ApiPublicJobsLembretesAulaRoute: typeof ApiPublicJobsLembretesAulaRoute
 }
 
@@ -286,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBackupSemanalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/jobs/aviso-atestado': {
+      id: '/api/public/jobs/aviso-atestado'
+      path: '/api/public/jobs/aviso-atestado'
+      fullPath: '/api/public/jobs/aviso-atestado'
+      preLoaderRoute: typeof ApiPublicJobsAvisoAtestadoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/jobs/lembretes-aula': {
       id: '/api/public/jobs/lembretes-aula'
       path: '/api/public/jobs/lembretes-aula'
@@ -309,6 +330,7 @@ const rootRouteChildren: RootRouteChildren = {
   RelatoriosRoute: RelatoriosRoute,
   TurmasRoute: TurmasRoute,
   ApiPublicBackupSemanalRoute: ApiPublicBackupSemanalRoute,
+  ApiPublicJobsAvisoAtestadoRoute: ApiPublicJobsAvisoAtestadoRoute,
   ApiPublicJobsLembretesAulaRoute: ApiPublicJobsLembretesAulaRoute,
 }
 export const routeTree = rootRouteImport

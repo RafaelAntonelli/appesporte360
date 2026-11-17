@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -34,6 +34,24 @@ export function LicencaMedicaSecao({ alunoId }: { alunoId: string }) {
   const [anexo, setAnexo] = useState<File | null>(null);
   const [exigirLiberacao, setExigirLiberacao] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  // Trava imediata: impede que um toque duplo envie o mesmo registro duas vezes.
+  const travaRef = useRef(false);
+  function iniciar() {
+    if (travaRef.current) return false;
+    travaRef.current = true;
+    setSalvando(true);
+    return true;
+  }
+  function terminar() {
+    travaRef.current = false;
+    setSalvando(false);
+  }
+  /** Mostra na hora o registro que o sistema acabou de confirmar, sem buscar tudo de novo. */
+  function aplicar(registro: LicencaMedica) {
+    setLicencas((lista) =>
+      [registro, ...lista.filter((l) => l.id !== registro.id)].sort((a, b) => b.data_inicio.localeCompare(a.data_inicio)),
+    );
+  }
 
   async function carregar() {
     const { data } = await supabase
@@ -76,25 +94,25 @@ export function LicencaMedicaSecao({ alunoId }: { alunoId: string }) {
     if (!inicio || !fim) return toast.error("Informe a data de início e a data prevista de retorno (ou o período em dias).");
     if (fim < inicio) return toast.error("O retorno não pode ser antes do início.");
     if (!motivo.trim()) return toast.error("Informe o motivo / diagnóstico resumido.");
-    setSalvando(true);
+    if (!iniciar()) return;
     try {
       const anexo_path = anexo ? await enviarArquivo(alunoId, "atestado", anexo) : null;
-      const { error } = await supabase.from("licencas_medicas").insert({
+      const { data, error } = await supabase.from("licencas_medicas").insert({
         aluno_id: alunoId,
         data_inicio: inicio,
         data_retorno: fim,
         motivo: motivo.trim(),
         anexo_path,
         registrado_por: user?.id ?? null,
-      });
+      }).select("*").single();
       if (error) throw error;
+      aplicar(data as LicencaMedica);
       toast.success(`Licença registrada até ${formatarDataCurta(fim)}.`);
       limpar();
-      await carregar();
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
-      setSalvando(false);
+      terminar();
     }
     return;
   }
@@ -103,19 +121,19 @@ export function LicencaMedicaSecao({ alunoId }: { alunoId: string }) {
     if (!ativa) return;
     const fim = retornoCalculado(ativa.data_retorno);
     if (!fim || fim <= ativa.data_retorno) return toast.error("Informe uma nova data de retorno posterior à atual.");
-    setSalvando(true);
+    if (!iniciar()) return;
     try {
       const patch: { data_retorno: string; anexo_path?: string } = { data_retorno: fim };
       if (anexo) patch.anexo_path = await enviarArquivo(alunoId, "renovacao", anexo);
-      const { error } = await supabase.from("licencas_medicas").update(patch).eq("id", ativa.id);
+      const { data, error } = await supabase.from("licencas_medicas").update(patch).eq("id", ativa.id).select("*").single();
       if (error) throw error;
+      aplicar(data as LicencaMedica);
       toast.success(`Licença renovada até ${formatarDataCurta(fim)}.`);
       limpar();
-      await carregar();
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
-      setSalvando(false);
+      terminar();
     }
     return;
   }
@@ -123,21 +141,23 @@ export function LicencaMedicaSecao({ alunoId }: { alunoId: string }) {
   async function concluir() {
     if (!ativa) return;
     if (exigirLiberacao && !anexo) return toast.error("Anexe o atestado de liberação física para concluir.");
-    setSalvando(true);
+    if (!iniciar()) return;
     try {
       const liberacao_path = anexo ? await enviarArquivo(alunoId, "liberacao", anexo) : null;
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("licencas_medicas")
         .update({ status: "concluida", concluida_em: new Date().toISOString(), concluida_por: user?.id ?? null, liberacao_path })
-        .eq("id", ativa.id);
+        .eq("id", ativa.id)
+        .select("*")
+        .single();
       if (error) throw error;
+      aplicar(data as LicencaMedica);
       toast.success("Licença concluída. Aluno retornou às aulas.");
       limpar();
-      await carregar();
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
-      setSalvando(false);
+      terminar();
     }
     return;
   }
@@ -258,9 +278,9 @@ export function LicencaMedicaSecao({ alunoId }: { alunoId: string }) {
             disabled={salvando}
             onClick={() => void (modo === "registrar" ? registrar() : modo === "renovar" ? renovar() : concluir())}
           >
-            {salvando ? "Salvando..." : "Confirmar"}
+            {salvando ? (modo === "registrar" ? "Registrando..." : "Salvando...") : "Confirmar"}
           </Button>
-          <Button size="sm" variant="ghost" onClick={limpar}>Cancelar</Button>
+          <Button size="sm" variant="ghost" disabled={salvando} onClick={limpar}>Cancelar</Button>
         </div>
       ) : null}
 

@@ -1,7 +1,7 @@
 import { todasPaginas } from "@/lib/offline-regras";
 import { usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useDeferredValue } from "react";
 import { Plus, Users, Trash2, Pencil, Clock, CalendarDays, Printer, Search, LayoutGrid, UserCheck, Bot, SearchX, UserRound } from "lucide-react";
 import { normalizarTexto } from "@/lib/formatacao";
 import { numeroBR, resumoTurmas } from "@/lib/turmas-resumo";
@@ -148,6 +148,7 @@ function TurmasPage() {
   const [editandoObservacao, setEditandoObservacao] = useState<{ alunoId: string; nome: string; texto: string } | null>(null);
   const [turmaAberta, setTurmaAberta] = useState<Turma | null>(null);
   const [buscaAluno, setBuscaAluno] = useState("");
+  const buscaAlunoFiltro = useDeferredValue(buscaAluno);
   const [fotoAmpliada, setFotoAmpliada] = useState<{ url: string; nome: string } | null>(null);
   const diaHoje = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"][new Date().getDay()];
   function temAulaHoje(t: Turma) {
@@ -445,7 +446,7 @@ function TurmasPage() {
   });
 
   const alunosVisiveis = (alunosTurma ?? []).filter((a) => {
-    const b = normalizarTexto(buscaAluno);
+    const b = normalizarTexto(buscaAlunoFiltro);
     return !b || normalizarTexto(a.nome).includes(b) || normalizarTexto(a.codigo).includes(b);
   });
 

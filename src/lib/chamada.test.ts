@@ -46,3 +46,12 @@ describe("Situação do aluno", () => {
     expect(situacaoDoAluno({ ativo: true, atestado_entregue: false, atestado_data: null }, false)).toBe("ativo");
   });
 });
+
+describe("Resumo do dia", () => {
+  it("conta cada aluno uma vez; licença vale mais que o registro", async () => {
+    const { resumoDoDia } = await import("./chamada");
+    const st: Record<string, string> = { a: "presente", b: "falta", c: "falta_justificada", d: "falta_justificada" };
+    const r = resumoDoDia(["a", "b", "c", "d", "e", "a"], (id) => st[id], (id) => id === "d");
+    expect(r).toEqual({ presentes: 1, faltas: 1, justificadas: 1, licenca: 1, semMarcacao: 1 });
+  });
+});

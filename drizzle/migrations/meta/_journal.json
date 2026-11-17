@@ -120,6 +120,13 @@
       "when": 1794005686977,
       "tag": "0016_sincronizacao_chamada_segura",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794908920420,
+      "tag": "0017_registro_acoes_e_aviso_atestado",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,8 @@
 import { todasPaginas } from "@/lib/offline-regras";
 import { ordenarTurmasDoProfessor, usePermissoes } from "@/lib/permissoes";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useDeferredValue } from "react";
+import { MostrarMais, useLimiteLista } from "@/components/MostrarMais";
 import { Camera, CameraOff, Search, CalendarIcon, SlidersHorizontal, UserSearch, ClipboardList, Bot } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,10 +37,10 @@ import { enfileirar, estaOnline, lerCache, salvarCache } from "@/lib/offline";
 import { correspondeBusca, relevanciaBusca } from "@/lib/formatacao";
 import { useGruposDias } from "@/lib/dias";
 import { MODALIDADES } from "@/lib/modalidades";
-import { BotoesChamada, MarcarTodosPresentes, ProgressoChamada } from "@/components/Chamada";
+import { BotoesChamada, MarcarTodosPresentes, ProgressoChamada, ResumoDoDia } from "@/components/Chamada";
 import { EtiquetaSituacao } from "@/components/EtiquetaSituacao";
 import { situacaoDoAluno } from "@/lib/situacao";
-import { resumoChamada } from "@/lib/chamada";
+import { resumoChamada, resumoDoDia } from "@/lib/chamada";
 import { FaltaAutomatica } from "@/components/FaltaAutomatica";
 import { Carregando } from "@/components/Carregando";
 import { EstadoVazio } from "@/components/EstadoVazio";
@@ -108,6 +109,8 @@ function PresencaPage() {
   const [faixasEtarias, setFaixasEtarias] = useState<FaixaEtaria[]>([]);
   const [scanning, setScanning] = useState(false);
   const [busca, setBusca] = useState("");
+  // As letras aparecem na hora; a lista é filtrada logo em seguida.
+  const buscaFiltro = useDeferredValue(busca);
   const [statusPorAluno, setStatusPorAluno] = useState<Record<string, StatusPresenca>>({});
   const [registros, setRegistros] = useState<{ nome: string; codigo: string; hora: string; status: StatusPresenca; obs: string | null; automatica?: boolean }[]>([]);
   const [automaticas, setAutomaticas] = useState<Set<string>>(new Set());
@@ -409,7 +412,7 @@ function PresencaPage() {
 
   const filtrados = alunos
     .filter((a) => {
-      if (!correspondeBusca(a, busca)) return false;
+      if (!correspondeBusca(a, buscaFiltro)) return false;
       const faixa = faixaEtariaECA(a.data_nascimento, a.idade);
       if (faixasEtarias.length && (!faixa || !faixasEtarias.includes(faixa))) return false;
       const turmasAluno = turmasDoAluno(a.id);
@@ -423,7 +426,12 @@ function PresencaPage() {
       }
       return true;
     })
-    .sort((a, b) => relevanciaBusca(a.nome, busca) - relevanciaBusca(b.nome, busca) || a.nome.localeCompare(b.nome));
+    .sort((a, b) => relevanciaBusca(a.nome, buscaFiltro) - relevanciaBusca(b.nome, buscaFiltro) || a.nome.localeCompare(b.nome));
+  const { limite: limiteLista, mostrarMais } = useLimiteLista(
+    40,
+    JSON.stringify([buscaFiltro, faixasEtarias, turmaId, filtroModalidade, filtroTurno, filtroDias]),
+  );
+  const visiveis = filtrados.slice(0, limiteLista);
   const turmasVisiveis = ordenarTurmasDoProfessor(turmas, minhasTurmas).filter(
     (t) => {
       if (filtroModalidade !== "todas" && t.modalidade !== filtroModalidade) return false;
@@ -443,6 +451,7 @@ function PresencaPage() {
     ? alunos.filter((a) => matriculas.some((m) => m.aluno_id === a.id && m.turma_id === turmaId)).map((a) => a.id)
     : [];
   const chamada = resumoChamada(idsDaTurma, (id) => Boolean(statusPorAluno[`${id}:${turmaId}`]), (id) => Boolean(licencaDoAluno(id)));
+  const resumoHoje = resumoDoDia(filtrados.map((a) => a.id), (id) => statusPorAluno[`${id}:${turmaId}`], (id) => Boolean(licencaDoAluno(id)));
 
   return (
     <AppShell title="Presença" subtitle={`Registros de ${data.toLocaleDateString("pt-BR")}`}>
@@ -627,6 +636,7 @@ function PresencaPage() {
                     <div className="sticky top-[calc(3.75rem+env(safe-area-inset-top))] z-20 -mx-1 bg-card px-1 pb-2 md:top-0">
                       <div className="space-y-3 rounded-xl border border-border/70 bg-secondary/40 p-3 shadow-suave">
                         <ProgressoChamada marcados={chamada.marcados} total={chamada.total} />
+                        <ResumoDoDia resumo={resumoHoje} />
                         <MarcarTodosPresentes
                           pendentes={chamada.pendentes.length}
                           emLicenca={chamada.emLicenca}
@@ -640,7 +650,7 @@ function PresencaPage() {
                     </p>
                   )}
                   {carregando ? <Carregando formato="chamada" quantidade={5} rotulo="Carregando alunos..." /> : null}
-                  {!carregando && filtrados.map((a) => {
+                  {!carregando && visiveis.map((a) => {
                     const atual = statusPorAluno[`${a.id}:${turmaId}`];
                     const lic = licencaDoAluno(a.id);
                     const situacao = situacaoDoAluno({ ativo: true, atestado_entregue: a.atestado_entregue, atestado_data: a.atestado_data }, Boolean(lic));
@@ -675,6 +685,7 @@ function PresencaPage() {
                       </div>
                     );
                   })}
+                  {!carregando ? <MostrarMais restantes={filtrados.length - visiveis.length} onMais={mostrarMais} /> : null}
                   {!carregando && !filtrados.length ? (
                     <EstadoVazio
                       icone={UserSearch}

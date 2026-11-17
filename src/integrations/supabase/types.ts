@@ -338,6 +338,44 @@ export type Database = {
           },
         ]
       }
+      avisos_atestado_enviados: {
+        Row: {
+          aluno_id: string
+          antecedencia: number
+          aviso_id: string | null
+          created_at: string
+          enviados: number
+          id: string
+          vencimento: string
+        }
+        Insert: {
+          aluno_id: string
+          antecedencia: number
+          aviso_id?: string | null
+          created_at?: string
+          enviados?: number
+          id?: string
+          vencimento: string
+        }
+        Update: {
+          aluno_id?: string
+          antecedencia?: number
+          aviso_id?: string | null
+          created_at?: string
+          enviados?: number
+          id?: string
+          vencimento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avisos_atestado_enviados_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avisos_leituras: {
         Row: {
           aluno_id: string
@@ -1012,6 +1050,33 @@ export type Database = {
         }
         Relationships: []
       }
+      registro_acoes: {
+        Row: {
+          created_at: string
+          descricao: string
+          feito_por: string | null
+          feito_por_nome: string | null
+          id: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          feito_por?: string | null
+          feito_por_nome?: string | null
+          id?: string
+          tipo: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          feito_por?: string | null
+          feito_por_nome?: string | null
+          id?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
       turmas: {
         Row: {
           ativa: boolean
@@ -1122,10 +1187,15 @@ export type Database = {
           id: string
         }[]
       }
+      nome_ou_email: { Args: { _id: string }; Returns: string }
       nome_usuario: { Args: { _id: string }; Returns: string }
       permissoes_desbloqueadas: { Args: { _user_id: string }; Returns: boolean }
       pode: { Args: { _permissao: string; _user_id: string }; Returns: boolean }
       recusar_aparelho_aluno: { Args: { _id: string }; Returns: undefined }
+      registrar_acao: {
+        Args: { _descricao: string; _tipo: string }
+        Returns: undefined
+      }
       reprogramar_falta_automatica: { Args: never; Returns: undefined }
       revogar_aparelho_aluno: { Args: { _id: string }; Returns: undefined }
     }

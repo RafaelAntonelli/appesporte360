@@ -42,6 +42,7 @@ import { notificacoesSuportadas, obterTokenNotificacao } from "@/lib/push-aluno"
 import { otimizarImagem } from "@/lib/imagem";
 import { NAO_INFORMADO, dataBrasileira, textoNascimento } from "@/lib/perfil-aluno";
 import { formatarDataCurta } from "@/lib/licenca";
+import { proximaAula } from "@/lib/proxima-aula";
 import { EtiquetaSituacao } from "@/components/EtiquetaSituacao";
 import { BlocoCarregando } from "@/components/Carregando";
 import { EstadoVazio } from "@/components/EstadoVazio";
@@ -316,6 +317,7 @@ function AreaAluno() {
           </TabsList>
 
           <TabsContent value="dia" className="space-y-3 pt-2">
+            <CartaoProximaAula turmas={dados.turmas} />
             <h2 className="font-display text-base font-semibold text-foreground">Minhas turmas</h2>
             {dados.turmas.length ? (
               dados.turmas.map((t) => (
@@ -708,5 +710,28 @@ function MeuPerfil({ dados, aoMudarFoto }: { dados: DadosAreaAluno; aoMudarFoto:
         )}
       </Bloco>
     </div>
+  );
+}
+
+/** "Próxima aula" no topo de Meu dia; atualiza sozinho a cada minuto. */
+function CartaoProximaAula({ turmas }: { turmas: { id: string; nome: string; dias: string[]; horario: string | null }[] }) {
+  const [agora, setAgora] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setAgora(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  const proxima = proximaAula(turmas, agora);
+  if (!proxima) return null;
+  return (
+    <Card className="border-primary/40 bg-primary/5">
+      <CardContent className="space-y-1 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Próxima aula</p>
+          {proxima.emAndamento ? <Badge>Em andamento</Badge> : null}
+        </div>
+        <p className="font-display text-xl font-semibold text-foreground">{proxima.texto}</p>
+        <p className="text-sm text-muted-foreground">{proxima.turma.nome}</p>
+      </CardContent>
+    </Card>
   );
 }

@@ -165,3 +165,24 @@ export function MarcarTodosPresentes({
     </>
   );
 }
+
+/** Cinco números pequenos abaixo do contador: seguem a lista filtrada e mudam a cada marcação. */
+export function ResumoDoDia({ resumo }: { resumo: import("@/lib/chamada").ResumoDoDia }) {
+  const itens = [
+    { rotulo: "Presentes", valor: resumo.presentes, cor: "text-success-strong" },
+    { rotulo: "Faltas", valor: resumo.faltas, cor: "text-destructive-strong" },
+    { rotulo: "Justificadas", valor: resumo.justificadas, cor: "text-warning-strong" },
+    { rotulo: "Licença", valor: resumo.licenca, cor: "text-warning-strong" },
+    { rotulo: "Sem marcação", valor: resumo.semMarcacao, cor: "text-muted-foreground" },
+  ];
+  return (
+    <div className="grid grid-cols-5 gap-1 text-center" role="group" aria-label="Resumo do dia">
+      {itens.map((i) => (
+        <div key={i.rotulo} className="min-w-0 rounded-md bg-card px-1 py-1">
+          <p className={cn("font-display text-base font-semibold leading-tight", i.cor)}>{i.valor}</p>
+          <p className="truncate text-[10px] leading-tight text-muted-foreground">{i.rotulo}</p>
+        </div>
+      ))}
+    </div>
+  );
+}

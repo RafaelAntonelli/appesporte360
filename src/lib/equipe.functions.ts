@@ -78,7 +78,18 @@ export const removerContaPendenteFn = createServerFn({ method: "POST" })
     const { data: papeis, error } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.userId);
     if (error) throw new Error("Não foi possível verificar a conta.");
     if ((papeis ?? []).length > 0) throw new Error("Só é possível remover contas que ainda não foram liberadas.");
+    const { data: alvo } = await supabaseAdmin.auth.admin.getUserById(data.userId);
+    const { data: nomeAlvo } = await supabaseAdmin.rpc("nome_usuario", { _id: data.userId });
     const { error: delError } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (delError) throw new Error("Não foi possível remover a conta.");
+    const { data: nomeAdmin } = await supabaseAdmin.rpc("nome_usuario", { _id: context.userId });
+    const quem = [(nomeAlvo as string | null) || null, alvo?.user?.email ?? null].filter(Boolean).join(" · ") || "conta sem nome";
+    const { error: logError } = await supabaseAdmin.from("registro_acoes").insert({
+      tipo: "conta_removida",
+      descricao: `Conta aguardando liberação removida: ${quem}`,
+      feito_por: context.userId,
+      feito_por_nome: (nomeAdmin as string | null) ?? null,
+    });
+    if (logError) console.error("[registro_acoes]", logError.message);
     return { ok: true };
   });

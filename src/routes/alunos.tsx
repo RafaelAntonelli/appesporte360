@@ -1,7 +1,8 @@
 import { todasPaginas } from "@/lib/offline-regras";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState, type ReactNode } from "react";
+import { MostrarMais, useLimiteLista } from "@/components/MostrarMais";
 import { Plus, Search, Pencil, Image as ImageIcon, AlertTriangle, Bell, Trash2, UserX, UserCheck, Download, Camera, Upload, IdCard, FileDown, FileSpreadsheet, ChevronDown, ChevronUp, FileWarning, Stethoscope, MoreHorizontal, SlidersHorizontal, Eye, Users, CloudOff, RefreshCw, SearchX } from "lucide-react";
 import { Carregando } from "@/components/Carregando";
 import { EstadoVazio } from "@/components/EstadoVazio";
@@ -182,6 +183,10 @@ function AlunosPage() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
+  // As letras aparecem na hora; a lista é filtrada logo em seguida, sem travar o teclado.
+  const buscaFiltro = useDeferredValue(busca);
+  // Lista montada da última vez: fica parada enquanto a ficha de matrícula está aberta.
+  const listaCongeladaRef = useRef<ReactNode>(null);
   const [filtroPcd, setFiltroPcd] = useState("todos");
   const [filtroSexo, setFiltroSexo] = useState("todos");
   const [filtroModalidade, setFiltroModalidade] = useState("todas");
@@ -970,7 +975,7 @@ function AlunosPage() {
 
   const filtrados = alunos
     .filter((a) => {
-      if (!correspondeBusca(a, busca)) return false;
+      if (!correspondeBusca(a, buscaFiltro)) return false;
       if (filtroNotificacao === "em_licenca" && !(a.ativo && licencaAtual(a.id))) return false;
       if (filtroNotificacao === "ativos" && !a.ativo) return false;
       if (filtroNotificacao === "inativos" && a.ativo) return false;
@@ -1001,8 +1006,13 @@ function AlunosPage() {
       const selA = selecionados.includes(a.id) ? 1 : 0;
       const selB = selecionados.includes(b.id) ? 1 : 0;
       if (selA !== selB) return selB - selA;
-      return relevanciaBusca(a.nome, busca) - relevanciaBusca(b.nome, busca) || a.nome.localeCompare(b.nome);
+      return relevanciaBusca(a.nome, buscaFiltro) - relevanciaBusca(b.nome, buscaFiltro) || a.nome.localeCompare(b.nome);
     });
+  const { limite: limiteLista, mostrarMais } = useLimiteLista(
+    60,
+    JSON.stringify([buscaFiltro, filtroNotificacao, filtroPcd, filtroSexo, filtroModalidade, filtroHorario, filtroDias, filtroTurno, idadeMin, idadeMax]),
+  );
+  const visiveis = filtrados.slice(0, limiteLista);
 
 
 
@@ -1977,7 +1987,7 @@ function AlunosPage() {
         </Card>
       ) : null}
 
-      {(() => {
+      {aberto && listaCongeladaRef.current !== null ? listaCongeladaRef.current : (listaCongeladaRef.current = (() => {
         const nomesTurmas = (id: string) =>
           matriculas
             .filter((m) => m.aluno_id === id)
@@ -2110,7 +2120,7 @@ function AlunosPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtrados.map((aluno) => (
+                {visiveis.map((aluno) => (
                   <tr key={aluno.id} className="transition-colors hover:bg-secondary/50">
                     <td className="border-b border-border/60 px-3 py-2.5">{selecao(aluno)}</td>
                     <td className="border-b border-border/60 px-3 py-2.5">
@@ -2135,7 +2145,7 @@ function AlunosPage() {
 
             {/* Celular: um cartão por aluno */}
             <div className="divide-y divide-border/70 md:hidden">
-              {filtrados.map((aluno) => (
+              {visiveis.map((aluno) => (
                 <div key={aluno.id} className="flex items-start gap-3 px-3 py-3">
                   <div className="pt-3">{selecao(aluno)}</div>
                   {foto(aluno, "size-12")}
@@ -2154,9 +2164,10 @@ function AlunosPage() {
                 </div>
               ))}
             </div>
+            <MostrarMais restantes={filtrados.length - visiveis.length} onMais={mostrarMais} />
           </div>
         );
-      })()}
+      })())}
 
       <Dialog open={!!detalhe} onOpenChange={(o) => !o && setDetalhe(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">

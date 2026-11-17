@@ -12,6 +12,7 @@ import { PERMISSOES } from "@/lib/permissoes";
 import { Label } from "@/components/ui/label";
 import { AppShell } from "@/components/AppShell";
 import { AcessosAlunos } from "@/components/AcessosAlunos";
+import { RegistroAcoes } from "@/components/RegistroAcoes";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -311,7 +312,12 @@ function EquipePage() {
             <TabsTrigger value="equipe">Equipe</TabsTrigger>
             <TabsTrigger value="permissoes">Permissões dos professores</TabsTrigger>
             <TabsTrigger value="alunos">Acessos dos alunos</TabsTrigger>
+            <TabsTrigger value="registro">Registro de ações</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="registro">
+            {aba === "registro" ? <RegistroAcoes /> : null}
+          </TabsContent>
 
           <TabsContent value="alunos">
             <AcessosAlunos />
